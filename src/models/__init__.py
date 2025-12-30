@@ -4,8 +4,8 @@
 from src.models.base import (
     Base,
     TimestampMixin,
-    AsyncSessionLocal,
-    SessionLocal,
+    get_engine,
+    get_async_engine,
     get_async_session,
     get_session,
 )
@@ -19,8 +19,8 @@ __all__ = [
     # Base
     "Base",
     "TimestampMixin",
-    "AsyncSessionLocal",
-    "SessionLocal",
+    "get_engine",
+    "get_async_engine",
     "get_async_session",
     "get_session",
     # Models

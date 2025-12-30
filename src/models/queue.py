@@ -123,11 +123,13 @@ class RadioQueue(Base, TimestampMixin):
     @property
     def vote_score(self) -> int:
         """Get net vote score."""
-        return self.upvotes - self.downvotes
+        return (self.upvotes or 0) - (self.downvotes or 0)
 
     @property
     def wait_time_seconds(self) -> Optional[float]:
         """Get how long this request has been waiting."""
+        if not self.requested_at:
+            return None
         if self.completed_at:
             delta = self.completed_at - self.requested_at
         else:
@@ -179,9 +181,9 @@ class RadioQueue(Base, TimestampMixin):
         # Reputation contribution
         score += user_reputation * 0.5
 
-        # Vote contribution
-        score += self.upvotes * 10
-        score -= self.downvotes * 5
+        # Vote contribution (use 0 if not yet set)
+        score += (self.upvotes or 0) * 10
+        score -= (self.downvotes or 0) * 5
 
         # Priority boost
         if self.is_priority_boost:

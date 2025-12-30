@@ -95,13 +95,13 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 def client(sync_engine) -> Generator[TestClient, None, None]:
     """Create FastAPI test client."""
-    # Override the database dependency
-    from src.models.base import get_session
+    # Override the database dependency - import from src.models for consistency with routes
+    from src.models import get_session
 
-    SessionLocal = sessionmaker(bind=sync_engine, autoflush=False, autocommit=False)
+    TestSessionLocal = sessionmaker(bind=sync_engine, autoflush=False, autocommit=False)
 
     def override_get_session():
-        session = SessionLocal()
+        session = TestSessionLocal()
         try:
             yield session
         finally:
@@ -118,9 +118,10 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
 @pytest_asyncio.fixture(scope="function")
 async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
     """Create async FastAPI test client."""
-    from src.models.base import get_async_session
+    # Import from src.models for consistency with routes
+    from src.models import get_async_session
 
-    async_session_maker = async_sessionmaker(
+    test_async_session_maker = async_sessionmaker(
         bind=async_engine,
         class_=AsyncSession,
         autoflush=False,
@@ -129,7 +130,7 @@ async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
     )
 
     async def override_get_async_session():
-        async with async_session_maker() as session:
+        async with test_async_session_maker() as session:
             yield session
 
     app.dependency_overrides[get_async_session] = override_get_async_session
