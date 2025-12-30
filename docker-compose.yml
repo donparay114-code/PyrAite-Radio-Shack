@@ -1,0 +1,139 @@
+# PYrte Radio Shack - Docker Compose for Local Development
+version: '3.8'
+
+services:
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=radio_user
+      - MYSQL_PASSWORD=radio_password
+      - MYSQL_DATABASE=radio_station
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SUNO_API_URL=${SUNO_API_URL:-}
+      - SUNO_API_KEY=${SUNO_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    volumes:
+      - ./src:/app/src:ro
+      - song_data:/app/data/songs
+      - temp_data:/app/data/temp
+      - broadcast_data:/app/data/broadcast
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: pyrte-radio-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=radio_station
+      - MYSQL_USER=radio_user
+      - MYSQL_PASSWORD=radio_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/migrations/versions:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pyrte-radio-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: pyrte-radio-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n_workflows:/home/node/workflows:ro
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # Icecast Streaming Server (optional)
+  icecast:
+    image: moul/icecast
+    container_name: pyrte-radio-icecast
+    ports:
+      - "8080:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    volumes:
+      - icecast_logs:/var/log/icecast2
+    restart: unless-stopped
+    networks:
+      - radio-network
+    profiles:
+      - streaming
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  n8n_data:
+    driver: local
+  song_data:
+    driver: local
+  temp_data:
+    driver: local
+  broadcast_data:
+    driver: local
+  icecast_logs:
+    driver: local
+
+networks:
+  radio-network:
+    driver: bridge

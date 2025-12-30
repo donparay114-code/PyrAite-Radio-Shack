@@ -1,0 +1,264 @@
+{
+  "name": "Telegram Bot Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-webhook",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "telegram-bot"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.message.text }}",
+              "operation": "startsWith",
+              "value2": "/request"
+            }
+          ]
+        }
+      },
+      "id": "is_request",
+      "name": "Is Request Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $input.first().json.body.message;\nconst text = message.text || '';\nconst prompt = text.replace(/^\\/request\\s*/i, '').trim();\n\nreturn {\n  chat_id: message.chat.id,\n  message_id: message.message_id,\n  user_id: message.from.id,\n  username: message.from.username,\n  first_name: message.from.first_name,\n  prompt: prompt\n};"
+      },
+      "id": "parse_request",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_URL }}/api/users/",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telegram_id",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "telegram_username",
+              "value": "={{ $json.username }}"
+            },
+            {
+              "name": "telegram_first_name",
+              "value": "={{ $json.first_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create_user",
+      "name": "Create/Get User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_URL }}/api/queue/",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{ $('Parse Request').item.json.prompt }}"
+            },
+            {
+              "name": "telegram_user_id",
+              "value": "={{ $('Parse Request').item.json.user_id }}"
+            },
+            {
+              "name": "telegram_message_id",
+              "value": "={{ $('Parse Request').item.json.message_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "add_to_queue",
+      "name": "Add to Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Request').item.json.chat_id }}",
+        "text": "✅ Your request has been added to the queue!\n\n🎵 <i>{{ $('Parse Request').item.json.prompt }}</i>\n\n⏳ Position: #{{ $json.id }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Request').item.json.message_id }}"
+        }
+      },
+      "id": "send_confirmation",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.message.text }}",
+              "operation": "startsWith",
+              "value2": "/status"
+            }
+          ]
+        }
+      },
+      "id": "is_status",
+      "name": "Is Status Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_URL }}/api/queue/stats",
+        "options": {}
+      },
+      "id": "get_stats",
+      "name": "Get Queue Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $input.first().json.body.message.chat.id }}",
+        "text": "📊 <b>Queue Status</b>\n\n⏳ Pending: {{ $json.pending }}\n🎵 Generating: {{ $json.generating }}\n✅ Completed today: {{ $json.completed_today }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send_stats",
+      "name": "Send Stats",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1120, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Request Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Request Command?": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Status Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Create/Get User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create/Get User": {
+      "main": [
+        [
+          {
+            "node": "Add to Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Queue": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Status Command?": {
+      "main": [
+        [
+          {
+            "node": "Get Queue Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Queue Stats": {
+      "main": [
+        [
+          {
+            "node": "Send Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["radio", "telegram", "bot"]
+}

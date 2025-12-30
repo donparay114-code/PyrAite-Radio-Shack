@@ -12,21 +12,17 @@ Assist with Suno AI music generation, including prompt engineering, API integrat
 
 ### Suno V7 System Prompt
 
-**Location:**
-```
-C:\Users\Jesse\.gemini\antigravity\code_tracker\active\no_repo\SUNO_SYSTEM_MESSAGE_V7_PRODUCTION.md
-```
+**Location:** `$PROJECT_ROOT/prompts/SUNO_SYSTEM_MESSAGE_V7_PRODUCTION.md`
 
 This file contains the production system prompt used by the Queue Processor workflow to generate enhanced music prompts via GPT-4o-mini.
 
 ### Suno Music Director
 
-**Location:**
-```
-C:\Users\Jesse\.gemini\antigravity\suno_music_director_v7.js
-```
+**Location:** `$PROJECT_ROOT/src/services/suno_music_director.js`
 
 JavaScript utility for Suno music generation logic.
+
+> **Note:** Actual paths are configured via environment variables. See `.env.example` for configuration.
 
 ## Suno API Integration
 
@@ -125,7 +121,7 @@ A good Suno prompt consists of:
 6. **Wait 2 minutes**
 7. **Check status** via Suno API
 8. **Download MP3** if complete
-9. **Save to disk** at `C:\Users\Jesse\.gemini\antigravity\radio\songs\`
+9. **Save to disk** at `$SONGS_DIR` (default: `./data/songs/`)
 10. **Update database** with completion status
 
 ### Enhancing Prompts with GPT-4o
@@ -236,7 +232,7 @@ AND generation_started_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE);
 ### Generated Songs Storage
 
 ```
-C:\Users\Jesse\.gemini\antigravity\radio\songs\
+$SONGS_DIR/                          # Default: ./data/songs/
 ├── {queue_id}_{suno_job_id}.mp3
 ├── {queue_id}_{suno_job_id}.mp3
 └── ...
@@ -246,7 +242,7 @@ C:\Users\Jesse\.gemini\antigravity\radio\songs\
 
 ```bash
 # Find old files (over 30 days)
-find C:\Users\Jesse\.gemini\antigravity\radio\songs\ -name "*.mp3" -mtime +30
+find $SONGS_DIR -name "*.mp3" -mtime +30
 
 # Archive or delete based on database
 ```
