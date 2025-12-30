@@ -17,12 +17,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Database
-    mysql_host: str = "localhost"
-    mysql_port: int = 3306
-    mysql_user: str = "radio_user"
-    mysql_password: str = ""
-    mysql_database: str = "radio_station"
+    # Database (PostgreSQL)
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "radio_user"
+    postgres_password: str = ""
+    postgres_database: str = "radio_station"
 
     # Redis
     redis_host: str = "localhost"
@@ -66,18 +66,18 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Get the MySQL database URL for SQLAlchemy."""
+        """Get the PostgreSQL database URL for SQLAlchemy."""
         return (
-            f"mysql+mysqlconnector://{self.mysql_user}:{self.mysql_password}"
-            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
+            f"postgresql+psycopg2://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_database}"
         )
 
     @property
     def async_database_url(self) -> str:
-        """Get the async MySQL database URL for SQLAlchemy."""
+        """Get the async PostgreSQL database URL for SQLAlchemy."""
         return (
-            f"mysql+aiomysql://{self.mysql_user}:{self.mysql_password}"
-            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
+            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_database}"
         )
 
     @property

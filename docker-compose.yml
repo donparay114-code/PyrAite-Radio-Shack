@@ -13,11 +13,11 @@ services:
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
-      - MYSQL_HOST=db
-      - MYSQL_PORT=3306
-      - MYSQL_USER=radio_user
-      - MYSQL_PASSWORD=radio_password
-      - MYSQL_DATABASE=radio_station
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+      - POSTGRES_DATABASE=radio_station
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SUNO_API_URL=${SUNO_API_URL:-}
@@ -39,22 +39,21 @@ services:
     networks:
       - radio-network
 
-  # MySQL Database
+  # PostgreSQL Database
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     container_name: pyrte-radio-db
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      - MYSQL_ROOT_PASSWORD=root_password
-      - MYSQL_DATABASE=radio_station
-      - MYSQL_USER=radio_user
-      - MYSQL_PASSWORD=radio_password
+      - POSTGRES_DB=radio_station
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
       - ./sql/migrations/versions:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_station"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -119,7 +118,7 @@ services:
       - streaming
 
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
   redis_data:
     driver: local
