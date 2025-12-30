@@ -76,17 +76,14 @@ async def root():
 
 
 # Import and include routers
-from src.api.routes import queue, health, webhooks
+from src.api.routes import queue, health, webhooks, users, songs, votes
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(songs.router, prefix="/api/songs", tags=["Songs"])
+app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
-
-# TODO: Add these routers when implemented
-# from src.api.routes import songs, users, votes
-# app.include_router(songs.router, prefix="/api/songs", tags=["Songs"])
-# app.include_router(users.router, prefix="/api/users", tags=["Users"])
-# app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 
 
 if __name__ == "__main__":
