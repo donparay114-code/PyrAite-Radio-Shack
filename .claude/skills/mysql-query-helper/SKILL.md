@@ -1,13 +1,42 @@
 ---
 name: mysql-query-helper
-description: Help with MySQL queries, database operations, JSON functions, and troubleshooting for the radio_station database. Use when the user mentions MySQL, database queries, SQL, or database troubleshooting.
+description: "[DEPRECATED] Use postgresql-query-helper instead. The radio station database has migrated to PostgreSQL 14+ with JSONB support and better performance."
 allowed-tools: Read, Grep, Glob
 ---
 
-# MySQL Query Helper
+# MySQL Query Helper (DEPRECATED)
+
+> **⚠️ DEPRECATED**: This skill has been replaced by `postgresql-query-helper`. The PYrte Radio Station database now uses PostgreSQL 14+ for better performance, JSONB support, and modern features.
+
+## Migration Guide
+
+**Key Differences:**
+
+| MySQL | PostgreSQL |
+|-------|------------|
+| `AUTO_INCREMENT` | `SERIAL` |
+| `JSON` column type | `JSONB` column type |
+| `JSON_CONTAINS()` | `@>` operator |
+| `JSON_OVERLAPS()` | `?|` operator |
+| `DATE_SUB(NOW(), INTERVAL 5 DAY)` | `NOW() - INTERVAL '5 days'` |
+| \`backticks\` | "double quotes" |
+| `SHOW PROCESSLIST` | `pg_stat_activity` |
+
+**Migration Steps:**
+1. Export data: `mysqldump radio_station > backup.sql`
+2. Convert schema to PostgreSQL syntax
+3. Import to PostgreSQL: `psql radio_station < converted.sql`
+4. Update all application code to use PostgreSQL syntax
+5. Use `postgresql-query-helper` skill for future queries
+
+See `postgresql-migration-guide.md` for detailed migration instructions.
+
+---
+
+# Legacy MySQL Documentation
 
 ## Purpose
-Assist with MySQL database operations for the radio_station database, including query writing, optimization, JSON operations, and troubleshooting.
+Legacy documentation for MySQL operations. **Use postgresql-query-helper for current database.**
 
 ## Database Overview
 
