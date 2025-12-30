@@ -6,17 +6,79 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 
 from src.utils.config import settings
+from src.utils.logging import setup_logging
 
 # API version
 API_VERSION = "1.0.0"
+
+# API description for OpenAPI docs
+API_DESCRIPTION = """
+# PYrte Radio Shack API
+
+AI-powered community radio station with Suno music generation.
+
+## Features
+
+- **Queue Management**: Submit song requests, track status, vote on songs
+- **User System**: Reputation-based tiers, voting power, request limits
+- **Music Generation**: Suno AI integration for creating songs from prompts
+- **Broadcasting**: Liquidsoap integration for live streaming
+- **Moderation**: Content filtering and safety checks
+
+## Authentication
+
+Currently uses Telegram user IDs for authentication. API keys will be added in future versions.
+
+## Rate Limits
+
+- API endpoints: 10 requests/second
+- Webhooks: 30 requests/second
+- Song requests: Based on user tier (3-50 per day)
+
+## Getting Started
+
+1. Create a user via `/api/users/` with your Telegram ID
+2. Submit song requests via `/api/queue/`
+3. Vote on songs via `/api/votes/`
+4. Check status via `/api/queue/stats`
+"""
+
+TAGS_METADATA = [
+    {
+        "name": "Health",
+        "description": "Health check endpoints for monitoring and orchestration",
+    },
+    {
+        "name": "Queue",
+        "description": "Song request queue management - submit, track, and manage requests",
+    },
+    {
+        "name": "Users",
+        "description": "User management - registration, stats, reputation, and moderation",
+    },
+    {
+        "name": "Songs",
+        "description": "Song catalog - browse, search, and manage generated songs",
+    },
+    {
+        "name": "Votes",
+        "description": "Voting system - upvote/downvote songs and queue items",
+    },
+    {
+        "name": "Webhooks",
+        "description": "Webhook endpoints for external integrations (Suno, Telegram, n8n)",
+    },
+]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
     # Startup
+    setup_logging()
     settings.ensure_directories()
     yield
     # Shutdown (cleanup if needed)
@@ -24,11 +86,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PYrte Radio Shack API",
-    description="AI-powered community radio station with Suno music generation",
+    description=API_DESCRIPTION,
     version=API_VERSION,
     lifespan=lifespan,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
+    openapi_tags=TAGS_METADATA,
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    contact={
+        "name": "PYrte Radio Shack",
+        "url": "https://github.com/pyrte-radio-shack",
+    },
 )
 
 # CORS middleware

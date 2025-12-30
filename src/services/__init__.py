@@ -16,6 +16,16 @@ from src.services.audio_processor import (
     ProcessingResult,
     get_audio_processor,
 )
+from src.services.telegram_bot import TelegramBot, get_telegram_bot
+from src.services.cost_tracker import (
+    CostTracker,
+    ServiceType,
+    UsageRecord,
+    UsageSummary,
+    get_cost_tracker,
+    track_suno_usage,
+    track_openai_usage,
+)
 
 __all__ = [
     "SunoClient",
@@ -31,4 +41,13 @@ __all__ = [
     "AudioMetadata",
     "ProcessingResult",
     "get_audio_processor",
+    "TelegramBot",
+    "get_telegram_bot",
+    "CostTracker",
+    "ServiceType",
+    "UsageRecord",
+    "UsageSummary",
+    "get_cost_tracker",
+    "track_suno_usage",
+    "track_openai_usage",
 ]
