@@ -11,7 +11,7 @@ Expert in designing robust, scalable n8n workflows with proper error handling, m
 
 ## Objective
 
-Create reliable n8n workflows that handle edge cases, recover from failures, integrate multiple APIs (Suno, OpenAI, Telegram, MySQL), and maintain production-quality standards.
+Create reliable n8n workflows that handle edge cases, recover from failures, integrate multiple APIs (Suno, OpenAI, Telegram, PostgreSQL), and maintain production-quality standards.
 
 ## Workflow Design Principles
 
@@ -76,7 +76,7 @@ Finally Block
 ```
 Schedule Trigger (every 30s)
     ↓
-MySQL: Get Pending Items (LIMIT 5)
+PostgreSQL: Get Pending Items (LIMIT 5)
     ↓
 For Each Item:
     ├→ Update Status to "processing"
@@ -209,7 +209,7 @@ Check Request Queue
     │   └→ Reply "Queue full, try later"
     └→ Else: Accept request
         ↓
-Insert to MySQL (requests table)
+Insert to PostgreSQL (requests table)
     ├→ Status: pending
     ├→ Priority: Calculate based on reputation
     ├→ User ID, prompt, timestamp
@@ -224,7 +224,7 @@ Reply to User
 ```
 Schedule (every 30 seconds)
     ↓
-MySQL: Get Top Priority Pending Request
+PostgreSQL: Get Top Priority Pending Request
     ↓
 If request found:
     ├→ Update status to "processing"
@@ -233,7 +233,7 @@ If request found:
     │   ├→ Wait for generation (polling)
     │   ├→ Download audio file
     │   ├→ Save to storage
-    │   ├→ Update MySQL:
+    │   ├→ Update PostgreSQL:
     │   │   ├→ Status: completed
     │   │   ├→ File URL
     │   │   └→ Duration
@@ -257,7 +257,7 @@ Schedule (check every minute)
     ↓
 Get Current Time Slot
     ↓
-MySQL: Get Scheduled Track for Slot
+PostgreSQL: Get Scheduled Track for Slot
     ↓
 If track assigned:
     ├→ Check if already broadcasted (idempotency)
@@ -272,7 +272,68 @@ If track assigned:
 
 ## Integration Patterns
 
-### Suno API Integration
+### Liquidsoap Control API (HTTP - RECOMMENDED)
+
+**Use HTTP API instead of SSH telnet for 10-20x performance improvement**
+
+```
+Push Track to Queue:
+    ├→ HTTP Request Node
+    ├→ Method: POST
+    ├→ URL: http://localhost:3001/channels/{channel}/queue/push
+    ├→ Headers: { "X-API-Key": "{{$env.CONTROL_API_KEY}}" }
+    ├→ Body: { "trackPath": "/var/radio/tracks/song_123.mp3" }
+    ├→ Timeout: 10000ms
+    ├→ Retry: 3 times, 1s between
+        ↓
+Handle Response:
+    ├→ If success: Log queue position
+    ├→ If 401: Check API key
+    ├→ If 500: Alert + retry with backoff
+    └→ If timeout: Fallback to next track
+```
+
+**Benefits over SSH:**
+- 20ms latency vs 300ms
+- Automatic retry logic
+- Health check endpoint
+- Structured error responses
+- No shell injection risks
+
+### Music Provider Adapter Pattern
+
+**Use provider abstraction for failover capability**
+
+```
+Initialize Provider:
+    ├→ Read $env.MUSIC_PROVIDER (suno/stable-audio/mubert)
+    ├→ Health check primary provider
+    ├→ If unhealthy: Use fallback provider
+    └→ Return provider instance
+        ↓
+Generate Music:
+    ├→ provider.generate({ prompt, duration, genre })
+    ├→ Get taskId + status
+    └→ Store in database
+        ↓
+Poll Status:
+    ├→ Every 10s: provider.checkStatus(taskId)
+    ├→ If completed: Download audio
+    ├→ If failed: Try fallback provider
+    └→ If timeout: Notify user
+        ↓
+Download Audio:
+    ├→ provider.downloadAudio(taskId)
+    ├→ Upload to S3/storage
+    └→ Return URL
+```
+
+**Supported Providers:**
+- Suno ($0.10/track, lyrics support)
+- Stable Audio ($0.15/track, fast generation)
+- Mubert ($0.05/track, ambient/lofi)
+
+### Suno API Integration (Legacy)
 
 ```
 Prepare Request:
@@ -336,11 +397,11 @@ Catch Errors:
     └→ Token limit: Reduce prompt, retry
 ```
 
-### MySQL Operations
+### PostgreSQL Operations
 
 **Atomic Queue Updates:**
 ```sql
--- Get and lock pending item atomically
+-- Get and lock pending item atomically (PostgreSQL-specific)
 UPDATE queue
 SET status = 'processing',
     processed_at = NOW(),
@@ -355,11 +416,12 @@ WHERE id = (
 RETURNING *;
 ```
 
-**Idempotent Inserts:**
+**Idempotent Inserts (UPSERT):**
 ```sql
+-- PostgreSQL ON CONFLICT syntax
 INSERT INTO broadcasts (track_id, timeslot, broadcast_date)
 VALUES (123, '14:00', '2025-01-20')
-ON DUPLICATE KEY UPDATE
+ON CONFLICT (track_id, timeslot, broadcast_date) DO UPDATE SET
   updated_at = NOW()
 -- Won't create duplicate if already exists
 ```
@@ -461,7 +523,7 @@ Final Step
 ### Node Configuration:
 
 **Node 1: [Node Name]**
-- Type: [Webhook/HTTP Request/MySQL/etc]
+- Type: [Webhook/HTTP Request/PostgreSQL/etc]
 - Configuration:
   ```json
   {

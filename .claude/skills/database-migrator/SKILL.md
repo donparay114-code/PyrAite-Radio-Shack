@@ -1,12 +1,12 @@
 ---
 name: database-migrator
-description: Create, manage, and run MySQL database migrations with version control and rollback support. Use when the user mentions database migrations, schema changes, database versioning, or database updates.
+description: Create, manage, and run PostgreSQL database migrations with version control and rollback support. Use when the user mentions database migrations, schema changes, database versioning, or database updates.
 ---
 
 # Database Migrator
 
 ## Purpose
-Safely manage database schema changes through versioned migration files with automatic rollback capabilities.
+Safely manage PostgreSQL database schema changes through versioned migration files with automatic rollback capabilities.
 
 ## Your Databases
 
@@ -33,18 +33,19 @@ C:\Users\Jesse\.gemini\antigravity\
 ### Migration Tracker Table
 
 ```sql
--- Create migration tracking table
+-- Create migration tracking table (PostgreSQL)
 CREATE TABLE IF NOT EXISTS migration_history (
-  migration_id INT AUTO_INCREMENT PRIMARY KEY,
+  migration_id SERIAL PRIMARY KEY,
   version VARCHAR(50) NOT NULL UNIQUE,
   description VARCHAR(255) NOT NULL,
   database_name VARCHAR(100) NOT NULL,
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  applied_by VARCHAR(100) DEFAULT USER(),
-  checksum VARCHAR(64),
-  INDEX idx_database (database_name),
-  INDEX idx_version (version)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  applied_by VARCHAR(100) DEFAULT CURRENT_USER,
+  checksum VARCHAR(64)
+);
+
+CREATE INDEX IF NOT EXISTS idx_database ON migration_history(database_name);
+CREATE INDEX IF NOT EXISTS idx_version ON migration_history(version);
 ```
 
 ## Creating Migrations
@@ -397,27 +398,26 @@ CHANGE COLUMN new_priority_score priority_score DECIMAL(10,2) NOT NULL DEFAULT 1
 COMMIT;
 ```
 
-### JSON Schema Migration
+### JSONB Schema Migration
 
 ```sql
 -- Migration: 015_add_favorite_genres
 -- Database: radio_station
 
-START TRANSACTION;
+BEGIN;
 
--- Add favorite_genres JSON column to users
+-- Add favorite_genres JSONB column to users
 ALTER TABLE radio_users
-ADD COLUMN favorite_genres JSON DEFAULT NULL;
+ADD COLUMN favorite_genres JSONB DEFAULT '[]'::jsonb;
 
--- Initialize with empty arrays for existing users
-UPDATE radio_users
-SET favorite_genres = JSON_ARRAY()
-WHERE favorite_genres IS NULL;
+-- Create GIN index for performance
+CREATE INDEX idx_radio_users_favorite_genres
+ON radio_users USING GIN (favorite_genres);
 
--- Verify JSON validity
-SELECT COUNT(*) as invalid_json
+-- Verify JSONB validity (PostgreSQL validates automatically)
+SELECT COUNT(*) as invalid_jsonb
 FROM radio_users
-WHERE JSON_VALID(favorite_genres) = 0;
+WHERE jsonb_typeof(favorite_genres) != 'array';
 
 COMMIT;
 ```
@@ -427,14 +427,16 @@ COMMIT;
 ### Migration Failed Mid-Transaction
 
 ```sql
--- Check for incomplete transactions
-SHOW PROCESSLIST;
+-- Check for incomplete transactions (PostgreSQL)
+SELECT pid, usename, application_name, state, query
+FROM pg_stat_activity
+WHERE datname = 'radio_station' AND state != 'idle';
 
--- Kill stuck process if needed
-KILL <process_id>;
+-- Terminate stuck process if needed
+SELECT pg_terminate_backend(12345); -- Replace with actual PID
 
 -- Restore from backup
--- mysql -u root -p radio_station < backup.sql
+-- pg_restore -U postgres -d radio_station backup.dump
 ```
 
 ### Rollback Not Working
@@ -453,9 +455,9 @@ DELETE FROM migration_history WHERE version = 'XXX';
 ### Checksum Mismatch
 
 ```sql
--- Recalculate checksum
+-- Recalculate checksum (PostgreSQL uses MD5 or SHA256)
 UPDATE migration_history
-SET checksum = SHA2('migration_content', 256)
+SET checksum = encode(digest('migration_content', 'sha256'), 'hex')
 WHERE version = 'XXX';
 ```
 
@@ -464,34 +466,34 @@ WHERE version = 'XXX';
 ### Compare Schemas
 
 ```sql
--- Get table structure
-SHOW CREATE TABLE radio_station.radio_queue;
+-- Get table structure (PostgreSQL)
+\d+ radio_queue
 
--- Compare columns between environments
+-- Or via SQL:
 SELECT
-  COLUMN_NAME,
-  COLUMN_TYPE,
-  IS_NULLABLE,
-  COLUMN_DEFAULT
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = 'radio_station'
-  AND TABLE_NAME = 'radio_queue'
-ORDER BY ORDINAL_POSITION;
+  column_name,
+  data_type,
+  is_nullable,
+  column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'radio_queue'
+ORDER BY ordinal_position;
 ```
 
 ### Generate Rollback from Schema
 
 ```sql
 -- List all tables (for drop statements)
-SELECT CONCAT('DROP TABLE IF EXISTS ', TABLE_NAME, ';')
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = 'radio_station';
+SELECT 'DROP TABLE IF EXISTS ' || tablename || ';'
+FROM pg_tables
+WHERE schemaname = 'public';
 
 -- List all columns (for drop column statements)
-SELECT CONCAT('ALTER TABLE ', TABLE_NAME, ' DROP COLUMN ', COLUMN_NAME, ';')
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = 'radio_station'
-  AND TABLE_NAME = 'your_table';
+SELECT 'ALTER TABLE ' || table_name || ' DROP COLUMN ' || column_name || ';'
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'your_table';
 ```
 
 ## Integration with Version Control

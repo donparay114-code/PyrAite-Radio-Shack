@@ -1,12 +1,34 @@
 ---
 name: suno-music-helper
-description: Help with Suno AI music generation, prompt engineering, and API integration. Use when the user mentions Suno, music generation, song creation, audio generation, or music prompts.
+description: "[DEPRECATED] Use music-generation-helper instead. This skill is Suno-specific; the new skill supports Suno, Stable Audio, and Mubert with provider failover."
 ---
 
-# Suno AI Music Generation Helper
+# Suno AI Music Generation Helper (DEPRECATED)
+
+> **⚠️ DEPRECATED**: This skill has been replaced by `music-generation-helper` which supports multiple providers (Suno, Stable Audio, Mubert) with automatic failover. Use the new skill for all music generation tasks.
+
+## Migration Guide
+
+**Old (Suno-only):**
+```javascript
+// Hardcoded to Suno
+const result = await sunoApi.generate(prompt);
+```
+
+**New (Provider-agnostic):**
+```javascript
+const provider = await MusicProviderFactory.createWithFallback('suno', 'stable-audio');
+const result = await provider.generate({ prompt, genre, duration });
+```
+
+See `music-generation-helper` skill for full documentation.
+
+---
+
+# Legacy Suno Documentation
 
 ## Purpose
-Assist with Suno AI music generation, including prompt engineering, API integration, troubleshooting, and workflow optimization.
+Legacy documentation for Suno AI music generation. **Use music-generation-helper for new projects.**
 
 ## System Files
 
