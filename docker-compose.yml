@@ -51,7 +51,6 @@ services:
       - POSTGRES_PASSWORD=radio_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/migrations/versions:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_station"]
       interval: 10s
@@ -60,6 +59,36 @@ services:
     restart: unless-stopped
     networks:
       - radio-network
+
+  # Database Migrations
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-migrate
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        alembic upgrade head &&
+        echo 'Seeding data...' &&
+        python scripts/seed_data.py &&
+        echo 'Migration complete!'
+      "
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+      - POSTGRES_DATABASE=radio_station
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - radio-network
+    profiles:
+      - setup
 
   # Redis Cache
   redis:
