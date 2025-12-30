@@ -1,7 +1,19 @@
 {
   "mcpServers": {
+    "n8n-production": {
+      "description": "Production n8n workflow management via REST API (leonardsellem) - Primary server for workflow execution, management, and monitoring",
+      "command": "npx",
+      "args": ["-y", "@leonardsellem/n8n-mcp-server"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "http://localhost:5678/api/v1",
+        "N8N_API_KEY": ""
+      }
+    },
     "n8n-workflow-builder": {
-      "description": "Build and create n8n workflows using natural language",
+      "description": "AI-assisted workflow building with node documentation (czlonkowski)",
       "command": "npx",
       "args": ["-y", "n8n-mcp"],
       "env": {
@@ -10,8 +22,18 @@
         "DISABLE_CONSOLE_OUTPUT": "true"
       }
     },
-    "n8n-server": {
-      "description": "Interact with n8n instance - manage workflows, executions, and credentials",
+    "n8n-workflow-creator": {
+      "description": "Programmatic workflow creation and building (ifmelate)",
+      "command": "npx",
+      "args": ["-y", "n8n-workflow-builder-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true"
+      }
+    },
+    "n8n-illuminare": {
+      "description": "Alternative n8n server management (illuminaresolutions) - Backup/alternative to leonardsellem",
       "command": "npx",
       "args": ["-y", "@illuminaresolutions/n8n-mcp-server"],
       "env": {

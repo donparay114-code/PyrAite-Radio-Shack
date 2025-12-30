@@ -8,48 +8,164 @@ Model Context Protocol (MCP) is an open standard developed by Anthropic that all
 
 ## Available n8n MCP Servers
 
-This project is configured with two n8n MCP servers:
+This project is configured with **four production-ready n8n MCP servers**:
 
-### 1. n8n Workflow Builder (`n8n-workflow-builder`)
-**Package**: `n8n-mcp` by czlonkowski
+### 1. n8n Production (`n8n-production`) ⭐ **PRIMARY**
+**Package**: `@leonardsellem/n8n-mcp-server` by leonardsellem (1.5k+ stars)
 
-**Purpose**: Build and create n8n workflows using natural language
+**Purpose**: Production workflow management via REST API
 
 **Features**:
-- Create workflows from descriptions
-- Generate workflow nodes
-- Design automation flows
-- No n8n instance required for workflow design
+- Full workflow lifecycle management (CRUD operations)
+- Workflow execution control (run, stop, monitor)
+- Execution history and monitoring
+- Webhook management and triggering
+- Credential operations
+- Direct REST API integration
+
+**Available Tools**:
+- `workflow_list`, `workflow_get`, `workflow_create`, `workflow_update`, `workflow_delete`
+- `workflow_activate`, `workflow_deactivate`
+- `execution_run`, `execution_get`, `execution_list`, `execution_stop`
+- `run_webhook`
+
+**Requirements**:
+- Running n8n instance
+- n8n API key (Settings → API in n8n)
+- n8n API URL (e.g., `https://n8n.yourdomain.com/api/v1`)
+
+**Use Cases**:
+- "List all active workflows and their execution status"
+- "Execute workflow ID 42 with custom parameters"
+- "Show me failed executions from the last 24 hours"
+- "Activate the 'daily-backup' workflow"
+- "Trigger the webhook at /webhook/customer-onboarding"
+
+### 2. n8n Workflow Builder (`n8n-workflow-builder`)
+**Package**: `n8n-mcp` by czlonkowski (10.5k+ stars)
+
+**Purpose**: AI-assisted workflow building with node documentation
+
+**Features**:
+- Create workflows from natural language descriptions
+- Access to n8n node documentation
+- Generate workflow nodes with proper configuration
+- Design automation flows interactively
+- **No n8n instance required** for design
 
 **Use Cases**:
 - "Create a workflow that sends email notifications when a webhook is triggered"
 - "Design a workflow to sync data between Google Sheets and a database"
 - "Build an automation to process images uploaded to S3"
+- "What nodes are available for sending Slack messages?"
 
-### 2. n8n Server (`n8n-server`)
-**Package**: `@illuminaresolutions/n8n-mcp-server`
+### 3. n8n Workflow Creator (`n8n-workflow-creator`)
+**Package**: `n8n-workflow-builder-mcp` by ifmelate
 
-**Purpose**: Interact with a running n8n instance
+**Purpose**: Programmatic workflow creation and building
 
 **Features**:
-- List and manage workflows
-- Execute workflows
-- View execution history
-- Manage credentials
-- Monitor workflow status
+- Programmatic workflow construction
+- Template-based workflow generation
+- Batch workflow creation
+- Advanced workflow composition
+
+**Use Cases**:
+- "Create 10 similar workflows with different parameters"
+- "Build a workflow template for customer onboarding"
+- "Generate workflows from configuration files"
+
+### 4. n8n Illuminare (`n8n-illuminare`) - Backup
+**Package**: `@illuminaresolutions/n8n-mcp-server` by illuminaresolutions
+
+**Purpose**: Alternative n8n server management (backup to leonardsellem)
+
+**Features**:
+- Workflow management via n8n instance
+- Execution monitoring
+- Credential management
+- Alternative implementation for redundancy
 
 **Requirements**:
 - Running n8n instance
 - n8n API key
-- n8n base URL
-
-**Use Cases**:
-- "Show me all active workflows"
-- "Execute the 'daily-backup' workflow"
-- "Get the last 10 executions for workflow ID 123"
-- "List all credentials in the instance"
+- n8n base URL (e.g., `https://n8n.yourdomain.com`)
 
 ## Installation & Setup
+
+### Quick Install (Recommended)
+
+```bash
+# Install the primary production MCP server globally
+npm install -g @leonardsellem/n8n-mcp-server
+
+# The other servers will be installed automatically via npx when needed
+```
+
+### For Claude Code (CLI) - Production Ready ⭐
+
+**Option 1: User-Level Configuration (Recommended)**
+
+Configure MCP servers globally using `~/.claude.json`:
+
+```bash
+# Install the leonardsellem server for user-level access
+npm install -g @leonardsellem/n8n-mcp-server
+
+# Add to Claude Code with user scope
+claude mcp add --transport stdio --scope user n8n-production \
+  --env N8N_API_URL=https://n8n.yourdomain.com/api/v1 \
+  --env N8N_API_KEY=your_n8n_api_key_here \
+  -- npx @leonardsellem/n8n-mcp-server
+
+# Verify the server is registered
+claude mcp list
+```
+
+**Option 2: Manual Configuration**
+
+Copy the template and customize:
+
+```bash
+# Copy the template to your home directory
+cp .mcp/claude.json.template ~/.claude.json
+
+# Edit with your credentials
+nano ~/.claude.json
+```
+
+Update the values:
+```json
+{
+  "mcpServers": {
+    "n8n-production": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@leonardsellem/n8n-mcp-server"],
+      "env": {
+        "N8N_API_URL": "https://n8n.yourdomain.com/api/v1",
+        "N8N_API_KEY": "your_actual_api_key"
+      }
+    }
+  }
+}
+```
+
+**Option 3: Project-Level Configuration**
+
+The project already includes `.mcp/mcp-config.json` with all four servers configured.
+
+Simply create `.env` in the project root:
+```bash
+cp .env.example .env
+nano .env
+```
+
+Add your credentials:
+```bash
+N8N_API_URL=http://localhost:5678/api/v1
+N8N_API_KEY=your-api-key-here
+```
 
 ### For Claude Desktop
 
@@ -58,59 +174,79 @@ This project is configured with two n8n MCP servers:
    - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
    - Linux: `~/.config/Claude/claude_desktop_config.json`
 
-2. **Copy the configuration**:
+2. **Install MCP servers**:
    ```bash
-   # Use the claude-desktop-config.json from this directory
+   npm install -g @leonardsellem/n8n-mcp-server
+   ```
+
+3. **Copy and customize the configuration**:
+   ```bash
+   # macOS example
    cp .mcp/claude-desktop-config.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
    ```
 
-3. **Set environment variables** (for n8n-server):
+4. **Set environment variables**:
    ```bash
    # Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
-   export N8N_BASE_URL="http://localhost:5678"
+   export N8N_API_URL="https://n8n.yourdomain.com/api/v1"
    export N8N_API_KEY="your-n8n-api-key"
    ```
 
-4. **Restart Claude Desktop**
+5. **Restart Claude Desktop**
 
-### For Claude Code (CLI)
+### Getting Your n8n API Key
 
-Claude Code automatically looks for MCP configuration in:
-- Project-level: `.mcp/mcp-config.json` (this directory)
-- Global: `~/.config/claude-code/mcp.json`
+1. Open your n8n instance (e.g., http://localhost:5678)
+2. Navigate to **Settings** → **n8n API**
+3. Click **Create API Key**
+4. Copy the key immediately (shown only once!)
+5. Add to your `.env` or configuration file
 
-The project-level configuration is already set up in `.mcp/mcp-config.json`.
-
-### For n8n Server MCP
-
-To use the n8n-server MCP, you need a running n8n instance:
-
-1. **Get your n8n API key**:
-   - Open n8n (usually http://localhost:5678)
-   - Go to Settings → API
-   - Create a new API key
-
-2. **Configure environment**:
-
-   Create a `.env` file in the project root:
-   ```bash
-   N8N_BASE_URL=http://localhost:5678
-   N8N_API_KEY=your-api-key-here
-   ```
-
-3. **Update the configuration**:
-
-   Edit `.mcp/mcp-config.json` and replace the placeholder values:
-   ```json
-   "N8N_BASE_URL": "http://localhost:5678",
-   "N8N_API_KEY": "your-actual-api-key"
-   ```
+**Important**: The API key provides full access to your n8n instance. Keep it secret!
 
 ## Usage Examples
 
+### With n8n Production (Primary Server)
+
+**Workflow Management:**
+```
+List all active workflows with their last execution status
+```
+
+```
+Show me workflow ID 42's configuration and settings
+```
+
+```
+Activate the workflow named "customer-onboarding"
+```
+
+**Execution Control:**
+```
+Execute workflow ID 15 with the following data: {"customer_id": "12345", "action": "process"}
+```
+
+```
+Show me all failed executions from the last 24 hours
+```
+
+```
+Stop execution ID 987654
+```
+
+**Webhook Operations:**
+```
+Trigger the webhook at /webhook/payment-processor with test data
+```
+
+**Monitoring:**
+```
+Get execution history for workflow "daily-backup" for the last 7 days
+```
+
 ### With n8n Workflow Builder
 
-Ask Claude:
+**Design Workflows:**
 ```
 Create an n8n workflow that:
 1. Triggers on a webhook
@@ -119,19 +255,31 @@ Create an n8n workflow that:
 4. Logs to a database
 ```
 
-### With n8n Server
-
-Ask Claude:
 ```
-Show me all my n8n workflows
+What nodes are available for processing CSV files?
 ```
 
 ```
-Execute the workflow named "daily-report"
+Build a workflow to monitor GitHub issues and create Jira tickets
+```
+
+### With n8n Workflow Creator
+
+**Programmatic Creation:**
+```
+Create 5 similar workflows for different customers with these parameters: [list of parameters]
 ```
 
 ```
-What were the last 5 executions of workflow ID 42?
+Build a workflow template for automated customer onboarding
+```
+
+### Combined Usage
+
+```
+First, use the workflow builder to design a customer notification workflow,
+then create it in my n8n instance using the production server,
+and finally execute it with test data
 ```
 
 ## Troubleshooting
