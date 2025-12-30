@@ -19,19 +19,26 @@ The radio station consists of 4 integrated n8n workflows:
 
 ### File Locations
 
+Configure these paths via environment variables or use the defaults:
+
 ```
-C:\Users\Jesse\.gemini\antigravity\radio\n8n_workflows\
+$PROJECT_ROOT/n8n_workflows/
 ├── ai_radio_mysql_v2.json          # Telegram request handler
 ├── queue_processor.json             # Suno generation
 ├── radio_station_director.json      # Broadcasting
 ├── reputation_calculator.json       # Reputation system
 └── README.md                        # Setup guide
 
-C:\Users\Jesse\.gemini\antigravity\radio\
-├── songs\                           # Generated MP3 files
-├── temp\                            # DJ intro audio files
-└── broadcast\                       # Stitched audio (intro + song)
+$DATA_DIR/                           # Set via DATA_DIR env var, default: ./data
+├── songs/                           # Generated MP3 files (SONGS_DIR)
+├── temp/                            # DJ intro audio files (TEMP_DIR)
+└── broadcast/                       # Stitched audio (BROADCAST_DIR)
 ```
+
+**Environment Variables:**
+- `SONGS_DIR` - Directory for generated MP3s (default: `./data/songs`)
+- `TEMP_DIR` - Directory for temp audio files (default: `./data/temp`)
+- `BROADCAST_DIR` - Directory for broadcast-ready audio (default: `./data/broadcast`)
 
 ## Common Tasks
 
@@ -267,18 +274,23 @@ SELECT
 ## Quick Commands
 
 ```bash
-# Start n8n
-cd C:\Users\Jesse\.gemini\antigravity
-start_n8n.bat
+# Start n8n (Linux/macOS)
+n8n start
+# Or with Docker
+docker-compose up -d n8n
 
 # Connect to MySQL
+mysql -u $MYSQL_USER -p $MYSQL_DATABASE
+# Or
 mysql -u root -p radio_station
 
 # Check if songs directory has files
-ls C:\Users\Jesse\.gemini\antigravity\radio\songs\
+ls $SONGS_DIR
+# Default: ls ./data/songs/
 
 # Check broadcast directory
-ls C:\Users\Jesse\.gemini\antigravity\radio\broadcast\
+ls $BROADCAST_DIR
+# Default: ls ./data/broadcast/
 ```
 
 ## Priority Score Formula
