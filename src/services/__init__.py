@@ -10,6 +10,12 @@ from src.services.moderation import (
     get_moderator,
     moderate_prompt,
 )
+from src.services.audio_processor import (
+    AudioProcessor,
+    AudioMetadata,
+    ProcessingResult,
+    get_audio_processor,
+)
 
 __all__ = [
     "SunoClient",
@@ -21,4 +27,8 @@ __all__ = [
     "ModerationCategory",
     "get_moderator",
     "moderate_prompt",
+    "AudioProcessor",
+    "AudioMetadata",
+    "ProcessingResult",
+    "get_audio_processor",
 ]
