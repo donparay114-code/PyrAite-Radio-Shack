@@ -208,33 +208,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "request-cmd",
-              "leftValue": "={{ $('Parse Message').item.json.command }}",
-              "rightValue": "request",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "route-command",
-      "name": "Route Command",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [1780, 520],
-      "parameters": {
         "rules": {
           "rules": [
             {
@@ -262,7 +235,12 @@
         "dataType": "string",
         "value": "={{ $('Parse Message').item.json.command }}",
         "fallbackOutput": "extra"
-      }
+      },
+      "id": "route-command",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1780, 520]
     },
     {
       "parameters": {
