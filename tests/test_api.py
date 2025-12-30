@@ -184,6 +184,17 @@ class TestSongEndpoints:
 class TestVoteEndpoints:
     """Tests for voting endpoints."""
 
+    def test_list_votes_empty(self, client):
+        """Test listing votes when empty."""
+        response = client.get("/api/votes/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == []
+
+    def test_list_votes_invalid_filter(self, client):
+        """Test listing votes with invalid vote_type filter."""
+        response = client.get("/api/votes/?vote_type=invalid")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_get_vote_stats(self, client):
         """Test getting vote statistics."""
         response = client.get("/api/votes/stats")
