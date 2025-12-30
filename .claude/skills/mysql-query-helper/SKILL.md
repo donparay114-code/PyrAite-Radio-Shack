@@ -1,13 +1,13 @@
 ---
 name: mysql-query-helper
-description: Help with MySQL queries, database operations, JSON functions, and troubleshooting for the radio_station and philosophical_content databases. Use when the user mentions MySQL, database queries, SQL, or database troubleshooting.
+description: Help with MySQL queries, database operations, JSON functions, and troubleshooting for the radio_station database. Use when the user mentions MySQL, database queries, SQL, or database troubleshooting.
 allowed-tools: Read, Grep, Glob
 ---
 
 # MySQL Query Helper
 
 ## Purpose
-Assist with MySQL database operations for both the radio_station and philosophical_content databases, including query writing, optimization, JSON operations, and troubleshooting.
+Assist with MySQL database operations for the radio_station database, including query writing, optimization, JSON operations, and troubleshooting.
 
 ## Database Overview
 
@@ -20,13 +20,6 @@ Assist with MySQL database operations for both the radio_station and philosophic
 - radio_history
 - moderation_logs
 - user_reputation_log
-
-**philosophical_content** - Philosophical Content Generator (if separate DB)
-- philosophers
-- pain_points
-- metaphors
-- contemporary_scenarios
-- calls_to_action
 
 ### Connection Info
 
@@ -106,62 +99,6 @@ ORDER BY broadcast_date DESC
 LIMIT 30;
 ```
 
-### Philosophical Content Queries
-
-**Random Content Generation:**
-```sql
--- Select matching content set
-SELECT
-  p.name as philosopher,
-  pp.title as pain_point,
-  CASE
-    WHEN p.uses_metaphorical_thinking
-    THEN (
-      SELECT m.title
-      FROM metaphors m
-      WHERE JSON_OVERLAPS(m.philosophical_problems, p.philosophical_problems)
-      ORDER BY RAND()
-      LIMIT 1
-    )
-    ELSE (
-      SELECT cs.title
-      FROM contemporary_scenarios cs
-      WHERE JSON_OVERLAPS(cs.philosophical_problems, p.philosophical_problems)
-      ORDER BY RAND()
-      LIMIT 1
-    )
-  END as metaphor_or_scenario
-FROM philosophers p
-JOIN pain_points pp ON JSON_OVERLAPS(pp.philosophical_problems, p.philosophical_problems)
-ORDER BY RAND()
-LIMIT 1;
-```
-
-**Content Coverage Analysis:**
-```sql
--- Check which philosophical problems have good coverage
-SELECT
-  problem,
-  COUNT(DISTINCT p.id) as philosophers,
-  COUNT(DISTINCT pp.id) as pain_points,
-  COUNT(DISTINCT m.id) as metaphors,
-  COUNT(DISTINCT cs.id) as scenarios
-FROM (
-  SELECT 'epistemology' as problem UNION
-  SELECT 'ethics' UNION
-  SELECT 'metaphysics' UNION
-  SELECT 'logic' UNION
-  SELECT 'aesthetics' UNION
-  SELECT 'existentialism'
-) problems
-LEFT JOIN philosophers p ON JSON_CONTAINS(p.philosophical_problems, JSON_QUOTE(problems.problem))
-LEFT JOIN pain_points pp ON JSON_CONTAINS(pp.philosophical_problems, JSON_QUOTE(problems.problem))
-LEFT JOIN metaphors m ON JSON_CONTAINS(m.philosophical_problems, JSON_QUOTE(problems.problem))
-LEFT JOIN contemporary_scenarios cs ON JSON_CONTAINS(cs.philosophical_problems, JSON_QUOTE(problems.problem))
-GROUP BY problem
-ORDER BY philosophers DESC;
-```
-
 ## JSON Functions Guide
 
 ### JSON_OVERLAPS (MySQL 8.0.17+)
@@ -171,15 +108,15 @@ Check if two JSON arrays have common elements:
 ```sql
 -- Check if arrays overlap
 SELECT JSON_OVERLAPS(
-  '["ethics", "epistemology"]',
-  '["epistemology", "logic"]'
+  '["rock", "pop"]',
+  '["pop", "jazz"]'
 ) as has_overlap;  -- Returns 1 (true)
 
--- In WHERE clause
-SELECT * FROM pain_points
+-- Example usage in WHERE clause
+SELECT * FROM radio_station.radio_users
 WHERE JSON_OVERLAPS(
-  philosophical_problems,
-  '["ethics", "metaphysics"]'
+  favorite_genres,
+  '["rock", "metal"]'
 );
 ```
 
@@ -189,17 +126,17 @@ Check if a JSON document contains a value:
 
 ```sql
 -- Check if array contains specific value
-SELECT * FROM philosophers
+SELECT * FROM radio_station.song_requests
 WHERE JSON_CONTAINS(
-  philosophical_problems,
-  '"epistemology"'
+  tags,
+  '"upbeat"'
 );
 
 -- Check with path
-SELECT * FROM philosophers
+SELECT * FROM radio_station.radio_users
 WHERE JSON_CONTAINS(
-  philosophical_problems,
-  '"ethics"',
+  favorite_genres,
+  '"rock"',
   '$'
 );
 ```
@@ -209,14 +146,14 @@ WHERE JSON_CONTAINS(
 Add element to JSON array:
 
 ```sql
--- Add new problem to philosopher
-UPDATE philosophers
-SET philosophical_problems = JSON_ARRAY_APPEND(
-  philosophical_problems,
+-- Add new genre to user's favorites
+UPDATE radio_station.radio_users
+SET favorite_genres = JSON_ARRAY_APPEND(
+  favorite_genres,
   '$',
-  'new_problem'
+  'electronic'
 )
-WHERE id = 1;
+WHERE user_id = 1;
 ```
 
 ### JSON_EXTRACT
@@ -226,16 +163,16 @@ Extract values from JSON:
 ```sql
 -- Get specific element
 SELECT
-  name,
-  JSON_EXTRACT(philosophical_problems, '$[0]') as first_problem,
-  JSON_EXTRACT(philosophical_problems, '$[1]') as second_problem
-FROM philosophers;
+  username,
+  JSON_EXTRACT(favorite_genres, '$[0]') as first_genre,
+  JSON_EXTRACT(favorite_genres, '$[1]') as second_genre
+FROM radio_station.radio_users;
 
 -- Using -> operator (shorthand)
 SELECT
-  name,
-  philosophical_problems->'$[0]' as first_problem
-FROM philosophers;
+  username,
+  favorite_genres->'$[0]' as first_genre
+FROM radio_station.radio_users;
 ```
 
 ### JSON_VALID
@@ -244,8 +181,8 @@ Check if string is valid JSON:
 
 ```sql
 -- Find invalid JSON
-SELECT * FROM philosophers
-WHERE JSON_VALID(philosophical_problems) = 0;
+SELECT * FROM radio_station.radio_users
+WHERE JSON_VALID(favorite_genres) = 0;
 ```
 
 ## Query Optimization
@@ -350,14 +287,14 @@ KILL [process_id];
 **Fix invalid JSON:**
 ```sql
 -- Check what's invalid
-SELECT id, philosophical_problems
-FROM philosophers
-WHERE JSON_VALID(philosophical_problems) = 0;
+SELECT user_id, favorite_genres
+FROM radio_station.radio_users
+WHERE JSON_VALID(favorite_genres) = 0;
 
 -- Fix by re-creating array
-UPDATE philosophers
-SET philosophical_problems = JSON_ARRAY('ethics', 'epistemology')
-WHERE id = [bad_id];
+UPDATE radio_station.radio_users
+SET favorite_genres = JSON_ARRAY('rock', 'pop')
+WHERE user_id = [bad_id];
 ```
 
 ## Useful Utilities
@@ -514,7 +451,7 @@ COMMIT;
 
 ## When to Use This Skill
 
-- Writing SQL queries for radio or philosophical databases
+- Writing SQL queries for radio database
 - Troubleshooting database connection issues
 - Working with JSON fields and functions
 - Optimizing slow queries

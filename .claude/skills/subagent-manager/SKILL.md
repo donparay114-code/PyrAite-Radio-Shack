@@ -572,12 +572,6 @@ Bad: do-everything-agent
 2. **broadcast-scheduler** - Plan broadcast schedules
 3. **reputation-calculator** - Review reputation formulas
 
-### Philosophical Content Subagents
-
-1. **json-overlap-checker** - Validate JSON overlap queries
-2. **content-matcher** - Find matching philosophical content
-3. **metaphor-analyzer** - Evaluate metaphor appropriateness
-
 ### General Development Subagents
 
 1. **test-generator** - Create comprehensive test suites

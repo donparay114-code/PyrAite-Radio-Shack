@@ -7,7 +7,7 @@ model: sonnet
 
 # Database Query Optimizer
 
-Optimize MySQL queries for radio_station and philosophical_content databases.
+Optimize MySQL queries for radio_station database.
 
 ## Objective
 

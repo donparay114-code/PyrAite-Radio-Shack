@@ -14,10 +14,6 @@ Safely manage database schema changes through versioned migration files with aut
 - Active production database
 - Frequent schema updates
 
-**philosophical_content** - Content generator
-- Complex JSON schema
-- Multiple related tables
-
 ## Migration System
 
 ### Directory Structure
@@ -30,10 +26,6 @@ C:\Users\Jesse\.gemini\antigravity\
 │   │   ├── 001_initial_setup_rollback.sql
 │   │   ├── 002_add_reputation_log.sql
 │   │   ├── 002_add_reputation_log_rollback.sql
-│   │   └── ...
-│   ├── philosophical_content\
-│   │   ├── 001_create_philosophers.sql
-│   │   ├── 001_create_philosophers_rollback.sql
 │   │   └── ...
 │   └── migration_tracker.sql
 ```
@@ -408,25 +400,24 @@ COMMIT;
 ### JSON Schema Migration
 
 ```sql
--- Migration: 015_add_philosophical_problem
--- Database: philosophical_content
+-- Migration: 015_add_favorite_genres
+-- Database: radio_station
 
 START TRANSACTION;
 
--- Add new problem to all relevant philosophers
-UPDATE philosophers
-SET philosophical_problems = JSON_ARRAY_APPEND(
-  philosophical_problems,
-  '$',
-  'phenomenology'
-)
-WHERE core_ideas LIKE '%consciousness%'
-  OR core_ideas LIKE '%perception%';
+-- Add favorite_genres JSON column to users
+ALTER TABLE radio_users
+ADD COLUMN favorite_genres JSON DEFAULT NULL;
+
+-- Initialize with empty arrays for existing users
+UPDATE radio_users
+SET favorite_genres = JSON_ARRAY()
+WHERE favorite_genres IS NULL;
 
 -- Verify JSON validity
 SELECT COUNT(*) as invalid_json
-FROM philosophers
-WHERE JSON_VALID(philosophical_problems) = 0;
+FROM radio_users
+WHERE JSON_VALID(favorite_genres) = 0;
 
 COMMIT;
 ```

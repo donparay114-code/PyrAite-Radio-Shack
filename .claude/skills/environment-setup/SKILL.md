@@ -117,7 +117,6 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=Hunter0hunter2207
 DB_NAME_RADIO=radio_station
-DB_NAME_PHILOSOPHY=philosophical_content
 
 # n8n Configuration
 N8N_PORT=5678
@@ -165,7 +164,6 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=CHANGE_ME
 DB_NAME_RADIO=radio_station
-DB_NAME_PHILOSOPHY=philosophical_content
 
 # n8n Configuration
 N8N_PORT=5678
@@ -269,24 +267,14 @@ CREATE DATABASE IF NOT EXISTS radio_station
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-CREATE DATABASE IF NOT EXISTS philosophical_content
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
 -- Create test databases
 CREATE DATABASE IF NOT EXISTS radio_station_test
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-CREATE DATABASE IF NOT EXISTS philosophical_content_test
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
 -- Grant privileges
 GRANT ALL PRIVILEGES ON radio_station.* TO 'root'@'localhost';
-GRANT ALL PRIVILEGES ON philosophical_content.* TO 'root'@'localhost';
 GRANT ALL PRIVILEGES ON radio_station_test.* TO 'root'@'localhost';
-GRANT ALL PRIVILEGES ON philosophical_content_test.* TO 'root'@'localhost';
 
 FLUSH PRIVILEGES;
 

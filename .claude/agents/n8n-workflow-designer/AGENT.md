@@ -1,6 +1,6 @@
 ---
 name: n8n-workflow-designer
-description: Architects complex n8n workflows with error handling, retry logic, monitoring, and best practices for robust automation including AI radio station and philosophical content systems.
+description: Architects complex n8n workflows with error handling, retry logic, monitoring, and best practices for robust automation including AI radio station systems.
 tools: [Read, Write, Grep, Glob]
 model: sonnet
 ---
@@ -268,62 +268,6 @@ If track assigned:
         ├→ Post "Now Playing" to Telegram
         └→ Update track play count
     └→ Else: Skip (already done)
-```
-
-## Philosophical Content Workflows
-
-### Workflow: Daily Content Generation
-
-```
-Schedule (daily at 6am)
-    ↓
-MySQL: Get Random Philosopher (not used in 7 days)
-    ↓
-MySQL: Get Random Pain Point (JSON_OVERLAPS with philosopher)
-    ↓
-Determine Content Type (metaphor 70%, scenario 30%)
-    ↓
-Build OpenAI Prompt
-    ├→ System: Philosophical writer role
-    ├→ User: Generate [metaphor/scenario] connecting
-    │   philosopher X with pain point Y
-    ↓
-Try:
-    ├→ Call OpenAI API
-    ├→ Parse response
-    ├→ Validate output (quality check)
-    ├→ If quality check passes:
-    │   ├→ Insert to MySQL (philosophical_content)
-    │   ├→ Schedule for social media
-    │   └→ Log success
-    └→ If quality check fails or API error:
-        ├→ Log issue
-        ├→ Retry with adjusted prompt
-        └→ If still fails: Alert for manual review
-```
-
-### Workflow: Content Quality Check
-
-```
-Content Generated
-    ↓
-Run Checks:
-    ├→ Length appropriate? (200-500 words)
-    ├→ Contains all required sections?
-    │   ├→ Philosopher intro
-    │   ├→ Pain point connection
-    │   ├→ Metaphor/scenario
-    │   └→ Call to action
-    ├→ No placeholder text?
-    ├→ Coherent language?
-    └→ On-topic?
-        ↓
-If all checks pass:
-    └→ Approve for publication
-If checks fail:
-    ├→ Log specific failure
-    ├→ Flag for review
-    └→ Optional: Auto-regenerate
 ```
 
 ## Integration Patterns

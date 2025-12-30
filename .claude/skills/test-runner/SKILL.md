@@ -312,7 +312,6 @@ Coverage:    85.2%
 ```sql
 -- Create test database
 CREATE DATABASE IF NOT EXISTS radio_station_test;
-CREATE DATABASE IF NOT EXISTS philosophical_content_test;
 
 -- Copy structure from production
 CREATE TABLE radio_station_test.radio_users LIKE radio_station.radio_users;
@@ -321,7 +320,6 @@ CREATE TABLE radio_station_test.radio_queue LIKE radio_station.radio_queue;
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON radio_station_test.* TO 'root'@'localhost';
-GRANT ALL PRIVILEGES ON philosophical_content_test.* TO 'root'@'localhost';
 FLUSH PRIVILEGES;
 ```
 

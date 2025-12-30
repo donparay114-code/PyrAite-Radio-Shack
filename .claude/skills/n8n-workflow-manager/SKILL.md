@@ -188,11 +188,6 @@ workflows.forEach(workflow => {
 ### Your Workflow Files
 
 ```
-C:\Users\Jesse\.gemini\antigravity\
-├── n8n_philosophical_content_workflow.json
-├── n8n_philosophical_content_workflow_v2.json
-└── n8n_complete_workflow.json
-
 C:\Users\Jesse\.gemini\antigravity\radio\n8n_workflows\
 ├── ai_radio_mysql_v2.json
 ├── queue_processor.json
@@ -351,10 +346,6 @@ Monitor the 4 radio workflows:
 - Queue Processor
 - Radio Station Director
 - Reputation Calculator
-
-### Philosophical Content
-
-Monitor philosophical content generator workflow
 
 ### Custom Automations
 

@@ -11,7 +11,7 @@ Expert in organizing, versioning, testing, and optimizing AI prompts for consist
 
 ## Objective
 
-Build and maintain a structured prompt library that enables consistent AI output quality, facilitates A/B testing, and accelerates prompt development across philosophical content, video generation, music creation, and other AI workflows.
+Build and maintain a structured prompt library that enables consistent AI output quality, facilitates A/B testing, and accelerates prompt development across video generation, music creation, and other AI workflows.
 
 ## Prompt Organization Structure
 
@@ -25,9 +25,7 @@ Build and maintain a structured prompt library that enables consistent AI output
 │   │   ├── v6_archived.md
 │   │   └── experimental/
 │   ├── openai/
-│   │   ├── philosophical_content_v3.md
-│   │   ├── pain_point_matcher_v2.md
-│   │   └── metaphor_generator_v1.md
+│   │   └── moderation_system.md
 │   ├── video/
 │   │   ├── hailuo_v2.3.md
 │   │   ├── veo_3.1.md
@@ -43,17 +41,12 @@ Build and maintain a structured prompt library that enables consistent AI output
 │   │   │   └── synthwave_retro.md
 │   │   └── templates/
 │   │       └── style_description_template.md
-│   ├── philosophical/
-│   │   ├── metaphor_generation.md
-│   │   ├── pain_point_analysis.md
-│   │   └── call_to_action.md
 │   └── video/
 │       ├── scene_description_template.md
 │       ├── camera_movement_template.md
 │       └── style_specification_template.md
 ├── few_shot_examples/
 │   ├── suno_examples.json
-│   ├── philosophical_examples.json
 │   └── video_prompt_examples.json
 ├── testing/
 │   ├── test_cases.json
@@ -357,7 +350,6 @@ Output: [Desired output]
 
 **By Domain:**
 - `#music` - Music generation
-- `#philosophy` - Philosophical content
 - `#video` - Video generation
 - `#text` - Text content
 
@@ -397,17 +389,6 @@ grep -r "#high-performing" ~/.prompts/user_prompts/video/ | grep "#video"
 {{MOOD}}: peaceful, energetic, melancholic, uplifting, intense
 {{TEXTURE}}: warm, crisp, lo-fi, polished, gritty, ethereal
 {{PRODUCTION}}: bedroom, professional, vintage, modern, raw
-```
-
-**Philosophical Framework Components:**
-```
-{{PHILOSOPHER_INTRO}}: "{{Name}}, the {{century}} {{nationality}} philosopher, argued that..."
-
-{{PAIN_POINT_CONNECTION}}: "This struggle with {{pain_point}} reflects a deeper philosophical question..."
-
-{{METAPHOR_TRANSITION}}: "Consider this: {{metaphor_introduction}}"
-
-{{CALL_TO_ACTION}}: "Try this: {{actionable_step}}"
 ```
 
 **Video Prompt Components:**
