@@ -38,7 +38,7 @@ class TimestampMixin:
     )
 
 
-# Lazy initialization for engines (allows tests to run without MySQL)
+# Lazy initialization for engines (allows tests to run without PostgreSQL)
 _engine: Optional[Engine] = None
 _async_engine: Optional[AsyncEngine] = None
 _SessionLocal: Optional[sessionmaker[Session]] = None

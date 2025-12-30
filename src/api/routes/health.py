@@ -57,8 +57,8 @@ async def detailed_health_check(
         await session.execute(text("SELECT 1"))
         components["database"] = {
             "status": "healthy",
-            "host": settings.mysql_host,
-            "database": settings.mysql_database,
+            "host": settings.postgres_host,
+            "database": settings.postgres_database,
         }
     except Exception as e:
         components["database"] = {

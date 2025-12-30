@@ -179,7 +179,7 @@ harbor.http.register(port=8080, "/", http_handler)
 # OUTPUT
 # ============================================
 
-# Output to Icecast
+# Output to Icecast (MP3 stream - immediate compatibility)
 output.icecast(
     %mp3(bitrate=320),
     host=icecast_host,
@@ -194,6 +194,44 @@ output.icecast(
     radio
 )
 
+# ============================================
+# HLS OUTPUT (for better sync and modern players)
+# ============================================
+# HLS provides better metadata sync with PROGRAM-DATE-TIME
+# Note: HLS has ~20-25s latency (5 segments x 4s each)
+
+hls_dir = getenv("HLS_DIR") ?? "/var/www/hls"
+
+output.file.hls(
+    playlist="live.m3u8",
+    segment_duration=4.0,
+    segments=5,
+    segments_overhead=2,
+    hls_dir,
+    [("aac", %fdkaac(bitrate=128))],
+    radio
+)
+
+# ============================================
+# METADATA FOR FRONTEND SYNC
+# ============================================
+# Store current track metadata for frontend polling
+# This helps sync the "Now Playing" display with HLS latency
+
+def store_metadata(m)
+    title = m["title"] ?? "Unknown"
+    artist = m["artist"] ?? "AI Radio"
+    duration = m["duration"] ?? "0"
+
+    # Write metadata to file for nginx/API to serve
+    file.write(
+        data='{"title": "#{title}", "artist": "#{artist}", "duration": "#{duration}", "timestamp": "#{time()}"}',
+        "/var/www/hls/now_playing.json"
+    )
+end
+
+radio = on_metadata(store_metadata, radio)
+
 # Also output to local file for monitoring
 output.file(
     %mp3(bitrate=128),
@@ -203,3 +241,5 @@ output.file(
 )
 
 log("PYrte Radio Shack started!")
+log("Icecast stream: #{icecast_host}:#{icecast_port}#{icecast_mount}")
+log("HLS playlist: #{hls_dir}/live.m3u8")
