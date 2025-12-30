@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: radio-postgres
+    environment:
+      POSTGRES_DB: radio_station
+      POSTGRES_USER: radio_user
+      POSTGRES_PASSWORD: radio_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_station"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for n8n queue and caching
+  redis:
+    image: redis:7-alpine
+    container_name: radio-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: radio-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=radio_station
+      - DB_POSTGRESDB_USER=radio_user
+      - DB_POSTGRESDB_PASSWORD=radio_dev_password
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - EXECUTIONS_MODE=queue
+      - EXECUTIONS_PROCESS=main
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/workflows
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Icecast Streaming Server
+  icecast:
+    image: moul/icecast
+    container_name: radio-icecast
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=hackme
+      - ICECAST_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    volumes:
+      - icecast_logs:/var/log/icecast2
+
+  # Liquidsoap (requires custom build)
+  liquidsoap:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.liquidsoap
+    container_name: radio-liquidsoap
+    ports:
+      - "1234:1234"  # Telnet
+    volumes:
+      - ./infrastructure/liquidsoap/radio.liq:/etc/liquidsoap/radio.liq
+      - liquidsoap_logs:/var/log/liquidsoap
+      - audio_files:/var/audio
+      - hls_output:/var/www/hls
+    environment:
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+      - ICECAST_PASSWORD=hackme
+    depends_on:
+      - icecast
+    command: liquidsoap /etc/liquidsoap/radio.liq
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: radio-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=radio_station
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_dev_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - N8N_URL=http://n8n:5678
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev
+
+  # Socket.io Server (separate service for real-time updates)
+  socket-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: radio-socket-server
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=radio_station
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_dev_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3001
+    volumes:
+      - ./server:/app/server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: node server/socket-server.js
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  icecast_logs:
+  liquidsoap_logs:
+  audio_files:
+  hls_output:
+
+networks:
+  default:
+    name: radio-network
