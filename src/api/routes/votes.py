@@ -1,7 +1,6 @@
 """Voting API routes."""
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -113,7 +112,7 @@ async def cast_vote(
                 user.total_downvotes_given -= 1
 
             await session.delete(existing_vote)
-            message = f"Vote removed"
+            message = "Vote removed"
         else:
             # Different vote - flip it
             if existing_vote.is_upvote:

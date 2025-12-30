@@ -3,10 +3,9 @@
 import asyncio
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, QueueStatus, Song, SunoStatus, User
@@ -118,11 +117,15 @@ class QueueManager:
             if result.status == SunoJobStatus.ERROR:
                 item.status = QueueStatus.FAILED.value
                 item.error_message = result.error_message
-                logger.error(f"Generation failed for queue {item.id}: {result.error_message}")
+                logger.error(
+                    f"Generation failed for queue {item.id}: {result.error_message}"
+                )
             else:
                 item.suno_job_id = result.job_id
                 self._active_jobs[item.id] = result.job_id
-                logger.info(f"Started generation for queue {item.id}, job {result.job_id}")
+                logger.info(
+                    f"Started generation for queue {item.id}, job {result.job_id}"
+                )
 
             await session.flush()
 
@@ -169,7 +172,9 @@ class QueueManager:
         # Download audio file
         if result.audio_url:
             download_path = settings.songs_dir / f"{song.id}_{result.job_id}.mp3"
-            success = await self.suno_client.download_audio(result.audio_url, download_path)
+            success = await self.suno_client.download_audio(
+                result.audio_url, download_path
+            )
             if success:
                 song.local_file_path = str(download_path)
                 song.downloaded_at = datetime.utcnow()
@@ -206,7 +211,9 @@ class QueueManager:
         if item.can_retry:
             # Reset to pending for retry
             item.status = QueueStatus.PENDING.value
-            logger.warning(f"Queue {queue_id} failed, will retry ({item.retry_count}/{item.max_retries})")
+            logger.warning(
+                f"Queue {queue_id} failed, will retry ({item.retry_count}/{item.max_retries})"
+            )
         else:
             # Max retries reached
             item.status = QueueStatus.FAILED.value
@@ -238,12 +245,18 @@ class QueueManager:
             user.update_reputation()
             await session.flush()
 
-    async def get_queue_position(self, session: AsyncSession, queue_id: int) -> Optional[int]:
+    async def get_queue_position(
+        self, session: AsyncSession, queue_id: int
+    ) -> Optional[int]:
         """Get the position of an item in the queue."""
         # Get items ordered by priority
         query = (
             select(RadioQueue.id)
-            .where(RadioQueue.status.in_([QueueStatus.PENDING.value, QueueStatus.QUEUED.value]))
+            .where(
+                RadioQueue.status.in_(
+                    [QueueStatus.PENDING.value, QueueStatus.QUEUED.value]
+                )
+            )
             .order_by(RadioQueue.priority_score.desc())
         )
 
@@ -255,7 +268,9 @@ class QueueManager:
         except ValueError:
             return None
 
-    async def get_estimated_wait(self, session: AsyncSession, queue_id: int) -> Optional[float]:
+    async def get_estimated_wait(
+        self, session: AsyncSession, queue_id: int
+    ) -> Optional[float]:
         """
         Get estimated wait time in minutes for a queue item.
 
@@ -287,7 +302,9 @@ class QueueManager:
             # Get user reputation if available
             user_rep = 0.0
             if item.user_id:
-                user_query = select(User.reputation_score).where(User.id == item.user_id)
+                user_query = select(User.reputation_score).where(
+                    User.id == item.user_id
+                )
                 user_result = await session.execute(user_query)
                 user_rep = user_result.scalar() or 0.0
 

@@ -52,7 +52,9 @@ class RadioQueue(Base, TimestampMixin):
     telegram_user_id: Mapped[Optional[int]] = mapped_column(
         BigInteger, nullable=True, index=True
     )
-    telegram_message_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    telegram_message_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
+    )
 
     # Song reference (created after generation)
     song_id: Mapped[Optional[int]] = mapped_column(
@@ -78,7 +80,9 @@ class RadioQueue(Base, TimestampMixin):
     base_priority: Mapped[float] = mapped_column(Float, default=100.0)
     priority_score: Mapped[float] = mapped_column(Float, default=100.0, index=True)
     is_priority_boost: Mapped[bool] = mapped_column(Boolean, default=False)
-    priority_boost_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    priority_boost_reason: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Voting
     upvotes: Mapped[int] = mapped_column(Integer, default=0)
@@ -87,9 +91,15 @@ class RadioQueue(Base, TimestampMixin):
     # Timestamps
     requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     queued_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    generation_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    generation_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    broadcast_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    generation_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    generation_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    broadcast_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Moderation
@@ -103,7 +113,9 @@ class RadioQueue(Base, TimestampMixin):
 
     # Relationships
     user: Mapped[Optional["User"]] = relationship("User", back_populates="requests")
-    song: Mapped[Optional["Song"]] = relationship("Song", back_populates="queue_entries")
+    song: Mapped[Optional["Song"]] = relationship(
+        "Song", back_populates="queue_entries"
+    )
     votes: Mapped[list["Vote"]] = relationship(
         "Vote", back_populates="queue_item", lazy="dynamic"
     )

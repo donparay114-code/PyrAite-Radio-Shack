@@ -38,15 +38,23 @@ class RadioHistory(Base, TimestampMixin):
         DateTime, default=datetime.utcnow, index=True
     )
     ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    duration_played_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    duration_played_seconds: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True
+    )
 
     # Broadcast info
-    broadcast_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    broadcast_file_path: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
     stream_mount: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Requester info (denormalized for history queries)
-    requester_telegram_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    requester_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    requester_telegram_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
+    )
+    requester_username: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Song info (denormalized for history queries)
     song_title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

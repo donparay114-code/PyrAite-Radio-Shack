@@ -1,14 +1,17 @@
 """Tests for database models."""
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from src.models import (
-    User, UserTier,
-    Song, SunoStatus,
-    RadioQueue, QueueStatus,
+    User,
+    UserTier,
+    Song,
+    SunoStatus,
+    RadioQueue,
+    QueueStatus,
     RadioHistory,
-    Vote, VoteType,
+    Vote,
+    VoteType,
 )
 
 

@@ -235,27 +235,42 @@ class TelegramBot:
         """Build URL button."""
         return {"text": text, "url": url}
 
-    def vote_keyboard(self, queue_id: int, upvotes: int = 0, downvotes: int = 0) -> dict:
+    def vote_keyboard(
+        self, queue_id: int, upvotes: int = 0, downvotes: int = 0
+    ) -> dict:
         """Build voting keyboard for a queue item."""
-        return self.inline_keyboard([
+        return self.inline_keyboard(
             [
-                self.button(f"👍 {upvotes}", f"{CallbackAction.UPVOTE.value}:{queue_id}"),
-                self.button(f"👎 {downvotes}", f"{CallbackAction.DOWNVOTE.value}:{queue_id}"),
-            ],
-            [
-                self.button("ℹ️ Info", f"{CallbackAction.INFO.value}:{queue_id}"),
-                self.button("⏭ Skip", f"{CallbackAction.SKIP.value}:{queue_id}"),
-            ],
-        ])
+                [
+                    self.button(
+                        f"👍 {upvotes}", f"{CallbackAction.UPVOTE.value}:{queue_id}"
+                    ),
+                    self.button(
+                        f"👎 {downvotes}", f"{CallbackAction.DOWNVOTE.value}:{queue_id}"
+                    ),
+                ],
+                [
+                    self.button("ℹ️ Info", f"{CallbackAction.INFO.value}:{queue_id}"),
+                    self.button("⏭ Skip", f"{CallbackAction.SKIP.value}:{queue_id}"),
+                ],
+            ]
+        )
 
     def confirm_keyboard(self, action: str, item_id: int) -> dict:
         """Build confirmation keyboard."""
-        return self.inline_keyboard([
+        return self.inline_keyboard(
             [
-                self.button("✅ Confirm", f"{CallbackAction.CONFIRM.value}:{action}:{item_id}"),
-                self.button("❌ Cancel", f"{CallbackAction.CANCEL.value}:{action}:{item_id}"),
-            ],
-        ])
+                [
+                    self.button(
+                        "✅ Confirm",
+                        f"{CallbackAction.CONFIRM.value}:{action}:{item_id}",
+                    ),
+                    self.button(
+                        "❌ Cancel", f"{CallbackAction.CANCEL.value}:{action}:{item_id}"
+                    ),
+                ],
+            ]
+        )
 
     # Message formatters
     def format_queue_item(
@@ -359,9 +374,11 @@ class TelegramBot:
 
     def on_command(self, command: str):
         """Decorator to register command handler."""
+
         def decorator(func: Callable):
             self._handlers["command"][command] = func
             return func
+
         return decorator
 
     def on_message(self, func: Callable):

@@ -98,7 +98,10 @@ async def detailed_health_check(
             storage_healthy = False
 
     if not storage_healthy:
-        components["storage"] = {"status": "degraded", "message": "Some directories missing"}
+        components["storage"] = {
+            "status": "degraded",
+            "message": "Some directories missing",
+        }
 
     return DetailedHealthResponse(
         status=overall_status,

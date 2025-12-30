@@ -137,7 +137,9 @@ class SunoClient:
             else:
                 raise ValueError(f"Unexpected response format: {type(data)}")
 
-            job_id = job_data.get("id") or job_data.get("job_id") or job_data.get("task_id")
+            job_id = (
+                job_data.get("id") or job_data.get("job_id") or job_data.get("task_id")
+            )
             if not job_id:
                 raise ValueError("No job ID in response")
 
@@ -150,7 +152,9 @@ class SunoClient:
             )
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"Suno API error: {e.response.status_code} - {e.response.text}")
+            logger.error(
+                f"Suno API error: {e.response.status_code} - {e.response.text}"
+            )
             return SunoJobResult(
                 job_id="",
                 status=SunoJobStatus.ERROR,
@@ -177,7 +181,7 @@ class SunoClient:
         client = await self._get_client()
 
         try:
-            response = await client.get(f"/api/get", params={"ids": job_id})
+            response = await client.get("/api/get", params={"ids": job_id})
             response.raise_for_status()
             data = response.json()
 
@@ -251,7 +255,11 @@ class SunoClient:
         while True:
             result = await self.get_status(job_id)
 
-            if result.status in (SunoJobStatus.COMPLETE, SunoJobStatus.FAILED, SunoJobStatus.ERROR):
+            if result.status in (
+                SunoJobStatus.COMPLETE,
+                SunoJobStatus.FAILED,
+                SunoJobStatus.ERROR,
+            ):
                 result.completed_at = datetime.utcnow()
                 return result
 
@@ -335,7 +343,11 @@ class SunoClient:
         result = await self.wait_for_completion(result.job_id)
 
         # Download if requested and successful
-        if result.status == SunoJobStatus.COMPLETE and download_path and result.audio_url:
+        if (
+            result.status == SunoJobStatus.COMPLETE
+            and download_path
+            and result.audio_url
+        ):
             await self.download_audio(result.audio_url, download_path)
 
         return result

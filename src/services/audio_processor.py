@@ -3,13 +3,10 @@
 import asyncio
 import json
 import logging
-import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
-from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +81,10 @@ class AudioProcessor:
 
         cmd = [
             self.ffprobe,
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
             str(input_path),
@@ -132,9 +131,12 @@ class AudioProcessor:
         """
         cmd = [
             self.ffmpeg,
-            "-i", str(input_path),
-            "-af", "loudnorm=I=-14:TP=-1:LRA=11:print_format=json",
-            "-f", "null",
+            "-i",
+            str(input_path),
+            "-af",
+            "loudnorm=I=-14:TP=-1:LRA=11:print_format=json",
+            "-f",
+            "null",
             "-",
         ]
 
@@ -193,8 +195,10 @@ class AudioProcessor:
         cmd = [
             self.ffmpeg,
             "-y",
-            "-i", str(input_path),
-            "-af", (
+            "-i",
+            str(input_path),
+            "-af",
+            (
                 f"loudnorm=I={target_lufs}:TP={target_tp}:LRA=11:"
                 f"measured_I={loudness.get('input_i', -24)}:"
                 f"measured_TP={loudness.get('input_tp', -1)}:"
@@ -203,8 +207,10 @@ class AudioProcessor:
                 f"offset={loudness.get('target_offset', 0)}:"
                 "linear=true:print_format=summary"
             ),
-            "-ar", "44100",
-            "-ab", "320k",
+            "-ar",
+            "44100",
+            "-ab",
+            "320k",
             str(output_path),
         ]
 
@@ -252,9 +258,12 @@ class AudioProcessor:
         cmd = [
             self.ffmpeg,
             "-y",
-            "-i", str(input_path),
-            "-ar", str(sample_rate),
-            "-ab", bitrate,
+            "-i",
+            str(input_path),
+            "-ar",
+            str(sample_rate),
+            "-ab",
+            bitrate,
             str(output_path),
         ]
 
@@ -325,10 +334,14 @@ class AudioProcessor:
             self.ffmpeg,
             "-y",
             *inputs,
-            "-filter_complex", ";".join(filter_complex),
-            "-map", "[out]",
-            "-ar", "44100",
-            "-ab", "320k",
+            "-filter_complex",
+            ";".join(filter_complex),
+            "-map",
+            "[out]",
+            "-ar",
+            "44100",
+            "-ab",
+            "320k",
             str(output_path),
         ]
 
@@ -402,12 +415,18 @@ class AudioProcessor:
         cmd = [
             self.ffmpeg,
             "-y",
-            "-i", str(speech_path),
-            "-i", str(music_path),
-            "-filter_complex", filter_complex,
-            "-map", "[out]",
-            "-ar", "44100",
-            "-ab", "320k",
+            "-i",
+            str(speech_path),
+            "-i",
+            str(music_path),
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[out]",
+            "-ar",
+            "44100",
+            "-ab",
+            "320k",
             str(output_path),
         ]
 
@@ -479,8 +498,10 @@ class AudioProcessor:
         cmd = [
             self.ffmpeg,
             "-y",
-            "-i", str(input_path),
-            "-ss", str(start_seconds),
+            "-i",
+            str(input_path),
+            "-ss",
+            str(start_seconds),
         ]
 
         if duration_seconds is not None:
@@ -522,9 +543,12 @@ class AudioProcessor:
         """
         cmd = [
             self.ffmpeg,
-            "-i", str(input_path),
-            "-af", f"silencedetect=noise={noise_threshold}:d={min_duration}",
-            "-f", "null",
+            "-i",
+            str(input_path),
+            "-af",
+            f"silencedetect=noise={noise_threshold}:d={min_duration}",
+            "-f",
+            "null",
             "-",
         ]
 

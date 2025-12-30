@@ -1,7 +1,6 @@
 """Pytest configuration and fixtures for PYrte Radio Shack tests."""
 
 import asyncio
-from datetime import datetime
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -15,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from src.api.main import app
 from src.models.base import Base
-from src.models import User, Song, RadioQueue, RadioHistory, Vote, QueueStatus, SunoStatus
+from src.models import User, Song, RadioQueue, QueueStatus, SunoStatus
 
 
 # Use SQLite for testing (in-memory)

@@ -1,7 +1,6 @@
 """Tests for service modules."""
 
 import pytest
-from datetime import datetime, timedelta
 
 from src.services.moderation import (
     ContentModerator,
@@ -72,7 +71,7 @@ class TestContentModerator:
         sanitized = moderator.sanitize(original)
 
         # Check injection is removed
-        result = moderator.check(sanitized)
+        _ = moderator.check(sanitized)  # Verify check doesn't raise
         assert "ignore previous" not in sanitized.lower()
 
     def test_get_safe_prompt_sanitizes(self):
@@ -213,9 +212,10 @@ class TestModeratorSingleton:
         """Test that different modes create different instances."""
         # Reset global
         import src.services.moderation as mod_module
+
         mod_module._moderator = None
 
-        mod_normal = get_moderator(strict_mode=False)
+        _ = get_moderator(strict_mode=False)  # First call creates instance
         mod_strict = get_moderator(strict_mode=True)
 
         # Different mode should create new instance
@@ -229,6 +229,7 @@ class TestCostTrackerSingleton:
         """Test that get_cost_tracker returns singleton."""
         # Reset global
         import src.services.cost_tracker as ct_module
+
         ct_module._cost_tracker = None
 
         t1 = get_cost_tracker()

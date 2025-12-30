@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +137,7 @@ class ContentModerator:
             ModerationCategory.DRUGS: [
                 re.compile(p, flags) for p in self.DRUG_PATTERNS
             ],
-            ModerationCategory.SPAM: [
-                re.compile(p, flags) for p in self.SPAM_PATTERNS
-            ],
+            ModerationCategory.SPAM: [re.compile(p, flags) for p in self.SPAM_PATTERNS],
             ModerationCategory.PROMPT_INJECTION: [
                 re.compile(p, flags) for p in self.INJECTION_PATTERNS
             ],

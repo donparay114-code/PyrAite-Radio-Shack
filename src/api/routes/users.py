@@ -4,11 +4,11 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import User, UserTier, get_async_session
+from src.models import User, get_async_session
 
 router = APIRouter()
 
@@ -251,9 +251,7 @@ async def get_user_by_telegram(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get user by Telegram ID."""
-    result = await session.execute(
-        select(User).where(User.telegram_id == telegram_id)
-    )
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
 
     if not user:

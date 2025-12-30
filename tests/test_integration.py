@@ -1,9 +1,8 @@
 """Integration tests for PYrte Radio Shack."""
 
-import pytest
 from datetime import datetime
 
-from src.models import User, Song, RadioQueue, Vote, QueueStatus, VoteType
+from src.models import Song, RadioQueue, Vote, QueueStatus, VoteType
 
 
 class TestUserQueueIntegration:
@@ -27,7 +26,9 @@ class TestUserQueueIntegration:
         assert queue_item.user_id == sample_user.id
         assert queue_item.telegram_user_id == sample_user.telegram_id
 
-    def test_user_votes_on_queue_item(self, sync_session, sample_user, sample_queue_item):
+    def test_user_votes_on_queue_item(
+        self, sync_session, sample_user, sample_queue_item
+    ):
         """Test user voting on a queue item."""
         # Create vote
         vote = Vote(
@@ -47,7 +48,9 @@ class TestUserQueueIntegration:
         assert sample_queue_item.vote_score == 1
         assert vote.is_upvote
 
-    def test_vote_affects_queue_priority(self, sync_session, sample_user, sample_queue_item):
+    def test_vote_affects_queue_priority(
+        self, sync_session, sample_user, sample_queue_item
+    ):
         """Test that votes affect queue priority."""
         initial_priority = sample_queue_item.priority_score
 
@@ -111,7 +114,9 @@ class TestQueueSongIntegration:
             vote = Vote(
                 user_id=user.id,
                 queue_item_id=queue_item.id,
-                vote_type=VoteType.UPVOTE.value if i % 2 == 0 else VoteType.DOWNVOTE.value,
+                vote_type=(
+                    VoteType.UPVOTE.value if i % 2 == 0 else VoteType.DOWNVOTE.value
+                ),
             )
             sync_session.add(vote)
 

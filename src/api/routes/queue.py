@@ -139,9 +139,7 @@ async def get_queue_item(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get a specific queue item by ID."""
-    result = await session.execute(
-        select(RadioQueue).where(RadioQueue.id == queue_id)
-    )
+    result = await session.execute(select(RadioQueue).where(RadioQueue.id == queue_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Queue item not found")
@@ -154,9 +152,7 @@ async def cancel_queue_item(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Cancel a queue item (if not yet generating)."""
-    result = await session.execute(
-        select(RadioQueue).where(RadioQueue.id == queue_id)
-    )
+    result = await session.execute(select(RadioQueue).where(RadioQueue.id == queue_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Queue item not found")

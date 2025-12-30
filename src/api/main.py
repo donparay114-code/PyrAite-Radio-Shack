@@ -6,8 +6,8 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.openapi.utils import get_openapi
 
+from src.api.routes import queue, health, webhooks, users, songs, votes
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 
@@ -145,9 +145,6 @@ async def root():
         "health": "/health",
     }
 
-
-# Import and include routers
-from src.api.routes import queue, health, webhooks, users, songs, votes
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])

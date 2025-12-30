@@ -36,8 +36,12 @@ class User(Base, TimestampMixin):
         BigInteger, unique=True, nullable=False, index=True
     )
     telegram_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    telegram_first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    telegram_last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    telegram_first_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
+    telegram_last_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Reputation system
     reputation_score: Mapped[float] = mapped_column(Float, default=0.0)
@@ -169,4 +173,6 @@ class User(Base, TimestampMixin):
         self.reputation_score = self.calculate_reputation()
 
     def __repr__(self) -> str:
-        return f"<User {self.id}: {self.display_name} (rep={self.reputation_score:.1f})>"
+        return (
+            f"<User {self.id}: {self.display_name} (rep={self.reputation_score:.1f})>"
+        )

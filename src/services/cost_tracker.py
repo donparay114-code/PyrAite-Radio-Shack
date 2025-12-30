@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 
-from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +141,9 @@ class CostTracker:
         )
 
         self._records.append(record)
-        logger.debug(f"Recorded usage: {service.value}/{operation} - {units} units, ${cost:.4f}")
+        logger.debug(
+            f"Recorded usage: {service.value}/{operation} - {units} units, ${cost:.4f}"
+        )
 
         # Check budget alerts
         self._check_budget_alerts(service)
@@ -158,7 +159,8 @@ class CostTracker:
         """Get total units used for a service in a time period."""
         end = end or datetime.utcnow()
         return sum(
-            r.units for r in self._records
+            r.units
+            for r in self._records
             if r.service == service and start <= r.timestamp <= end
         )
 
@@ -173,9 +175,9 @@ class CostTracker:
         end = end or datetime.utcnow()
 
         return sum(
-            r.cost for r in self._records
-            if start <= r.timestamp <= end
-            and (service is None or r.service == service)
+            r.cost
+            for r in self._records
+            if start <= r.timestamp <= end and (service is None or r.service == service)
         )
 
     def get_summary(
@@ -189,7 +191,8 @@ class CostTracker:
         end = end or datetime.utcnow()
 
         records = [
-            r for r in self._records
+            r
+            for r in self._records
             if r.service == service and start <= r.timestamp <= end
         ]
 
@@ -213,8 +216,7 @@ class CostTracker:
     ) -> dict[ServiceType, UsageSummary]:
         """Get summaries for all services."""
         return {
-            service: self.get_summary(service, start, end)
-            for service in ServiceType
+            service: self.get_summary(service, start, end) for service in ServiceType
         }
 
     def get_monthly_report(self) -> dict:
@@ -307,6 +309,7 @@ def get_cost_tracker() -> CostTracker:
 # Convenience decorators
 def track_suno_usage(func):
     """Decorator to track Suno API usage."""
+
     async def wrapper(*args, **kwargs):
         result = await func(*args, **kwargs)
         get_cost_tracker().record_usage(
@@ -316,6 +319,7 @@ def track_suno_usage(func):
             metadata={"function": func.__name__},
         )
         return result
+
     return wrapper
 
 

@@ -162,6 +162,7 @@ async def broadcast_status_webhook(
     payload = await request.json()
 
     # TODO: Update radio history and trigger next song logic
+    _ = payload  # Acknowledge payload for future use
     # This would typically:
     # 1. Log the song that just finished
     # 2. Update play counts

@@ -63,11 +63,15 @@ class Vote(Base, TimestampMixin):
 
     # Source info
     source: Mapped[str] = mapped_column(String(50), default="telegram")
-    telegram_callback_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    telegram_callback_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="votes")
-    queue_item: Mapped["RadioQueue"] = relationship("RadioQueue", back_populates="votes")
+    queue_item: Mapped["RadioQueue"] = relationship(
+        "RadioQueue", back_populates="votes"
+    )
 
     @property
     def is_upvote(self) -> bool:
