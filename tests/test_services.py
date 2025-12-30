@@ -54,7 +54,11 @@ class TestContentModerator:
         for attempt in injection_attempts:
             result = moderator.check(attempt)
             assert result.passed is False, f"Should have caught: {attempt}"
-            assert result.category == ModerationCategory.PROMPT_INJECTION
+            # Can be caught by LOCAL_BLOCKLIST (faster) or PROMPT_INJECTION (regex)
+            assert result.category in (
+                ModerationCategory.PROMPT_INJECTION,
+                ModerationCategory.LOCAL_BLOCKLIST,
+            )
 
     def test_violence_detected(self):
         """Test that violent content is detected."""
