@@ -1,46 +1,18 @@
-# PYrte Radio Shack - Production Docker Compose for Oracle Cloud + Cloudflare
+# PYrte Radio Shack - Production Docker Compose (External Database)
+#
+# This setup uses an external PostgreSQL database (Supabase, Neon, etc.)
+# Only runs n8n and Cloudflare tunnel - much simpler!
 #
 # Usage:
-#   1. Copy .env.example to .env and fill in your values
-#   2. docker compose -f docker-compose.prod.yml up -d
-#   3. Import workflow into n8n
-#
-# Local database access via SSH tunnel:
-#   ssh -L 5432:localhost:5432 user@your-oracle-server
-#   Then connect to localhost:5432 with your PostgreSQL client
+#   1. Create a free PostgreSQL database at Supabase or Neon
+#   2. Run the SQL from sql/init/01_schema.sql in your database
+#   3. Copy .env.example to .env and fill in your values
+#   4. docker compose -f docker-compose.prod.yml up -d
+#   5. Import workflow into n8n
 
 version: '3.8'
 
 services:
-  # ===========================================
-  # PostgreSQL Database
-  # ===========================================
-  postgres:
-    image: postgres:16-alpine
-    container_name: pyrte-postgres
-    restart: always
-    ports:
-      - "127.0.0.1:5432:5432"  # Only localhost (use SSH tunnel for remote access)
-    environment:
-      POSTGRES_DB: ${POSTGRES_DATABASE:-radio_station}
-      POSTGRES_USER: ${POSTGRES_USER:-radio_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./sql/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-radio_user} -d ${POSTGRES_DATABASE:-radio_station}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - radio-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
   # ===========================================
   # n8n Workflow Automation
   # ===========================================
@@ -79,38 +51,6 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n_workflows:/home/node/workflows:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - radio-network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ===========================================
-  # Redis Cache
-  # ===========================================
-  redis:
-    image: redis:7-alpine
-    container_name: pyrte-redis
-    restart: always
-    ports:
-      - "127.0.0.1:6379:6379"  # Only localhost
-    command: >
-      redis-server
-      --appendonly yes
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - radio-network
     logging:
@@ -140,11 +80,7 @@ services:
         max-file: "3"
 
 volumes:
-  postgres_data:
-    driver: local
   n8n_data:
-    driver: local
-  redis_data:
     driver: local
 
 networks:
