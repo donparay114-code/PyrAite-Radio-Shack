@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "n8n-bigdata-mcp": {
+      "type": "http",
+      "url": "https://n8nbigdata.com/mcp-server/http"
+    }
+  }
+}
