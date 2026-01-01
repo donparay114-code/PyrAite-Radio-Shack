@@ -5,7 +5,7 @@ This guide helps you connect Claude Code to your n8n instance on Oracle Cloud.
 ## Configuration Completed
 
 ✅ **MCP Server Added**: n8n Oracle MCP server configured in `.claude/settings.json`
-✅ **MCP Package**: `mcp-n8n` by gomakers (npm)
+✅ **MCP Package**: `n8n-mcp` v2.31.3 by czlonkowski (npm)
 ✅ **Server Address**: `http://140.238.79.211:5678`
 ✅ **Environment Template**: Updated `.env.example` with Oracle IP
 
@@ -132,7 +132,7 @@ Or use the skill:
 ### Error: "MCP server not found"
 
 **Fix:**
-- The `mcp-n8n` package will be installed automatically via `npx`
+- The `n8n-mcp` package will be installed automatically via `npx`
 - Ensure you have internet connection for first-time installation
 - Check that `npx` is available: `npx --version`
 
@@ -165,10 +165,12 @@ The configuration in `.claude/settings.json`:
   "mcpServers": {
     "n8n": {
       "command": "npx",
-      "args": ["-y", "mcp-n8n"],
+      "args": ["-y", "n8n-mcp@latest"],
       "env": {
-        "N8N_BASE_URL": "http://140.238.79.211:5678",
-        "N8N_API_KEY": "${N8N_API_KEY}"
+        "N8N_MODE": "true",
+        "N8N_API_URL": "http://140.238.79.211:5678",
+        "N8N_API_KEY": "${N8N_API_KEY}",
+        "LOG_LEVEL": "info"
       }
     }
   }
@@ -176,14 +178,19 @@ The configuration in `.claude/settings.json`:
 ```
 
 **How it works:**
-- `npx -y mcp-n8n` - Runs the mcp-n8n server (by gomakers)
-- `N8N_BASE_URL` - Base URL of your n8n instance (Oracle Cloud)
+- `npx -y n8n-mcp@latest` - Runs the latest n8n-mcp server (by czlonkowski)
+- `N8N_MODE=true` - Enables n8n API integration mode (default is documentation mode)
+- `N8N_API_URL` - Your n8n instance URL (Oracle Cloud)
 - `N8N_API_KEY` - Loaded from your `.env` file via environment variable substitution
+- `LOG_LEVEL=info` - Logging verbosity (debug, info, warn, error)
 
 **Package Info:**
-- Package: [`mcp-n8n`](https://www.npmjs.com/package/mcp-n8n) v1.1.1
-- Provider: gomakers
-- Features: Complete n8n API integration for workflow automation
+- Package: [`n8n-mcp`](https://www.npmjs.com/package/n8n-mcp) v2.31.3 (Dec 26, 2025)
+- Provider: [czlonkowski](https://github.com/czlonkowski/n8n-mcp)
+- Features:
+  - 543 n8n nodes documentation (99% property coverage)
+  - n8n API integration (workflows, executions, credentials)
+  - Works with Claude Desktop, Claude Code, Cursor, Windsurf
 
 ## Use Cases
 
