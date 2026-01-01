@@ -27,7 +27,10 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 POSTGRES_DATABASE = os.getenv("POSTGRES_DATABASE", "radio_station")
 
 # Use SQLite for testing if not in CI or not explicitly told to use Postgres
-USE_POSTGRES = os.getenv("USE_POSTGRES", "false").lower() == "true" or "GITHUB_ACTIONS" in os.environ
+USE_POSTGRES = (
+    os.getenv("USE_POSTGRES", "false").lower() == "true"
+    or "GITHUB_ACTIONS" in os.environ
+)
 
 if USE_POSTGRES:
     SQLITE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DATABASE}"

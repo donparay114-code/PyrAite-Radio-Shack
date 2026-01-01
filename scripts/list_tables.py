@@ -1,16 +1,16 @@
 import sys
 import os
 import logging
+from sqlalchemy import create_engine, text
 
 # Disable all logging
 logging.disable(logging.CRITICAL)
 
-from sqlalchemy import create_engine, text
 
 # Add src to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.utils.config import settings
+from src.utils.config import settings  # noqa: E402
 
 
 def list_tables():

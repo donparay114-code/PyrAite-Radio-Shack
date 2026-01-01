@@ -54,9 +54,13 @@ def fetch_ldnoobw() -> List[Dict]:
         with urllib.request.urlopen(SOURCE_LDNOOBW) as response:
             lines = response.read().decode().splitlines()
         return [
-            {"word": l.strip().lower(), "severity": "warning", "category": "profanity"}
-            for l in lines
-            if l.strip()
+            {
+                "word": line.strip().lower(),
+                "severity": "warning",
+                "category": "profanity",
+            }
+            for line in lines
+            if line.strip()
         ]
     except Exception as e:
         logger.error(f"Error fetching LDNOOBW: {e}")
@@ -140,7 +144,7 @@ def fetch_davidson() -> List[Dict]:
                 # We interpret > 0.3 as actionable
                 try:
                     score_val = float(score)
-                except:
+                except ValueError:
                     score_val = 0.0
 
                 if score_val > 0.3:  # Threshold for inclusion

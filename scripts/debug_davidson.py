@@ -23,12 +23,11 @@ def fetch_davidson():
                 if count == 0:
                     print(f"Row 0: {row}")
 
-                word = row.get("ngram")
                 score = row.get("prophate", "0")
 
                 try:
                     score_val = float(score)
-                except:
+                except Exception:
                     score_val = 0.0
 
                 if score_val > 0.3:
