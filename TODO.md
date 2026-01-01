@@ -24,3 +24,7 @@
 - [x] Documentation
   - [x] Update README.md
   - [x] Finalize task.md
+- [x] CI/CD
+  - [x] Fix Database Mismatch in CI (MySQL -> Postgres)
+  - [x] Add Frontend Build Job
+  - [x] Restore aiosqlite for tests
