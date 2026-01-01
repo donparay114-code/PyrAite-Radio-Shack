@@ -167,7 +167,7 @@ The configuration in `.claude/settings.json`:
       "command": "npx",
       "args": ["-y", "mcp-n8n"],
       "env": {
-        "N8N_API_URL": "http://140.238.79.211:5678",
+        "N8N_BASE_URL": "http://140.238.79.211:5678",
         "N8N_API_KEY": "${N8N_API_KEY}"
       }
     }
@@ -177,7 +177,7 @@ The configuration in `.claude/settings.json`:
 
 **How it works:**
 - `npx -y mcp-n8n` - Runs the mcp-n8n server (by gomakers)
-- `N8N_API_URL` - Direct connection to your Oracle Cloud instance
+- `N8N_BASE_URL` - Base URL of your n8n instance (Oracle Cloud)
 - `N8N_API_KEY` - Loaded from your `.env` file via environment variable substitution
 
 **Package Info:**

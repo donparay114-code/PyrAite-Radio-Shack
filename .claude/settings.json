@@ -8,7 +8,7 @@
         "mcp-n8n"
       ],
       "env": {
-        "N8N_API_URL": "http://140.238.79.211:5678",
+        "N8N_BASE_URL": "http://140.238.79.211:5678",
         "N8N_API_KEY": "${N8N_API_KEY}"
       }
     }
