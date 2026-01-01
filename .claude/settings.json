@@ -5,14 +5,12 @@
       "command": "npx",
       "args": [
         "-y",
-        "n8n-mcp@latest"
-      ],
-      "env": {
-        "N8N_MODE": "true",
-        "N8N_API_URL": "http://140.238.79.211:5678",
-        "N8N_API_KEY": "${N8N_API_KEY}",
-        "LOG_LEVEL": "info"
-      }
+        "supergateway",
+        "--streamableHttp",
+        "https://n8nbigdata.com/mcp-server/http",
+        "--header",
+        "authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlY2FiYmI0MC0xMDM4LTQxNWUtYmE3MC1hMjdkOGIwZWQ1NmUiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY3MjAwMDc0LCJleHAiOjE3Njk3NDkyMDB9.yrg-LBYKlZlL0CAWWhuPxjTYkmsdI-Lqdhddd5CufM0"
+      ]
     }
   },
   "permissions": {
@@ -47,9 +45,9 @@
       "Bash(black *)",
       "Bash(pylint *)",
       "Bash(mypy *)",
+      "Bash(isort *)",
+      "Bash(flake8 *)",
       "Bash(ruff *)",
-      "Bash(uvicorn *)",
-      "Bash(alembic *)",
       "Bash(git status)",
       "Bash(git diff *)",
       "Bash(git add *)",
