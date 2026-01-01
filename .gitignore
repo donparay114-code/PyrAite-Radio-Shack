@@ -84,3 +84,6 @@ credentials/
 
 # n8n data
 n8n-data/
+
+# Claude Code local settings (contains sensitive MCP tokens)
+.claude/settings.local.json

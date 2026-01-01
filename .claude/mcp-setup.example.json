@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "supergateway",
+        "--streamableHttp",
+        "https://n8nbigdata.com/mcp-server/http",
+        "--header",
+        "authorization:Bearer YOUR_JWT_TOKEN_HERE"
+      ]
+    }
+  }
+}
