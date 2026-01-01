@@ -2,6 +2,22 @@
 version: '3.8'
 
 services:
+  # Frontend Application
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - radio-network
+
   # FastAPI Application
   api:
     build:
@@ -52,7 +68,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_station"]
+      test: [ "CMD-SHELL", "pg_isready -U radio_user -d radio_station" ]
       interval: 10s
       timeout: 5s
       retries: 5
