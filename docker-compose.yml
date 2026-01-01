@@ -60,7 +60,7 @@ services:
     image: postgres:16-alpine
     container_name: pyrte-radio-db
     ports:
-      - "5432:5432"
+      - "5433:5432"  # External 5433 -> Internal 5432 (avoids conflict with host PostgreSQL)
     environment:
       - POSTGRES_DB=radio_station
       - POSTGRES_USER=radio_user
@@ -111,7 +111,7 @@ services:
     image: redis:7-alpine
     container_name: pyrte-radio-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"  # External 6380 -> Internal 6379 (avoids conflict with host Redis)
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
