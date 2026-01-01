@@ -5,6 +5,7 @@ This guide helps you connect Claude Code to your n8n instance on Oracle Cloud.
 ## Configuration Completed
 
 ✅ **MCP Server Added**: n8n Oracle MCP server configured in `.claude/settings.json`
+✅ **MCP Package**: `mcp-n8n` by gomakers (npm)
 ✅ **Server Address**: `http://140.238.79.211:5678`
 ✅ **Environment Template**: Updated `.env.example` with Oracle IP
 
@@ -131,7 +132,7 @@ Or use the skill:
 ### Error: "MCP server not found"
 
 **Fix:**
-- The `@n8n/mcp-server` package will be installed automatically via `npx`
+- The `mcp-n8n` package will be installed automatically via `npx`
 - Ensure you have internet connection for first-time installation
 - Check that `npx` is available: `npx --version`
 
@@ -164,7 +165,7 @@ The configuration in `.claude/settings.json`:
   "mcpServers": {
     "n8n": {
       "command": "npx",
-      "args": ["-y", "@n8n/mcp-server"],
+      "args": ["-y", "mcp-n8n"],
       "env": {
         "N8N_API_URL": "http://140.238.79.211:5678",
         "N8N_API_KEY": "${N8N_API_KEY}"
@@ -175,9 +176,14 @@ The configuration in `.claude/settings.json`:
 ```
 
 **How it works:**
-- `npx -y @n8n/mcp-server` - Runs the official n8n MCP server
+- `npx -y mcp-n8n` - Runs the mcp-n8n server (by gomakers)
 - `N8N_API_URL` - Direct connection to your Oracle Cloud instance
 - `N8N_API_KEY` - Loaded from your `.env` file via environment variable substitution
+
+**Package Info:**
+- Package: [`mcp-n8n`](https://www.npmjs.com/package/mcp-n8n) v1.1.1
+- Provider: gomakers
+- Features: Complete n8n API integration for workflow automation
 
 ## Use Cases
 

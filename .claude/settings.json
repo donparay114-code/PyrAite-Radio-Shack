@@ -5,7 +5,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@n8n/mcp-server"
+        "mcp-n8n"
       ],
       "env": {
         "N8N_API_URL": "http://140.238.79.211:5678",
