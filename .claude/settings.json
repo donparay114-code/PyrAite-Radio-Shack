@@ -1,5 +1,18 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@n8n/mcp-server"
+      ],
+      "env": {
+        "N8N_API_URL": "http://140.238.79.211:5678",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      }
+    }
+  },
   "permissions": {
     "allow": [
       "Skill",
