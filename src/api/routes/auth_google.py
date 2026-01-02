@@ -21,6 +21,7 @@ class AuthResponse(BaseModel):
     telegram_username: str | None = None
     tier: str | None = None
     reputation_score: float | None = None
+    is_premium: bool = False
 
 router = APIRouter()
 
@@ -29,7 +30,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 class GoogleLoginRequest(BaseModel):
     id_token: str
 
-@router.post("/google", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse)
 async def google_login(
     request: GoogleLoginRequest,
     session: AsyncSession = Depends(get_async_session)
@@ -83,7 +84,8 @@ async def google_login(
             token=access_token,
             telegram_username=user.telegram_username,
             tier=user.tier.value if user.tier else "new",
-            reputation_score=user.reputation_score
+            reputation_score=user.reputation_score,
+            is_premium=user.is_premium
         )
 
     except ValueError:
@@ -122,5 +124,6 @@ async def get_me(
         token="", # Don't need to return token here if it's already in the header
         telegram_username=user.telegram_username,
         tier=user.tier.value if user.tier else "new",
-        reputation_score=user.reputation_score
+        reputation_score=user.reputation_score,
+        is_premium=user.is_premium
     )

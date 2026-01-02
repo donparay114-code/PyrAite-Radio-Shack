@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket } from '../../../frontend/src/hooks/useSocket';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { formatNumber } from '@/lib/utils';

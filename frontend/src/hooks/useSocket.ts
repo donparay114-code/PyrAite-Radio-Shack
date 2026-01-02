@@ -20,9 +20,10 @@ export function useSocket(channelId: string): UseSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
     const s = io(socketUrl, {
+      path: '/socket.io', // Standard Socket.IO path, but verifying for FastAPI mount
       query: { channelId },
       transports: ['websocket', 'polling'],
       reconnection: true,
