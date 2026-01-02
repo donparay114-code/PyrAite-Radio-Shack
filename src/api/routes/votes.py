@@ -56,7 +56,9 @@ class VoteStatsResponse(BaseModel):
 
 @router.get("/", response_model=list[VoteResponse])
 async def list_votes(
-    vote_type: str | None = Query(None, description="Filter by vote type (upvote/downvote)"),
+    vote_type: str | None = Query(
+        None, description="Filter by vote type (upvote/downvote)"
+    ),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
