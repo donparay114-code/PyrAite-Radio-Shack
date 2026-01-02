@@ -332,7 +332,7 @@ class MubertProvider(MusicProvider):
     """
 
     provider_type = ProviderType.MUBERT
-    API_URL = "https://api-b2b.mubert.com/v2"
+    API_URL = "https://api-b2b.mubert.com/v2/"
 
     def __init__(self, api_key: Optional[str] = None):
         import httpx
@@ -422,7 +422,7 @@ class MubertProvider(MusicProvider):
             # Mubert returns a task with a download link immediately
             tasks = data.get("data", {}).get("tasks", [])
             if not tasks:
-                 return GenerationResult(
+                return GenerationResult(
                     provider=ProviderType.MUBERT,
                     job_id="",
                     status=GenerationStatus.ERROR,
@@ -438,7 +438,7 @@ class MubertProvider(MusicProvider):
             return GenerationResult(
                 provider=ProviderType.MUBERT,
                 job_id=download_link,
-                status=GenerationStatus.PROCESSING, # We assume processing until we can download
+                status=GenerationStatus.PROCESSING,  # We assume processing until we can download
                 title=request.title,
                 audio_url=download_link,
                 created_at=datetime.utcnow(),
@@ -465,7 +465,7 @@ class MubertProvider(MusicProvider):
         # job_id is the download URL
         url = job_id
         if not url:
-             return GenerationResult(
+            return GenerationResult(
                 provider=ProviderType.MUBERT,
                 job_id=job_id,
                 status=GenerationStatus.ERROR,
@@ -500,12 +500,12 @@ class MubertProvider(MusicProvider):
 
         except Exception as e:
             # If connection fails, we assume it's still processing or temp error
-             return GenerationResult(
+            return GenerationResult(
                 provider=ProviderType.MUBERT,
                 job_id=job_id,
-                status=GenerationStatus.PROCESSING, # Assume processing on network error
+                status=GenerationStatus.PROCESSING,  # Assume processing on network error
                 audio_url=url,
-                error_message=str(e) # Keep track of error
+                error_message=str(e),  # Keep track of error
             )
 
     async def download_audio(self, audio_url: str, output_path: Path) -> bool:
