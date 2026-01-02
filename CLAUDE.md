@@ -6,7 +6,7 @@ This file provides context and guidelines for Claude Code when working on this p
 
 PYrte Radio Shack is an AI-powered community radio station built with Python, n8n workflows, and Suno AI for music generation. Claude Code has been configured with comprehensive skills, sub-agents, and slash commands to assist with development.
 
-## Available Skills (71 Total)
+## Available Skills (72 Total)
 
 Claude has access to domain expertise skills organized by category:
 
@@ -29,6 +29,7 @@ Claude has access to domain expertise skills organized by category:
 | `n8n-workflow-automation` | General n8n workflow automation |
 | `n8n-workflow-helper` | n8n workflow patterns and best practices |
 | `n8n-workflow-manager` | Workflow lifecycle management |
+| `n8n-workflow-repair` | Diagnose and fix broken workflows, node versions, connections |
 
 ### Database & Backend
 | Skill | Description |
@@ -91,7 +92,7 @@ Claude has access to domain expertise skills organized by category:
 | `webhook-tester` | Webhook testing and validation |
 | `metrics-calculator` | Performance and engagement metrics |
 
-*See `.claude/skills/` for complete list of 71 skills.*
+*See `.claude/skills/` for complete list of 72 skills.*
 
 ## Available Sub-Agents (70 Total)
 
