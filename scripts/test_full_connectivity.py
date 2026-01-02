@@ -129,8 +129,7 @@ async def test_full_connectivity():
                 "audio_url": "https://example.com/test.mp3",
             }
             response = await client.post(
-                "http://localhost:8000/api/webhooks/suno/status",
-                json=payload
+                "http://localhost:8000/api/webhooks/suno/status", json=payload
             )
             results["webhook_test"] = response.status_code == 200
             print(f"   Status: {'PASS' if results['webhook_test'] else 'FAIL'}")
@@ -145,15 +144,15 @@ async def test_full_connectivity():
     print("=" * 60)
 
     all_core_passed = (
-        results["local_backend"]
-        and results["n8n_reachable"]
-        and results["n8n_healthy"]
+        results["local_backend"] and results["n8n_reachable"] and results["n8n_healthy"]
     )
 
     print(f"Local Backend:      {'PASS' if results['local_backend'] else 'FAIL'}")
     print(f"n8n Reachable:      {'PASS' if results['n8n_reachable'] else 'FAIL'}")
     print(f"n8n Healthy:        {'PASS' if results['n8n_healthy'] else 'FAIL'}")
-    print(f"Tunnel Working:     {'PASS' if results['tunnel_working'] else 'NOT CONFIGURED'}")
+    print(
+        f"Tunnel Working:     {'PASS' if results['tunnel_working'] else 'NOT CONFIGURED'}"
+    )
     print(f"Webhook Test:       {'PASS' if results['webhook_test'] else 'FAIL'}")
     print()
 

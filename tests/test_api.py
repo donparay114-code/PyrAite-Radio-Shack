@@ -222,6 +222,7 @@ class TestWebhookEndpoints:
     def webhook_headers(self):
         """Get webhook authentication headers."""
         from src.utils.config import settings
+
         return {"X-Webhook-Secret": settings.secret_key} if settings.secret_key else {}
 
     def test_suno_webhook(self, client, webhook_headers):
@@ -231,7 +232,9 @@ class TestWebhookEndpoints:
             "status": "complete",
             "audio_url": "https://example.com/audio.mp3",
         }
-        response = client.post("/api/webhooks/suno/status", json=payload, headers=webhook_headers)
+        response = client.post(
+            "/api/webhooks/suno/status", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["received"] is True
@@ -243,7 +246,9 @@ class TestWebhookEndpoints:
             "workflow": "queue_processor",
             "action": "start",
         }
-        response = client.post("/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers)
+        response = client.post(
+            "/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["success"] is True
@@ -254,5 +259,7 @@ class TestWebhookEndpoints:
             "workflow": "invalid_workflow",
             "action": "start",
         }
-        response = client.post("/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers)
+        response = client.post(
+            "/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST

@@ -56,8 +56,7 @@ async def test_n8n_connectivity():
         try:
             # Try to get API info - may require authentication
             response = await client.get(
-                f"{n8n_host}/api/v1/workflows",
-                headers={"Accept": "application/json"}
+                f"{n8n_host}/api/v1/workflows", headers={"Accept": "application/json"}
             )
             if response.status_code == 200:
                 data = response.json()

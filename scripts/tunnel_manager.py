@@ -125,9 +125,7 @@ class TunnelManager:
         # Check if cloudflared is installed
         try:
             subprocess.run(
-                ["cloudflared", "--version"],
-                capture_output=True,
-                check=True
+                ["cloudflared", "--version"], capture_output=True, check=True
             )
         except (subprocess.CalledProcessError, FileNotFoundError):
             self._log("ERROR: cloudflared not installed!", "ERROR")
@@ -138,14 +136,17 @@ class TunnelManager:
         try:
             self.process = subprocess.Popen(
                 [
-                    "cloudflared", "tunnel",
-                    "--url", f"http://127.0.0.1:{BACKEND_PORT}",
-                    "--config", ""
+                    "cloudflared",
+                    "tunnel",
+                    "--url",
+                    f"http://127.0.0.1:{BACKEND_PORT}",
+                    "--config",
+                    "",
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
             self._save_pid()
             self._log(f"Tunnel process started with PID: {self.process.pid}")
