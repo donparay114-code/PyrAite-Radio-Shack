@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import RadioQueue, QueueStatus, Song, get_async_session
+from src.models import RadioQueue, QueueStatus, get_async_session
 from sqlalchemy.orm import selectinload
 
 router = APIRouter()
@@ -23,6 +23,7 @@ class QueueItemCreate(BaseModel):
     is_instrumental: bool = False
     telegram_user_id: Optional[int] = None
     telegram_message_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 
 class QueueItemResponse(BaseModel):
@@ -123,6 +124,7 @@ class NowPlayingResponse(BaseModel):
 @router.get("/", response_model=list[QueueItemResponse])
 async def list_queue(
     status: Optional[str] = Query(None, description="Filter by status"),
+    user_id: Optional[int] = Query(None, description="Filter by user ID"),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
@@ -132,6 +134,9 @@ async def list_queue(
 
     if status:
         query = query.where(RadioQueue.status == status)
+    
+    if user_id:
+        query = query.where(RadioQueue.user_id == user_id)
 
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
@@ -150,6 +155,7 @@ async def create_queue_item(
         is_instrumental=item.is_instrumental,
         telegram_user_id=item.telegram_user_id,
         telegram_message_id=item.telegram_message_id,
+        user_id=item.user_id,
         status=QueueStatus.PENDING.value,
         requested_at=datetime.utcnow(),
     )
