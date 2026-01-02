@@ -1,5 +1,6 @@
 """Tests for API endpoints."""
 
+import pytest
 from fastapi import status
 
 
@@ -184,6 +185,17 @@ class TestSongEndpoints:
 class TestVoteEndpoints:
     """Tests for voting endpoints."""
 
+    def test_list_votes_empty(self, client):
+        """Test listing votes when empty."""
+        response = client.get("/api/votes/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == []
+
+    def test_list_votes_invalid_filter(self, client):
+        """Test listing votes with invalid vote_type filter."""
+        response = client.get("/api/votes/?vote_type=invalid")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_get_vote_stats(self, client):
         """Test getting vote statistics."""
         response = client.get("/api/votes/stats")
@@ -217,35 +229,48 @@ class TestVoteEndpoints:
 class TestWebhookEndpoints:
     """Tests for webhook endpoints."""
 
-    def test_suno_webhook(self, client):
+    @pytest.fixture
+    def webhook_headers(self):
+        """Get webhook authentication headers."""
+        from src.utils.config import settings
+
+        return {"X-Webhook-Secret": settings.secret_key} if settings.secret_key else {}
+
+    def test_suno_webhook(self, client, webhook_headers):
         """Test Suno status webhook."""
         payload = {
             "job_id": "test-job-123",
             "status": "complete",
             "audio_url": "https://example.com/audio.mp3",
         }
-        response = client.post("/api/webhooks/suno/status", json=payload)
+        response = client.post(
+            "/api/webhooks/suno/status", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["received"] is True
         assert data["job_id"] == payload["job_id"]
 
-    def test_n8n_trigger_webhook(self, client):
+    def test_n8n_trigger_webhook(self, client, webhook_headers):
         """Test n8n trigger webhook."""
         payload = {
             "workflow": "queue_processor",
             "action": "start",
         }
-        response = client.post("/api/webhooks/n8n/trigger", json=payload)
+        response = client.post(
+            "/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["success"] is True
 
-    def test_n8n_trigger_invalid_workflow(self, client):
+    def test_n8n_trigger_invalid_workflow(self, client, webhook_headers):
         """Test n8n trigger with invalid workflow."""
         payload = {
             "workflow": "invalid_workflow",
             "action": "start",
         }
-        response = client.post("/api/webhooks/n8n/trigger", json=payload)
+        response = client.post(
+            "/api/webhooks/n8n/trigger", json=payload, headers=webhook_headers
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST

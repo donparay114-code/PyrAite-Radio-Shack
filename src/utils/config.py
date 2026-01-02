@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     n8n_host: str = "http://localhost:5678"
     n8n_api_key: str = ""
 
+    # Backend Public URL (for n8n callbacks when using Cloudflare Tunnel)
+    backend_public_url: str = "http://localhost:8000"
+
     # Application
     debug: bool = False
     log_level: str = "INFO"

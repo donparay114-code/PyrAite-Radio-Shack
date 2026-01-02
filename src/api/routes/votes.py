@@ -54,6 +54,43 @@ class VoteStatsResponse(BaseModel):
     votes_today: int
 
 
+@router.get("/", response_model=list[VoteResponse])
+async def list_votes(
+    vote_type: str | None = Query(
+        None, description="Filter by vote type (upvote/downvote)"
+    ),
+    limit: int = Query(50, le=100),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    List all votes with pagination and optional filtering.
+
+    Returns votes ordered by most recent first.
+    """
+    query = select(Vote).order_by(Vote.voted_at.desc())
+
+    if vote_type:
+        if vote_type not in [VoteType.UPVOTE.value, VoteType.DOWNVOTE.value]:
+            raise HTTPException(status_code=400, detail="Invalid vote type filter")
+        query = query.where(Vote.vote_type == vote_type)
+
+    query = query.offset(offset).limit(limit)
+    result = await session.execute(query)
+    votes = result.scalars().all()
+
+    return [
+        VoteResponse(
+            id=v.id,
+            user_id=v.user_id,
+            queue_item_id=v.queue_item_id,
+            vote_type=v.vote_type,
+            voted_at=v.voted_at,
+        )
+        for v in votes
+    ]
+
+
 @router.post("/", response_model=VoteResult)
 async def cast_vote(
     vote_data: VoteCreate,
