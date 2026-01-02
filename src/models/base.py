@@ -58,11 +58,30 @@ def _is_testing() -> bool:
     return False
 
 
+def _use_postgres_for_testing() -> bool:
+    """Check if PostgreSQL should be used for testing (e.g., in CI)."""
+    return (
+        os.environ.get("USE_POSTGRES", "").lower() in ("1", "true", "yes")
+        or "GITHUB_ACTIONS" in os.environ
+    )
+
+
 def _get_database_urls() -> tuple[str, str]:
-    """Get database URLs, using SQLite in test mode."""
-    if _is_testing():
-        # Use in-memory SQLite for tests
+    """Get database URLs, using SQLite in test mode unless PostgreSQL is configured."""
+    if _is_testing() and not _use_postgres_for_testing():
+        # Use file-based SQLite for local tests
         return "sqlite:///./test.db", "sqlite+aiosqlite:///./test.db"
+    elif _is_testing() and _use_postgres_for_testing():
+        # Use PostgreSQL for CI tests
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        user = os.environ.get("POSTGRES_USER", "test_user")
+        password = os.environ.get("POSTGRES_PASSWORD", "test_password")
+        database = os.environ.get("POSTGRES_DATABASE", "test_radio")
+        return (
+            f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}",
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}",
+        )
     else:
         from src.utils.config import settings
 
