@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google
+from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 from src.api.socket_manager import sio_app
@@ -163,6 +163,7 @@ app.include_router(songs.router, prefix="/api/songs", tags=["Songs"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(moderation.router, prefix="/api/moderation", tags=["Moderation"])
 
 
 if __name__ == "__main__":

@@ -230,7 +230,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                        username: data.telegram_username,
                        firstName: data.display_name,
                        lastName: null,
-                       isPremium: false, // Default for now if not returned by /me
+                       isPremium: data.is_premium || false,
                        photoUrl: null,
                        isNewUser: false,
                        tier: data.tier as UserTier,
@@ -305,7 +305,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                               username: data.telegram_username,
                               firstName: data.display_name,
                               tier: data.tier as UserTier,
-                              reputation_score: data.reputation_score
+                              reputation_score: data.reputation_score,
+                              isPremium: data.is_premium || false
                           }
                       }));
                   }

@@ -1,11 +1,25 @@
 import socketio
 import logging
+from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Configure Redis manager if URL is available
+client_manager = None
+if settings.redis_url:
+    try:
+        client_manager = socketio.AsyncRedisManager(settings.redis_url)
+        logger.info(f"Socket.IO using Redis manager at {settings.redis_url}")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Redis manager: {e}")
+
 # Create a Socket.IO server
 # cors_allowed_origins='*' allows connection from any origin (e.g., localhost:3000)
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*',
+    client_manager=client_manager
+)
 
 # Create an ASGI app
 sio_app = socketio.ASGIApp(sio)
