@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     icecast_password: str = ""
     icecast_mount: str = "/radio.mp3"
 
+    # Liquidsoap
+    liquidsoap_url: str = "http://localhost:8080"
+
     # n8n
     n8n_host: str = "http://localhost:5678"
     n8n_api_key: str = ""

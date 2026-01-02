@@ -12,11 +12,7 @@ class LiquidsoapClient:
     """Client for Liquidsoap HTTP API."""
 
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = (base_url or f"http://{settings.icecast_host}:8080").rstrip("/")
-        # Note: Liquidsoap is often on the same host as icecast or 'liquidsoap' in docker
-        # If 'liquidsoap' is the hostname in docker-compose, we might need a setting for it.
-        # But looking at radio.liq, it listens on port 8080.
-        # If we are in docker, we might need to use "liquidsoap:8080".
+        self.base_url = (base_url or settings.liquidsoap_url).rstrip("/")
 
     async def get_queue_length(self) -> Optional[int]:
         """Get current request queue length."""
@@ -56,8 +52,5 @@ def get_liquidsoap_client() -> LiquidsoapClient:
     """Get Liquidsoap client singleton."""
     global _liquidsoap_client
     if _liquidsoap_client is None:
-        # In Docker, the service is likely named 'liquidsoap'
-        # But let's try to infer or use a default that works in dev
-        # For now, default to what works locally or via config if we add it
         _liquidsoap_client = LiquidsoapClient()
     return _liquidsoap_client
