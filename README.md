@@ -20,6 +20,10 @@ PYrte Radio Shack is a Python-based AI radio station system that integrates:
 - Priority queue based on user reputation
 - Automated DJ intros and audio stitching
 - Multi-format streaming (MP3, AAC, HLS)
+- **User Authentication** - Google OAuth and Telegram WebApp login with JWT tokens
+- **Live Chat** - Real-time community chat powered by Supabase Realtime
+- **User Profiles** - Reputation scores, tier badges, and request history
+- **Leaderboard** - Community rankings and achievements
 
 ## Architecture
 
@@ -52,7 +56,10 @@ User Request (Telegram)
 | Workflow Automation | n8n |
 | Music Generation | Suno API |
 | Database | PostgreSQL |
-| Frontend | Next.js + Tailwind CSS |
+| Frontend | Next.js 14 + Tailwind CSS |
+| Backend API | FastAPI + SQLAlchemy |
+| Authentication | Google OAuth, Telegram WebApp, JWT |
+| Realtime | Supabase Realtime |
 | Bot Interface | Telegram Bot API |
 | Audio Processing | FFmpeg, Liquidsoap |
 | LLM Integration | OpenAI GPT-4, Claude |
@@ -250,12 +257,32 @@ claude
 
 API documentation available at `/docs` when running the server.
 
-Key endpoints:
+### Authentication
 
-- `POST /api/request` - Submit song request
-- `GET /api/queue` - View current queue
-- `GET /api/history` - View broadcast history
-- `GET /api/users/{id}/reputation` - Get user reputation
+- `POST /api/auth/telegram` - Authenticate via Telegram WebApp
+- `POST /api/auth/google` - Authenticate via Google OAuth
+- `GET /api/auth/me` - Get current user from JWT token
+
+### Queue & Requests
+
+- `POST /api/queue/` - Submit song request
+- `GET /api/queue/` - View current queue
+- `GET /api/queue/stats` - Get queue statistics
+- `GET /api/queue/now-playing` - Get currently playing song
+
+### Users
+
+- `GET /api/users/` - List users
+- `GET /api/users/{id}` - Get user profile
+- `GET /api/users/{id}/history` - Get user's request history
+- `GET /api/users/leaderboard` - Get reputation leaderboard
+
+### Chat
+
+- `GET /api/chat/` - Get chat message history
+- `POST /api/chat/` - Send a chat message
+- `POST /api/chat/system` - Send system announcement
+- `GET /api/chat/stats` - Get chat statistics
 
 ## Contributing
 
