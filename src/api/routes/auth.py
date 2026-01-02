@@ -63,9 +63,7 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
             return None
 
         # Sort remaining parameters and create data_check_string
-        data_check_string = "\n".join(
-            f"{k}={v}" for k, v in sorted(data.items())
-        )
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
 
         # Create secret key
         secret_key = hmac.new(
@@ -150,9 +148,7 @@ async def authenticate_telegram(
     # Find or create user
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(User).where(User.telegram_id == telegram_id)
-    )
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
 
     if user:
@@ -200,9 +196,7 @@ async def get_current_user(
     """
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(User).where(User.telegram_id == telegram_id)
-    )
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
 
     if not user:

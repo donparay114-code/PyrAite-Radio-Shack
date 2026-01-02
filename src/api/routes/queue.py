@@ -134,7 +134,7 @@ async def list_queue(
 
     if status:
         query = query.where(RadioQueue.status == status)
-    
+
     if user_id:
         query = query.where(RadioQueue.user_id == user_id)
 
@@ -243,7 +243,10 @@ async def get_now_playing(
 
     # Calculate progress if broadcasting
     progress_seconds = 0.0
-    if queue_item.broadcast_started_at and queue_item.status == QueueStatus.BROADCASTING.value:
+    if (
+        queue_item.broadcast_started_at
+        and queue_item.status == QueueStatus.BROADCASTING.value
+    ):
         delta = datetime.utcnow() - queue_item.broadcast_started_at
         progress_seconds = delta.total_seconds()
 

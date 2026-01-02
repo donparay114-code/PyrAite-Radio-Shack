@@ -22,6 +22,7 @@ router = APIRouter()
 # Request/Response Models
 # ============================================================================
 
+
 class ChatMessageCreate(BaseModel):
     """Create a new chat message."""
 
@@ -65,6 +66,7 @@ class SystemMessageCreate(BaseModel):
 # Helper Functions
 # ============================================================================
 
+
 def message_to_response(message: ChatMessage) -> ChatMessageResponse:
     """Convert a ChatMessage to a response model."""
     return ChatMessageResponse(
@@ -73,7 +75,11 @@ def message_to_response(message: ChatMessage) -> ChatMessageResponse:
         user_display_name=message.user.display_name if message.user else None,
         user_tier=message.user.tier.value if message.user else None,
         content=message.content if not message.is_deleted else "[Message deleted]",
-        message_type=message.message_type.value if isinstance(message.message_type, MessageType) else message.message_type,
+        message_type=(
+            message.message_type.value
+            if isinstance(message.message_type, MessageType)
+            else message.message_type
+        ),
         reply_to_id=message.reply_to_id,
         is_deleted=message.is_deleted,
         created_at=message.created_at,
@@ -83,6 +89,7 @@ def message_to_response(message: ChatMessage) -> ChatMessageResponse:
 # ============================================================================
 # REST Endpoints
 # ============================================================================
+
 
 @router.get("/", response_model=ChatHistoryResponse)
 async def get_chat_history(
@@ -156,7 +163,9 @@ async def send_message(
             select(ChatMessage).where(ChatMessage.id == message_data.reply_to_id)
         )
         if not reply_result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail="Reply target message not found")
+            raise HTTPException(
+                status_code=404, detail="Reply target message not found"
+            )
 
     # Create message
     message = ChatMessage(
