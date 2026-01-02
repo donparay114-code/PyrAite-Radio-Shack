@@ -1,0 +1,131 @@
+# PYrte Radio Shack - Docker Ignore File
+# Files and directories to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.editorconfig
+
+# Claude Code configuration
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation
+docs/_build/
+*.md
+!README.md
+
+# Local data and logs
+data/
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+*.DS_Store
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.docker/
+!Dockerfile
+!docker-compose.yml
+!docker-compose.prod.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Scripts (not needed in container)
+scripts/*.sh
+
+# Tests (optional - include for testing container)
+# tests/
+
+# n8n workflow exports (mounted at runtime)
+# n8n_workflows/
+
+# Frontend (if building separately)
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+
+# Secrets and environment
+.env*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials/
+
+# Liquidsoap builds separately
+liquidsoap/
+
+# Makefile and dev tools
+Makefile
+*.mk
