@@ -7,9 +7,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat
+from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google
 from src.utils.config import settings
 from src.utils.logging import setup_logging
+from src.api.socket_manager import sio_app
 
 # API version
 API_VERSION = "1.0.0"
@@ -115,6 +116,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount Socket.IO app
+app.mount("/socket.io", sio_app)
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -152,6 +156,7 @@ async def root():
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(auth_google.router, prefix="/api/auth/google", tags=["Auth"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(songs.router, prefix="/api/songs", tags=["Songs"])

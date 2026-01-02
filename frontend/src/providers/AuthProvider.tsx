@@ -131,7 +131,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const loginWithGoogle = useCallback(async (credential: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await fetch(`${API_BASE}/api/auth/google`, {
+      const response = await fetch(`${API_BASE}/api/auth/google/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: credential }),
@@ -142,16 +142,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const data = await response.json();
+
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+      }
+
       setState({
         user: {
-          id: data.id, // Response uses id
+          id: data.user_id, // Response uses user_id
           telegramId: null,
           username: data.telegram_username || data.email, // Fallback
           firstName: data.display_name,
           lastName: null,
-          isPremium: data.is_premium,
+          isPremium: data.is_premium || false,
           photoUrl: null,
-          isNewUser: false, // API doesn't return is_new_user in UserResponse usually?
+          isNewUser: data.is_new_user,
           tier: data.tier as UserTier,
           reputation_score: data.reputation_score,
         },
@@ -206,7 +212,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } else {
         // Not in Telegram - check if we have a persisted session? 
-        // For now, just stop loading.
+        const token = localStorage.getItem("auth_token");
+        if (token) {
+           try {
+              const response = await fetch(`${API_BASE}/api/auth/google/me`, {
+                 headers: {
+                    "Authorization": `Bearer ${token}`
+                 }
+              });
+
+              if (response.ok) {
+                 const data = await response.json();
+                 setState({
+                    user: {
+                       id: data.user_id,
+                       telegramId: null,
+                       username: data.telegram_username,
+                       firstName: data.display_name,
+                       lastName: null,
+                       isPremium: false, // Default for now if not returned by /me
+                       photoUrl: null,
+                       isNewUser: false,
+                       tier: data.tier as UserTier,
+                       reputation_score: data.reputation_score
+                    },
+                    isLoading: false,
+                    isAuthenticated: true,
+                    isTelegramApp: false,
+                    error: null
+                 });
+                 return;
+              } else {
+                 // Token invalid/expired
+                 localStorage.removeItem("auth_token");
+              }
+           } catch (e) {
+              console.error("Token verification failed", e);
+              localStorage.removeItem("auth_token");
+           }
+        }
+
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -227,6 +272,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Logout function
   const logout = useCallback(() => {
+    localStorage.removeItem("auth_token");
     setState({
       user: null,
       isLoading: false,
@@ -238,10 +284,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
-    if (state.isAuthenticated && state.isTelegramApp) {
-      await login();
+    if (state.isAuthenticated) {
+        if (state.isTelegramApp) {
+           await login();
+        } else {
+           // Refresh Google/Session auth
+           const token = localStorage.getItem("auth_token");
+           if (token) {
+              try {
+                  const response = await fetch(`${API_BASE}/api/auth/google/me`, {
+                      headers: { "Authorization": `Bearer ${token}` }
+                  });
+                  if (response.ok) {
+                      const data = await response.json();
+                      setState(prev => ({
+                          ...prev,
+                          user: {
+                              ...prev.user!, // Keep existing fields if needed, or strictly overwrite
+                              id: data.user_id,
+                              username: data.telegram_username,
+                              firstName: data.display_name,
+                              tier: data.tier as UserTier,
+                              reputation_score: data.reputation_score
+                          }
+                      }));
+                  }
+              } catch (e) {
+                  console.error("Failed to refresh user", e);
+              }
+           }
+        }
     }
-    // TODO: Add refresh for Google/Session auth
   }, [state.isAuthenticated, state.isTelegramApp, login]);
 
   // Initialize on mount

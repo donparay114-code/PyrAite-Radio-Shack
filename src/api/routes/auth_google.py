@@ -29,7 +29,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 class GoogleLoginRequest(BaseModel):
     id_token: str
 
-@router.post("/google", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse)
 async def google_login(
     request: GoogleLoginRequest,
     session: AsyncSession = Depends(get_async_session)
