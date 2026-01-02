@@ -2,10 +2,11 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Radio, Menu, Bell, Settings, User, MessageCircle } from "lucide-react";
+import { Radio, Menu, Bell, Settings, User, MessageCircle, LogIn } from "lucide-react";
 import { GlowButton, IconButton, Avatar, Badge, LiveBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -15,6 +16,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderProps) {
   const [hasNotifications] = useState(true);
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <motion.header
@@ -144,19 +146,34 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           className="hidden sm:flex"
         />
 
-        {/* User avatar - links to profile */}
-        <Link href="/profile">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="ml-2 cursor-pointer"
-          >
-            <Avatar
-              name="User"
+        {/* User section - Login button or Avatar */}
+        {isLoading ? (
+          <div className="ml-2 w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+        ) : isAuthenticated && user ? (
+          <Link href="/profile">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="ml-2 cursor-pointer"
+            >
+              <Avatar
+                name={user.firstName || user.username || "User"}
+                src={user.photoUrl}
+                size="sm"
+              />
+            </motion.div>
+          </Link>
+        ) : (
+          <Link href="/login">
+            <GlowButton
               size="sm"
-            />
-          </motion.div>
-        </Link>
+              variant="secondary"
+              leftIcon={<LogIn className="w-4 h-4" />}
+            >
+              Sign In
+            </GlowButton>
+          </Link>
+        )}
       </div>
     </motion.header>
   );
