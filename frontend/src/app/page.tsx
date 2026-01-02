@@ -5,9 +5,8 @@ import { motion } from "framer-motion";
 import { Sparkles, Users, Music, Clock } from "lucide-react";
 import { NowPlaying, QueueList, RequestModal } from "@/components/features";
 import { GlassCard, GlowButton, Badge } from "@/components/ui";
-import { useNowPlaying, useQueue, useQueueStats, useVote, useSubmitRequest } from "@/hooks";
 import { formatNumber } from "@/lib/utils";
-import type { Song, QueueItem } from "@/types";
+import { type Song, type QueueItem, UserTier, QueueStatus } from "@/types";
 
 // Mock data for demo (replace with API data)
 const mockSong: Song = {
@@ -43,7 +42,7 @@ const mockQueueItems: QueueItem[] = [
     genre_hint: "EDM",
     style_tags: ["Energetic", "Heavy"],
     is_instrumental: true,
-    status: "generating",
+    status: QueueStatus.GENERATING,
     priority_score: 850,
     base_priority: 100,
     upvotes: 15,
@@ -63,7 +62,7 @@ const mockQueueItems: QueueItem[] = [
       username: "dj_master",
       display_name: "DJ Master",
       reputation_score: 1500,
-      tier: "vip",
+      tier: UserTier.VIP,
       total_requests: 45,
       successful_requests: 42,
       total_upvotes_received: 320,
@@ -83,7 +82,7 @@ const mockQueueItems: QueueItem[] = [
     genre_hint: "Lofi",
     style_tags: ["Chill", "Relaxing"],
     is_instrumental: true,
-    status: "queued",
+    status: QueueStatus.QUEUED,
     priority_score: 720,
     base_priority: 100,
     upvotes: 8,
@@ -103,7 +102,7 @@ const mockQueueItems: QueueItem[] = [
       username: "lofi_lover",
       display_name: "Lofi Lover",
       reputation_score: 450,
-      tier: "trusted",
+      tier: UserTier.TRUSTED,
       total_requests: 22,
       successful_requests: 20,
       total_upvotes_received: 150,
@@ -123,7 +122,7 @@ const mockQueueItems: QueueItem[] = [
     genre_hint: "Orchestral",
     style_tags: ["Epic", "Cinematic"],
     is_instrumental: true,
-    status: "pending",
+    status: QueueStatus.PENDING,
     priority_score: 580,
     base_priority: 100,
     upvotes: 4,
@@ -143,7 +142,7 @@ const mockQueueItems: QueueItem[] = [
       username: "epic_gamer",
       display_name: "Epic Gamer",
       reputation_score: 200,
-      tier: "regular",
+      tier: UserTier.REGULAR,
       total_requests: 8,
       successful_requests: 7,
       total_upvotes_received: 45,
