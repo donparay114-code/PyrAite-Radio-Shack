@@ -51,7 +51,8 @@ User Request (Telegram)
 |-----------|------------|
 | Workflow Automation | n8n |
 | Music Generation | Suno API |
-| Database | MySQL |
+| Database | PostgreSQL |
+| Frontend | Next.js + Tailwind CSS |
 | Bot Interface | Telegram Bot API |
 | Audio Processing | FFmpeg, Liquidsoap |
 | LLM Integration | OpenAI GPT-4, Claude |
@@ -84,43 +85,77 @@ PYrte-Radio-Shack/
 ### Prerequisites
 
 - Python 3.11+
-- MySQL 8.0+
+- PostgreSQL 16+
 - n8n (self-hosted or cloud)
-- Suno API access
+- Suno AI access
 - Telegram Bot Token
 - OpenAI API key (for moderation)
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/your-org/PYrte-Radio-Shack.git
 cd PYrte-Radio-Shack
 ```
 
-2. Create virtual environment:
+### Installation (Docker Recommended)
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/your-org/PYrte-Radio-Shack.git
+cd PYrte-Radio-Shack
+```
+
+1. Configure environment:
+
+```bash
+cp .env.example .env
+# Edit .env with your credentials if needed
+# Also configure frontend env
+cp frontend/.env.example frontend/.env
+```
+
+1. Start with Docker Compose:
+
+```bash
+docker-compose up -d --build
+```
+
+### Access
+
+| Service | URL | Credentials (Default) |
+| :--- | :--- | :--- |
+| **Frontend** | [http://localhost:3000](http://localhost:3000) | N/A |
+| **API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | N/A |
+| **n8n** | [http://localhost:5678](http://localhost:5678) | `admin` / `admin` |
+| **Stream** | `http://localhost:8000/stream` | N/A |
+
+### Manual Installation (Legacy)
+
+1. Create virtual environment:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configure environment:
+1. Initialize database:
+
 ```bash
-cp .env.example .env
-# Edit .env with your credentials
+# Ensure you have a running Postgres instance first
+python -c "from src.db.session import init_db; init_db()"
 ```
 
-5. Initialize database:
-```bash
-mysql -u root -p < sql/init.sql
-```
-
-6. Import n8n workflows from `n8n_workflows/` directory
+1. Import n8n workflows from `n8n_workflows/` directory
 
 ### Configuration
 
@@ -157,7 +192,7 @@ ICECAST_PASSWORD=hackme
 
 ## Database Schema
 
-Key tables in `radio_station` database:
+Key tables in `radio_station` database (PostgreSQL):
 
 - `radio_users` - User accounts and reputation
 - `song_requests` - All song requests

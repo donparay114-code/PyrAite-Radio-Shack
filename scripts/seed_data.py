@@ -35,36 +35,40 @@ def seed_banned_words(engine) -> int:
         {"word": "bomb", "severity": "critical", "category": "violence"},
         {"word": "terrorist", "severity": "critical", "category": "violence"},
         {"word": "attack", "severity": "warning", "category": "violence"},
-
         # Hate speech
         {"word": "nazi", "severity": "critical", "category": "hate"},
         {"word": "hitler", "severity": "critical", "category": "hate"},
         {"word": "racist", "severity": "warning", "category": "hate"},
         {"word": "supremacist", "severity": "critical", "category": "hate"},
-
         # Drug references
         {"word": "cocaine", "severity": "warning", "category": "drugs"},
         {"word": "heroin", "severity": "warning", "category": "drugs"},
         {"word": "meth", "severity": "warning", "category": "drugs"},
         {"word": "crack", "severity": "warning", "category": "drugs"},
-
         # Explicit content markers
         {"word": "explicit", "severity": "warning", "category": "adult"},
         {"word": "nsfw", "severity": "warning", "category": "adult"},
         {"word": "xxx", "severity": "critical", "category": "adult"},
         {"word": "porn", "severity": "critical", "category": "adult"},
-
         # Spam patterns (regex)
-        {"word": r"(https?://|www\.)\S+", "severity": "warning", "category": "spam", "is_regex": True},
+        {
+            "word": r"(https?://|www\.)\S+",
+            "severity": "warning",
+            "category": "spam",
+            "is_regex": True,
+        },
         {"word": r"@\w+", "severity": "warning", "category": "spam", "is_regex": True},
-        {"word": r"(discord\.gg|t\.me)/\S+", "severity": "warning", "category": "spam", "is_regex": True},
-
+        {
+            "word": r"(discord\.gg|t\.me)/\S+",
+            "severity": "warning",
+            "category": "spam",
+            "is_regex": True,
+        },
         # Profanity (basic - can be extended)
         {"word": "fuck", "severity": "warning", "category": "profanity"},
         {"word": "shit", "severity": "warning", "category": "profanity"},
         {"word": "bitch", "severity": "warning", "category": "profanity"},
         {"word": "ass", "severity": "warning", "category": "profanity"},
-
         # Self-harm
         {"word": "suicide", "severity": "critical", "category": "self-harm"},
         {"word": "self-harm", "severity": "critical", "category": "self-harm"},
@@ -76,7 +80,9 @@ def seed_banned_words(engine) -> int:
         for entry in banned_entries:
             is_regex = entry.get("is_regex", False)
             try:
-                conn.execute(text("""
+                conn.execute(
+                    text(
+                        """
                     INSERT INTO banned_words (word, severity, category, is_regex, is_active)
                     VALUES (:word, :severity, :category, :is_regex, TRUE)
                     ON CONFLICT (word) DO UPDATE SET
@@ -84,12 +90,15 @@ def seed_banned_words(engine) -> int:
                         category = EXCLUDED.category,
                         is_regex = EXCLUDED.is_regex,
                         is_active = TRUE
-                """), {
-                    "word": entry["word"],
-                    "severity": entry["severity"],
-                    "category": entry["category"],
-                    "is_regex": is_regex,
-                })
+                """
+                    ),
+                    {
+                        "word": entry["word"],
+                        "severity": entry["severity"],
+                        "category": entry["category"],
+                        "is_regex": is_regex,
+                    },
+                )
                 inserted += 1
             except Exception as e:
                 print(f"  Warning: Could not insert '{entry['word']}': {e}")
@@ -105,13 +114,18 @@ def seed_admin_user(engine, telegram_id: int, username: str = "admin") -> bool:
     """
     with engine.connect() as conn:
         try:
-            conn.execute(text("""
+            conn.execute(
+                text(
+                    """
                 INSERT INTO users (telegram_id, telegram_username, is_admin, daily_request_limit, reputation_score)
                 VALUES (:telegram_id, :username, TRUE, 0, 100.0)
                 ON CONFLICT (telegram_id) DO UPDATE SET
                     is_admin = TRUE,
                     daily_request_limit = 0
-            """), {"telegram_id": telegram_id, "username": username})
+            """
+                ),
+                {"telegram_id": telegram_id, "username": username},
+            )
             conn.commit()
             return True
         except Exception as e:
@@ -121,15 +135,26 @@ def seed_admin_user(engine, telegram_id: int, username: str = "admin") -> bool:
 
 def check_tables_exist(engine) -> bool:
     """Check if required tables exist."""
-    required_tables = ["users", "banned_words", "moderation_logs", "user_violations", "reputation_logs"]
+    required_tables = [
+        "users",
+        "banned_words",
+        "moderation_logs",
+        "user_violations",
+        "reputation_logs",
+    ]
     with engine.connect() as conn:
         for table in required_tables:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text(
+                    """
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
                     WHERE table_name = :table
                 )
-            """), {"table": table})
+            """
+                ),
+                {"table": table},
+            )
             if not result.scalar():
                 return False
     return True
@@ -138,20 +163,13 @@ def check_tables_exist(engine) -> bool:
 def main():
     parser = argparse.ArgumentParser(description="Seed database with initial data")
     parser.add_argument(
-        "--admin-telegram-id",
-        type=int,
-        help="Telegram user ID to make admin"
+        "--admin-telegram-id", type=int, help="Telegram user ID to make admin"
     )
     parser.add_argument(
-        "--admin-username",
-        type=str,
-        default="admin",
-        help="Username for admin user"
+        "--admin-username", type=str, default="admin", help="Username for admin user"
     )
     parser.add_argument(
-        "--skip-banned-words",
-        action="store_true",
-        help="Skip seeding banned words"
+        "--skip-banned-words", action="store_true", help="Skip seeding banned words"
     )
     args = parser.parse_args()
 
@@ -159,7 +177,9 @@ def main():
     print("=" * 40)
 
     # Create engine
-    print(f"\nConnecting to: {settings.postgres_host}:{settings.postgres_port}/{settings.postgres_database}")
+    print(
+        f"\nConnecting to: {settings.postgres_host}:{settings.postgres_port}/{settings.postgres_database}"
+    )
     try:
         engine = create_engine(settings.database_url)
         with engine.connect() as conn:

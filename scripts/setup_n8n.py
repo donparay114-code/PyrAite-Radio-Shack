@@ -13,7 +13,6 @@ The script reads from your .env file or environment variables.
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -30,7 +29,7 @@ def generate_telegram_credential() -> dict:
         "type": "telegramApi",
         "data": {
             "accessToken": settings.telegram_bot_token or "YOUR_TELEGRAM_BOT_TOKEN"
-        }
+        },
     }
 
 
@@ -45,8 +44,8 @@ def generate_postgres_credential() -> dict:
             "database": settings.postgres_database,
             "user": settings.postgres_user,
             "password": settings.postgres_password or "YOUR_PASSWORD",
-            "ssl": "disable"
-        }
+            "ssl": "disable",
+        },
     }
 
 
@@ -55,9 +54,7 @@ def generate_openai_credential() -> dict:
     return {
         "name": "OpenAI API",
         "type": "openAiApi",
-        "data": {
-            "apiKey": settings.openai_api_key or "YOUR_OPENAI_API_KEY"
-        }
+        "data": {"apiKey": settings.openai_api_key or "YOUR_OPENAI_API_KEY"},
     }
 
 
@@ -68,8 +65,8 @@ def generate_http_credential() -> dict:
         "type": "httpHeaderAuth",
         "data": {
             "name": "Authorization",
-            "value": f"Bearer {settings.suno_api_key or 'YOUR_SUNO_API_KEY'}"
-        }
+            "value": f"Bearer {settings.suno_api_key or 'YOUR_SUNO_API_KEY'}",
+        },
     }
 
 
@@ -79,13 +76,14 @@ def generate_n8n_environment() -> dict:
         "API_URL": "http://localhost:8000",
         "SUNO_API_URL": settings.suno_api_url or "https://your-suno-api.example.com",
         "TELEGRAM_CHAT_ID": settings.telegram_chat_id or "-1001234567890",
-        "LIQUIDSOAP_URL": f"http://{settings.icecast_host}:8080"
+        "LIQUIDSOAP_URL": f"http://{settings.icecast_host}:8080",
     }
 
 
 def print_setup_instructions():
     """Print manual setup instructions for n8n."""
-    print("""
+    print(
+        """
 n8n Credential Setup Instructions
 ==================================
 
@@ -126,25 +124,28 @@ n8n Credential Setup Instructions
    - Update credential references if needed
    - Activate the workflows
 """.format(
-        host=settings.postgres_host,
-        port=settings.postgres_port,
-        database=settings.postgres_database,
-        user=settings.postgres_user
-    ))
+            host=settings.postgres_host,
+            port=settings.postgres_port,
+            database=settings.postgres_database,
+            user=settings.postgres_user,
+        )
+    )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate n8n credential configurations")
+    parser = argparse.ArgumentParser(
+        description="Generate n8n credential configurations"
+    )
     parser.add_argument(
         "--output-dir",
         type=str,
         default="./n8n_credentials",
-        help="Directory to output credential files"
+        help="Directory to output credential files",
     )
     parser.add_argument(
         "--print-only",
         action="store_true",
-        help="Only print instructions, don't create files"
+        help="Only print instructions, don't create files",
     )
     args = parser.parse_args()
 
