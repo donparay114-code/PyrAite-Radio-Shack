@@ -131,14 +131,10 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
         finally:
             session.close()
 
-    # Create async engine from sync engine's URL for async route compatibility
-    if USE_POSTGRES:
-        test_async_url = ASYNC_SQLITE_URL
-    else:
-        test_async_url = "sqlite+aiosqlite:///./test.db"
-
+    # Create async engine using same database URL as sync engine
+    # Tables are already created by sync_engine fixture
     test_async_engine = create_async_engine(
-        test_async_url,
+        ASYNC_SQLITE_URL,
         connect_args={} if USE_POSTGRES else {"check_same_thread": False},
         poolclass=None if USE_POSTGRES else StaticPool,
     )
@@ -157,27 +153,10 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_async_session] = override_get_async_session
 
-    # Create tables in async engine too
-    import asyncio
-
-    async def setup_async_db():
-        async with test_async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.get_event_loop_policy().new_event_loop().run_until_complete(setup_async_db())
-
     with TestClient(app) as c:
         yield c
 
     app.dependency_overrides.clear()
-
-    # Cleanup async engine
-    async def cleanup_async_db():
-        async with test_async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-        await test_async_engine.dispose()
-
-    asyncio.get_event_loop_policy().new_event_loop().run_until_complete(cleanup_async_db())
 
 
 @pytest_asyncio.fixture(scope="function")
