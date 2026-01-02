@@ -2,6 +2,22 @@
 version: '3.8'
 
 services:
+  # Frontend Application
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - radio-network
+
   # FastAPI Application
   api:
     build:
@@ -44,16 +60,15 @@ services:
     image: postgres:16-alpine
     container_name: pyrte-radio-db
     ports:
-      - "5432:5432"
+      - "5433:5432"  # External 5433 -> Internal 5432 (avoids conflict with host PostgreSQL)
     environment:
       - POSTGRES_DB=radio_station
       - POSTGRES_USER=radio_user
       - POSTGRES_PASSWORD=radio_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/migrations/versions:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_station"]
+      test: [ "CMD-SHELL", "pg_isready -U radio_user -d radio_station" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -61,12 +76,42 @@ services:
     networks:
       - radio-network
 
+  # Database Migrations
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-migrate
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        alembic upgrade head &&
+        echo 'Seeding data...' &&
+        python scripts/seed_data.py &&
+        echo 'Migration complete!'
+      "
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+      - POSTGRES_DATABASE=radio_station
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - radio-network
+    profiles:
+      - setup
+
   # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: pyrte-radio-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"  # External 6380 -> Internal 6379 (avoids conflict with host Redis)
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -84,10 +129,11 @@ services:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
       - N8N_BASIC_AUTH_PASSWORD=admin
-      - N8N_HOST=localhost
+      - N8N_HOST=n8nbigdata.com
       - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8nbigdata.com/
+      - API_URL=http://api:8000
       - GENERIC_TIMEZONE=UTC
     volumes:
       - n8n_data:/home/node/.n8n

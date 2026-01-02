@@ -3,118 +3,127 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "telegram-webhook",
-        "options": {}
+        "updates": ["message"],
+        "additionalFields": {}
       },
-      "id": "webhook",
-      "name": "Telegram Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [240, 300],
-      "webhookId": "telegram-bot"
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "telegram-bot-trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract Telegram message data\nconst message = $input.first().json.message;\n\n// Handle missing message (e.g., edited messages, channel posts)\nif (!message) {\n  return { skip: true };\n}\n\nconst from = message.from || {};\nconst chat = message.chat || {};\nconst text = message.text || '';\n\n// Extract user info\nconst telegramUserId = from.id;\nconst username = from.username || null;\nconst firstName = from.first_name || null;\nconst lastName = from.last_name || null;\nconst chatId = chat.id;\nconst messageId = message.message_id;\n\n// Check if it's a command\nconst isCommand = text.startsWith('/');\nconst commandMatch = text.match(/^\\/([a-zA-Z_]+)(?:\\s+(.*))?$/);\nconst command = commandMatch ? commandMatch[1].toLowerCase() : null;\nconst commandArgs = commandMatch ? (commandMatch[2] || '').trim() : null;\n\n// For non-commands, the whole text is the prompt\nconst prompt = isCommand ? commandArgs : text.trim();\n\n// Basic genre detection from prompt\nlet genreHint = null;\nif (prompt) {\n  const lowerPrompt = prompt.toLowerCase();\n  const genrePatterns = [\n    { pattern: /\\b(lo-?fi|lofi)\\b/, genre: 'Lo-Fi' },\n    { pattern: /\\bsynthwave\\b/, genre: 'Synthwave' },\n    { pattern: /\\bretrowave\\b/, genre: 'Retrowave' },\n    { pattern: /\\btrap\\b/, genre: 'Trap' },\n    { pattern: /\\bjazz\\b/, genre: 'Jazz' },\n    { pattern: /\\brock\\b/, genre: 'Rock' },\n    { pattern: /\\bmetal\\b/, genre: 'Metal' },\n    { pattern: /\\belectronic\\b/, genre: 'Electronic' },\n    { pattern: /\\bhouse\\b/, genre: 'House' },\n    { pattern: /\\btechno\\b/, genre: 'Techno' },\n    { pattern: /\\bclassical\\b/, genre: 'Classical' },\n    { pattern: /\\bindie\\b/, genre: 'Indie' },\n    { pattern: /\\bpop\\b/, genre: 'Pop' },\n    { pattern: /\\bhip-?hop\\b/, genre: 'Hip-Hop' },\n    { pattern: /\\br&b\\b/, genre: 'R&B' },\n    { pattern: /\\bambient\\b/, genre: 'Ambient' },\n    { pattern: /\\bchill\\b/, genre: 'Chill' },\n    { pattern: /\\bfolk\\b/, genre: 'Folk' },\n    { pattern: /\\bcountry\\b/, genre: 'Country' },\n    { pattern: /\\breggae\\b/, genre: 'Reggae' }\n  ];\n  \n  for (const { pattern, genre } of genrePatterns) {\n    if (pattern.test(lowerPrompt)) {\n      genreHint = genre;\n      break;\n    }\n  }\n}\n\nreturn {\n  telegramUserId,\n  username,\n  firstName,\n  lastName,\n  chatId,\n  messageId,\n  text,\n  prompt,\n  genreHint,\n  isCommand,\n  command,\n  commandArgs,\n  skip: false,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-message",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
     },
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.body.message.text }}",
-              "operation": "startsWith",
-              "value2": "/request"
+              "id": "skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "is_request",
-      "name": "Is Request Command?",
+      "id": "should-process",
+      "name": "Should Process?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const message = $input.first().json.body.message;\nconst text = message.text || '';\nconst prompt = text.replace(/^\\/request\\s*/i, '').trim();\n\nreturn {\n  chat_id: message.chat.id,\n  message_id: message.message_id,\n  user_id: message.from.id,\n  username: message.from.username,\n  first_name: message.from.first_name,\n  prompt: prompt\n};"
-      },
-      "id": "parse_request",
-      "name": "Parse Request",
-      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 200]
+      "position": [680, 400]
     },
     {
       "parameters": {
-        "url": "={{ $env.API_URL }}/api/users/",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "telegram_id",
-              "value": "={{ $json.user_id }}"
-            },
-            {
-              "name": "telegram_username",
-              "value": "={{ $json.username }}"
-            },
-            {
-              "name": "telegram_first_name",
-              "value": "={{ $json.first_name }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "create_user",
-      "name": "Create/Get User",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [900, 200]
-    },
-    {
-      "parameters": {
-        "url": "={{ $env.API_URL }}/api/queue/",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "prompt",
-              "value": "={{ $('Parse Request').item.json.prompt }}"
-            },
-            {
-              "name": "telegram_user_id",
-              "value": "={{ $('Parse Request').item.json.user_id }}"
-            },
-            {
-              "name": "telegram_message_id",
-              "value": "={{ $('Parse Request').item.json.message_id }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "add_to_queue",
-      "name": "Add to Queue",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1120, 200]
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Parse Request').item.json.chat_id }}",
-        "text": "✅ Your request has been added to the queue!\n\n🎵 <i>{{ $('Parse Request').item.json.prompt }}</i>\n\n⏳ Position: #{{ $json.id }}",
-        "additionalFields": {
-          "parse_mode": "HTML",
-          "reply_to_message_id": "={{ $('Parse Request').item.json.message_id }}"
+        "operation": "executeQuery",
+        "query": "SELECT * FROM upsert_telegram_user($1, $2, $3, $4)",
+        "options": {
+          "queryParams": "={{ [$json.telegramUserId, $json.username, $json.firstName, $json.lastName] }}"
         }
       },
-      "id": "send_confirmation",
-      "name": "Send Confirmation",
+      "id": "upsert-user",
+      "name": "Upsert User",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [900, 400],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "banned-check",
+              "leftValue": "={{ $json.is_banned }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-banned",
+      "name": "Is Banned?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "You have been banned from using this bot.",
+        "additionalFields": {
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-banned-notice",
+      "name": "Send Banned Notice",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [1340, 200],
+      "typeVersion": 1.2,
+      "position": [1340, 280],
       "credentials": {
         "telegramApi": {
-          "id": "1",
+          "id": "telegram-bot",
           "name": "Telegram Bot"
         }
       }
@@ -122,99 +131,948 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.body.message.text }}",
-              "operation": "startsWith",
-              "value2": "/status"
+              "id": "timeout-check",
+              "leftValue": "={{ $json.timeout_until && new Date($json.timeout_until) > new Date() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
-          ]
-        }
-      },
-      "id": "is_status",
-      "name": "Is Status Command?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [680, 400]
-    },
-    {
-      "parameters": {
-        "url": "={{ $env.API_URL }}/api/queue/stats",
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "id": "get_stats",
-      "name": "Get Queue Stats",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [900, 400]
+      "id": "is-timed-out",
+      "name": "Is Timed Out?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 520]
     },
     {
       "parameters": {
-        "chatId": "={{ $input.first().json.body.message.chat.id }}",
-        "text": "📊 <b>Queue Status</b>\n\n⏳ Pending: {{ $json.pending }}\n🎵 Generating: {{ $json.generating }}\n✅ Completed today: {{ $json.completed_today }}",
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "You are currently timed out until {{ $('Upsert User').item.json.timeout_until }}.\n\nThis is due to multiple content violations.",
         "additionalFields": {
-          "parse_mode": "HTML"
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
         }
       },
-      "id": "send_stats",
-      "name": "Send Stats",
+      "id": "send-timeout-notice",
+      "name": "Send Timeout Notice",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [1120, 400],
+      "typeVersion": 1.2,
+      "position": [1560, 400],
       "credentials": {
         "telegramApi": {
-          "id": "1",
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cmd-check",
+              "leftValue": "={{ $('Parse Message').item.json.isCommand }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-command",
+      "name": "Is Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 640]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "request-cmd",
+              "leftValue": "={{ $('Parse Message').item.json.command }}",
+              "rightValue": "request",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-command",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1780, 520],
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "request",
+              "outputKey": "request"
+            },
+            {
+              "value": "status",
+              "outputKey": "status"
+            },
+            {
+              "value": "help",
+              "outputKey": "help"
+            },
+            {
+              "value": "start",
+              "outputKey": "start"
+            },
+            {
+              "value": "me",
+              "outputKey": "me"
+            }
+          ]
+        },
+        "dataType": "string",
+        "value": "={{ $('Parse Message').item.json.command }}",
+        "fallbackOutput": "extra"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM check_banned_words($1)",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.prompt || ''] }}"
+        }
+      },
+      "id": "check-blocklist",
+      "name": "Check Blocklist",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2000, 200],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "blocklist-hit",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "blocklist-hit",
+      "name": "Blocklist Hit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2220, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM handle_violation($1, $2, $3, $4, $5)",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId, 'blocklist', $json.word, $('Parse Message').item.json.prompt, $json.severity || 'warning'] }}"
+        }
+      },
+      "id": "register-violation",
+      "name": "Register Violation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2440, 80],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "timeout-action",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "timeout",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "violation-action",
+      "name": "Is Strike 3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2660, 80]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Violation Limit Reached</b>\n\nYou have received 3 warnings for prohibited content.\nYou are now timed out for <b>{{ $json.timeout_hours }} hours</b>.\n\nReputation: -{{ $json.reputation_penalty }} points",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-timeout-penalty",
+      "name": "Send Timeout Penalty",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2880, 0],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Warning: Prohibited Content Detected</b>\n\nYour prompt contained a blocked term.\n\nStrike <b>{{ $json.warnings }}/3</b>\nReputation: -{{ $json.reputation_penalty }} points\n\nIf you reach 3 strikes, you will be timed out.",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-warning",
+      "name": "Send Warning",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2880, 160],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM check_rate_limit($1)",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId] }}"
+        }
+      },
+      "id": "check-rate-limit",
+      "name": "Check Rate Limit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2440, 320],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "allowed",
+              "leftValue": "={{ $json.allowed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "rate-limit-check",
+      "name": "Within Limit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2660, 320]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Rate Limit Exceeded</b>\n\nYou have used {{ $json.requests_used }}/{{ $json.requests_limit }} requests today.\n\nYour limit resets at: {{ $json.resets_at }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-rate-limit",
+      "name": "Send Rate Limit",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2880, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/moderations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ input: $('Parse Message').item.json.prompt }) }}",
+        "options": {}
+      },
+      "id": "openai-moderation",
+      "name": "OpenAI Moderation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 240],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-api",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "flagged",
+              "leftValue": "={{ $json.results && $json.results[0] && $json.results[0].flagged }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "moderation-check",
+      "name": "Moderation Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3100, 240]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM handle_violation($1, $2, $3, $4, $5)",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId, 'ai_moderation', null, $('Parse Message').item.json.prompt, 'warning'] }}"
+        }
+      },
+      "id": "register-ai-violation",
+      "name": "Register AI Violation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [3320, 120],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO moderation_logs (user_id, telegram_user_id, action_type, content_type, original_content, moderation_source, moderation_score, moderation_categories, action_taken) SELECT u.id, $1, 'flagged', 'prompt', $2, 'openai', $3, $4, 'rejected' FROM users u WHERE u.telegram_id = $1",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId, $('Parse Message').item.json.prompt, $('OpenAI Moderation').item.json.results[0].category_scores.hate || 0, JSON.stringify($('OpenAI Moderation').item.json.results[0].categories || {})] }}"
+        }
+      },
+      "id": "log-moderation",
+      "name": "Log Moderation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [3540, 120],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Content Rejected</b>\n\nYour request was flagged by our content moderation system.\n\nPlease ensure your prompt:\n- Doesn't contain offensive language\n- Doesn't request inappropriate content\n- Follows our community guidelines\n\nReputation: -{{ $('Register AI Violation').item.json.reputation_penalty }} points",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-moderation-rejection",
+      "name": "Send Moderation Rejection",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3760, 120],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO radio_queue (user_id, telegram_user_id, telegram_message_id, original_prompt, genre_hint, status, priority_score, requested_at) SELECT u.id, $1, $2, $3, $4, 'pending', calculate_priority_score(u.id), CURRENT_TIMESTAMP FROM users u WHERE u.telegram_id = $1 RETURNING id, priority_score",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId, $('Parse Message').item.json.messageId, $('Parse Message').item.json.prompt, $('Parse Message').item.json.genreHint] }}"
+        }
+      },
+      "id": "add-to-queue",
+      "name": "Add to Queue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [3320, 360],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as position FROM radio_queue WHERE status = 'pending' AND priority_score >= $1",
+        "options": {
+          "queryParams": "={{ [$json.priority_score] }}"
+        }
+      },
+      "id": "get-queue-position",
+      "name": "Get Queue Position",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [3540, 360],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Your track is queued!</b>\n\n<i>{{ $('Parse Message').item.json.prompt }}</i>\n\n{{ $('Parse Message').item.json.genreHint ? 'Genre: ' + $('Parse Message').item.json.genreHint + '\\n' : '' }}Queue Position: #{{ $json.position }}\nPriority Score: {{ $('Add to Queue').item.json.priority_score }}\nReputation: {{ $('Upsert User').item.json.reputation_score }}\n\nI'll notify you when it's ready! (4-6 minutes)",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-queue-confirmation",
+      "name": "Send Queue Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3760, 360],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'generating') as generating, COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > CURRENT_DATE) as completed_today FROM radio_queue",
+        "options": {}
+      },
+      "id": "get-queue-stats",
+      "name": "Get Queue Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2000, 520],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Queue Status</b>\n\nPending: {{ $json.pending }}\nGenerating: {{ $json.generating }}\nCompleted today: {{ $json.completed_today }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-status",
+      "name": "Send Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2220, 520],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Welcome to AI Radio!</b>\n\nI can generate custom songs based on your prompts.\n\n<b>Commands:</b>\n/request [prompt] - Request a song\n/status - View queue status\n/me - View your stats\n/help - Show this message\n\n<b>Example:</b>\n<code>/request upbeat synthwave with retro vibes</code>\n\nOr just type a description and I'll create a song for you!",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-help",
+      "name": "Send Help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2000, 680],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT u.reputation_score, u.total_requests, u.successful_requests, u.is_premium, u.requests_today, u.daily_request_limit, (SELECT COUNT(*) FROM radio_queue rq WHERE rq.telegram_user_id = $1 AND rq.status = 'pending') as pending_requests FROM users u WHERE u.telegram_id = $1",
+        "options": {
+          "queryParams": "={{ [$('Parse Message').item.json.telegramUserId] }}"
+        }
+      },
+      "id": "get-user-stats",
+      "name": "Get User Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2000, 840],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-radio",
+          "name": "PostgreSQL Radio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "<b>Your Stats</b>\n\nReputation: {{ $json.reputation_score }}\nTotal Requests: {{ $json.total_requests }}\nSuccessful: {{ $json.successful_requests }}\nPending: {{ $json.pending_requests }}\n\nToday: {{ $json.requests_today }}/{{ $json.daily_request_limit || 'Unlimited' }}\n{{ $json.is_premium ? 'Premium Member' : '' }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-user-stats",
+      "name": "Send User Stats",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2220, 840],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-prompt",
+              "leftValue": "={{ $('Parse Message').item.json.prompt }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-prompt",
+      "name": "Has Prompt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 760]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "Please provide a description for your song.\n\nExample: <code>/request chill lo-fi beats for studying</code>",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $('Parse Message').item.json.messageId }}"
+        }
+      },
+      "id": "send-no-prompt",
+      "name": "Send No Prompt",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2000, 1000],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
           "name": "Telegram Bot"
         }
       }
     }
   ],
   "connections": {
-    "Telegram Webhook": {
+    "Telegram Trigger": {
       "main": [
         [
           {
-            "node": "Is Request Command?",
+            "node": "Parse Message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Is Request Command?": {
+    "Parse Message": {
       "main": [
         [
           {
-            "node": "Parse Request",
+            "node": "Should Process?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Process?": {
+      "main": [
+        [
+          {
+            "node": "Upsert User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Upsert User": {
+      "main": [
+        [
+          {
+            "node": "Is Banned?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Banned?": {
+      "main": [
+        [
+          {
+            "node": "Send Banned Notice",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Is Status Command?",
+            "node": "Is Timed Out?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Request": {
+    "Is Timed Out?": {
       "main": [
         [
           {
-            "node": "Create/Get User",
+            "node": "Send Timeout Notice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Command?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create/Get User": {
+    "Is Command?": {
       "main": [
+        [
+          {
+            "node": "Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Prompt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Command": {
+      "main": [
+        [
+          {
+            "node": "Check Blocklist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Queue Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check Blocklist": {
+      "main": [
+        [
+          {
+            "node": "Blocklist Hit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blocklist Hit?": {
+      "main": [
+        [
+          {
+            "node": "Register Violation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Violation": {
+      "main": [
+        [
+          {
+            "node": "Is Strike 3?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Strike 3?": {
+      "main": [
+        [
+          {
+            "node": "Send Timeout Penalty",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Within Limit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Within Limit?": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Moderation": {
+      "main": [
+        [
+          {
+            "node": "Moderation Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Moderation Check": {
+      "main": [
+        [
+          {
+            "node": "Register AI Violation",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Add to Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register AI Violation": {
+      "main": [
+        [
+          {
+            "node": "Log Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Moderation": {
+      "main": [
+        [
+          {
+            "node": "Send Moderation Rejection",
             "type": "main",
             "index": 0
           }
@@ -225,30 +1083,58 @@
       "main": [
         [
           {
-            "node": "Send Confirmation",
+            "node": "Get Queue Position",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Is Status Command?": {
+    "Get Queue Position": {
       "main": [
         [
           {
-            "node": "Get Queue Stats",
+            "node": "Send Queue Confirmation",
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Get Queue Stats": {
       "main": [
         [
           {
-            "node": "Send Stats",
+            "node": "Send Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Stats": {
+      "main": [
+        [
+          {
+            "node": "Send User Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Prompt?": {
+      "main": [
+        [
+          {
+            "node": "Check Blocklist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Prompt",
             "type": "main",
             "index": 0
           }
@@ -257,8 +1143,35 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "",
+    "saveManualExecutions": true,
+    "timezone": "UTC"
   },
   "staticData": null,
-  "tags": ["radio", "telegram", "bot"]
+  "tags": [
+    {
+      "name": "radio",
+      "createdAt": "2024-12-30T00:00:00.000Z",
+      "updatedAt": "2024-12-30T00:00:00.000Z"
+    },
+    {
+      "name": "telegram",
+      "createdAt": "2024-12-30T00:00:00.000Z",
+      "updatedAt": "2024-12-30T00:00:00.000Z"
+    },
+    {
+      "name": "bot",
+      "createdAt": "2024-12-30T00:00:00.000Z",
+      "updatedAt": "2024-12-30T00:00:00.000Z"
+    },
+    {
+      "name": "moderation",
+      "createdAt": "2024-12-30T00:00:00.000Z",
+      "updatedAt": "2024-12-30T00:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "templateId": "pyrte-telegram-bot"
+  }
 }
