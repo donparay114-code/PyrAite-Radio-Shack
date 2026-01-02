@@ -57,7 +57,7 @@ async def test_full_connectivity():
     print("=" * 60)
     print("FULL CONNECTIVITY TEST")
     print("=" * 60)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  N8N_HOST:           {n8n_host}")
     print(f"  BACKEND_PUBLIC_URL: {backend_url}")
     print(f"  SUNO_API_URL:       {suno_api_url}")

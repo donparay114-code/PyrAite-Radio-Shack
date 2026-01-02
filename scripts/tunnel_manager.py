@@ -10,7 +10,6 @@ This script manages a persistent Cloudflare tunnel, automatically:
 """
 
 import asyncio
-import os
 import re
 import signal
 import subprocess
