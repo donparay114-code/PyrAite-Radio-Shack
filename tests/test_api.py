@@ -249,7 +249,7 @@ class TestWebhookEndpoints:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["received"] is True
-        assert data["job_id"] == payload["job_id"]
+        assert data["status"] == "unknown_job"
 
     def test_n8n_trigger_webhook(self, client, webhook_headers):
         """Test n8n trigger webhook."""

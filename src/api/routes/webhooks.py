@@ -1,12 +1,25 @@
 """Webhook handlers for n8n and external integrations."""
 
+import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header, Request
+from fastapi import APIRouter, HTTPException, Header, Request, Depends
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models import (
+    RadioQueue,
+    QueueStatus,
+    Song,
+    SunoStatus,
+    get_async_session,
+)
+from src.services.suno_client import get_suno_client
 from src.utils.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -49,6 +62,7 @@ def verify_webhook_secret(secret: Optional[str]) -> bool:
 async def suno_status_webhook(
     payload: SunoWebhookPayload,
     x_webhook_secret: Optional[str] = Header(None),
+    session: AsyncSession = Depends(get_async_session),
 ):
     """
     Receive Suno job status updates.
@@ -58,11 +72,79 @@ async def suno_status_webhook(
     if not verify_webhook_secret(x_webhook_secret):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
-    # TODO: Update queue item status based on Suno job status
-    # This would typically:
-    # 1. Find the queue item by suno_job_id
-    # 2. Update status to GENERATED or FAILED
-    # 3. Download and store the audio if successful
+    # Find the queue item by suno_job_id
+    query = select(RadioQueue).where(RadioQueue.suno_job_id == payload.job_id)
+    result = await session.execute(query)
+    queue_item = result.scalar_one_or_none()
+
+    if not queue_item:
+        logger.warning(f"Received webhook for unknown job ID: {payload.job_id}")
+        # Return success to stop webhook retries, as we can't do anything
+        return {"received": True, "status": "unknown_job"}
+
+    logger.info(
+        f"Processing webhook for job {payload.job_id}, status: {payload.status}"
+    )
+
+    # Normalize status
+    status_lower = payload.status.lower()
+
+    if status_lower in ["complete", "completed", "success"]:
+        # Update queue item
+        queue_item.status = QueueStatus.GENERATED.value
+        queue_item.generation_completed_at = datetime.utcnow()
+
+        # Check if song already exists
+        song_query = select(Song).where(Song.suno_job_id == payload.job_id)
+        song_result = await session.execute(song_query)
+        song = song_result.scalar_one_or_none()
+
+        if not song:
+            # Create new song
+            song = Song(
+                suno_job_id=payload.job_id,
+                suno_status=SunoStatus.COMPLETE.value,
+                title=payload.title or "Untitled",
+                duration_seconds=payload.duration,
+                # Copy prompt info from queue item
+                original_prompt=queue_item.original_prompt,
+                enhanced_prompt=queue_item.enhanced_prompt,
+                is_instrumental=queue_item.is_instrumental,
+                # Genre/mood info might come from payload or queue item
+                genre=queue_item.genre_hint,
+                audio_url=payload.audio_url,
+                generation_completed_at=datetime.utcnow(),
+            )
+            session.add(song)
+            await session.flush()  # Get ID
+
+        # Link song to queue item
+        queue_item.song_id = song.id
+
+        # Download audio if URL is present and not yet downloaded
+        if payload.audio_url and not song.local_file_path:
+            filename = f"{payload.job_id}.mp3"
+            file_path = settings.songs_dir / filename
+
+            # Use SunoClient to download
+            client = get_suno_client()
+            success = await client.download_audio(payload.audio_url, file_path)
+
+            if success:
+                song.local_file_path = str(file_path)
+                song.downloaded_at = datetime.utcnow()
+                logger.info(f"Downloaded audio to {file_path}")
+            else:
+                logger.error(f"Failed to download audio for job {payload.job_id}")
+                queue_item.error_message = "Failed to download audio"
+
+    elif status_lower in ["failed", "error"]:
+        queue_item.status = QueueStatus.FAILED.value
+        queue_item.error_message = payload.error or "Generation failed"
+        queue_item.completed_at = datetime.utcnow()
+
+    # Commit changes
+    await session.commit()
 
     return {
         "received": True,
