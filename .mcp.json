@@ -3,6 +3,10 @@
     "n8n-bigdata-mcp": {
       "type": "http",
       "url": "https://n8nbigdata.com/mcp-server/http"
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=ekkqkxnjxxnjzkvxnoyg&features=debugging%2Cdatabase%2Cfunctions%2Cbranching%2Cstorage%2Cdocs%2Cdevelopment"
     }
   }
 }
