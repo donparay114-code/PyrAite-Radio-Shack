@@ -1,0 +1,30 @@
+- [ ] Configuration & Environment
+  - [x] Unify Database Choice (PostgreSQL)
+    - [x] Update README.md
+    - [x] Update requirements.txt
+  - [x] Setup Environment Variables
+    - [x] Create root .env
+    - [x] Create frontend .env
+- [ ] Backend Fixes
+  - [x] Cleanup dependencies
+  - [x] Add Health Check Endpoint
+- [ ] Frontend Fixes
+  - [x] Connect API Client
+  - [x] Create Frontend Dockerfile
+  - [x] Add Frontend to docker-compose.yml
+- [ ] Verification
+  - [x] Docker Build & Start
+  - [x] Frontend Build Fixes
+    - [x] Resolve unused imports
+    - [x] Create lib/utils.ts
+    - [x] Fix strict type errors
+    - [x] Add getInitials to utils.ts
+    - [x] Add truncate/formatTimeAgo to utils.ts
+  - [x] Manual Smoke Test
+- [x] Documentation
+  - [x] Update README.md
+  - [x] Finalize task.md
+- [x] CI/CD
+  - [x] Fix Database Mismatch in CI (MySQL -> Postgres)
+  - [x] Add Frontend Build Job
+  - [x] Restore aiosqlite for tests

@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Type Checking
+.mypy_cache/
+
+# Distribution
+*.manifest
+*.spec
+
+# Logs
+*.log
+logs/
+
+# Data directories
+data/songs/
+data/temp/
+data/broadcast/
+
+# Database
+*.db
+*.sqlite
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Secrets
+secrets/
+credentials/
+*.pem
+*.key
+
+# Audio files (large)
+*.mp3
+*.wav
+*.flac
+*.ogg
+!tests/fixtures/*.mp3
+
+# n8n data
+n8n-data/
+
+# Claude Code local settings (contains sensitive MCP tokens)
+.claude/settings.local.json

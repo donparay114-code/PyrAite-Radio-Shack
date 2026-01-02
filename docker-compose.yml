@@ -1,0 +1,184 @@
+# PYrte Radio Shack - Docker Compose for Local Development
+version: '3.8'
+
+services:
+  # Frontend Application
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+      - POSTGRES_DATABASE=radio_station
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SUNO_API_URL=${SUNO_API_URL:-}
+      - SUNO_API_KEY=${SUNO_API_KEY:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    volumes:
+      - ./src:/app/src:ro
+      - song_data:/app/data/songs
+      - temp_data:/app/data/temp
+      - broadcast_data:/app/data/broadcast
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: pyrte-radio-db
+    ports:
+      - "5433:5432"  # External 5433 -> Internal 5432 (avoids conflict with host PostgreSQL)
+    environment:
+      - POSTGRES_DB=radio_station
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U radio_user -d radio_station" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # Database Migrations
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-migrate
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        alembic upgrade head &&
+        echo 'Seeding data...' &&
+        python scripts/seed_data.py &&
+        echo 'Migration complete!'
+      "
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=radio_user
+      - POSTGRES_PASSWORD=radio_password
+      - POSTGRES_DATABASE=radio_station
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - radio-network
+    profiles:
+      - setup
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pyrte-radio-redis
+    ports:
+      - "6380:6379"  # External 6380 -> Internal 6379 (avoids conflict with host Redis)
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: pyrte-radio-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      - N8N_HOST=n8nbigdata.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8nbigdata.com/
+      - API_URL=http://api:8000
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n_workflows:/home/node/workflows:ro
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # Icecast Streaming Server (optional)
+  icecast:
+    image: moul/icecast
+    container_name: pyrte-radio-icecast
+    ports:
+      - "8080:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    volumes:
+      - icecast_logs:/var/log/icecast2
+    restart: unless-stopped
+    networks:
+      - radio-network
+    profiles:
+      - streaming
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  n8n_data:
+    driver: local
+  song_data:
+    driver: local
+  temp_data:
+    driver: local
+  broadcast_data:
+    driver: local
+  icecast_logs:
+    driver: local
+
+networks:
+  radio-network:
+    driver: bridge
