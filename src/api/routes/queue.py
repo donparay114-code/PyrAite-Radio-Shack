@@ -276,6 +276,17 @@ async def get_now_playing(
             created_at=song.created_at,
         )
 
+    # Serialize user if available
+    user_data = None
+    if queue_item.user:
+        user_data = {
+            "id": queue_item.user.id,
+            "display_name": queue_item.user.display_name,
+            "telegram_username": queue_item.user.telegram_username,
+            "reputation_score": queue_item.user.reputation_score,
+            "tier": queue_item.user.tier,
+        }
+
     # Build queue item response
     queue_item_response = NowPlayingQueueItem(
         id=queue_item.id,
@@ -301,7 +312,7 @@ async def get_now_playing(
         generation_completed_at=queue_item.generation_completed_at,
         broadcast_started_at=queue_item.broadcast_started_at,
         completed_at=queue_item.completed_at,
-        user=None,  # TODO: serialize user if needed
+        user=user_data,
     )
 
     return NowPlayingResponse(
