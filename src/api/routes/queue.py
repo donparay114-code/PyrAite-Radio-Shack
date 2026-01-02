@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, QueueStatus, get_async_session
+from src.services.icecast import get_current_listeners
 from sqlalchemy.orm import selectinload
 
 router = APIRouter()
@@ -309,7 +310,7 @@ async def get_now_playing(
         song=song_response,
         started_at=queue_item.broadcast_started_at,
         progress_seconds=progress_seconds,
-        listeners=0,  # TODO: track active listeners
+        listeners=await get_current_listeners(),
     )
 
 
