@@ -17,9 +17,27 @@ from src.models.base import Base
 from src.models import User, Song, RadioQueue, QueueStatus, SunoStatus
 
 
-# Use SQLite for testing (in-memory)
-SQLITE_URL = "sqlite:///./test.db"
-ASYNC_SQLITE_URL = "sqlite+aiosqlite:///./test.db"
+import os
+
+# Database URLs (using environment variables if present, fallback to SQLite)
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "radio_user")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
+POSTGRES_DATABASE = os.getenv("POSTGRES_DATABASE", "radio_station")
+
+# Use SQLite for testing if not in CI or not explicitly told to use Postgres
+USE_POSTGRES = (
+    os.getenv("USE_POSTGRES", "false").lower() == "true"
+    or "GITHUB_ACTIONS" in os.environ
+)
+
+if USE_POSTGRES:
+    SQLITE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DATABASE}"
+    ASYNC_SQLITE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DATABASE}"
+else:
+    SQLITE_URL = "sqlite:///./test.db"
+    ASYNC_SQLITE_URL = "sqlite+aiosqlite:///./test.db"
 
 
 @pytest.fixture(scope="session")
