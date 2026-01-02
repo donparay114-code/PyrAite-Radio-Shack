@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, QueueStatus, get_async_session
+from src.services.icecast import get_current_listeners
 from sqlalchemy.orm import selectinload
 
 router = APIRouter()
@@ -200,12 +201,31 @@ async def get_queue_stats(
     )
     completed_today = completed_result.scalar() or 0
 
+    # Calculate average wait time (for items completed today)
+    # We fetch timestamps and calculate in Python to support both SQLite (tests) and Postgres
+    wait_times_result = await session.execute(
+        select(RadioQueue.requested_at, RadioQueue.completed_at).where(
+            RadioQueue.status == QueueStatus.COMPLETED.value,
+            RadioQueue.completed_at >= today_start,
+        )
+    )
+    wait_times = wait_times_result.all()
+
+    total_wait_seconds = 0.0
+    count = 0
+    for req_at, comp_at in wait_times:
+        if req_at and comp_at:
+            total_wait_seconds += (comp_at - req_at).total_seconds()
+            count += 1
+
+    average_wait_minutes = round((total_wait_seconds / count / 60) if count > 0 else 0.0, 1)
+
     return QueueStatsResponse(
         total_items=total_items,
         pending=pending,
         generating=generating,
         completed_today=completed_today,
-        average_wait_minutes=0.0,  # TODO: Calculate actual average
+        average_wait_minutes=average_wait_minutes,
     )
 
 
@@ -276,6 +296,17 @@ async def get_now_playing(
             created_at=song.created_at,
         )
 
+    # Serialize user if available
+    user_data = None
+    if queue_item.user:
+        user_data = {
+            "id": queue_item.user.id,
+            "display_name": queue_item.user.display_name,
+            "telegram_username": queue_item.user.telegram_username,
+            "reputation_score": queue_item.user.reputation_score,
+            "tier": queue_item.user.tier,
+        }
+
     # Build queue item response
     queue_item_response = NowPlayingQueueItem(
         id=queue_item.id,
@@ -301,7 +332,7 @@ async def get_now_playing(
         generation_completed_at=queue_item.generation_completed_at,
         broadcast_started_at=queue_item.broadcast_started_at,
         completed_at=queue_item.completed_at,
-        user=None,  # TODO: serialize user if needed
+        user=user_data,
     )
 
     return NowPlayingResponse(
@@ -309,7 +340,7 @@ async def get_now_playing(
         song=song_response,
         started_at=queue_item.broadcast_started_at,
         progress_seconds=progress_seconds,
-        listeners=0,  # TODO: track active listeners
+        listeners=await get_current_listeners(),
     )
 
 
