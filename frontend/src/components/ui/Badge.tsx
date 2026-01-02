@@ -11,6 +11,7 @@ interface BadgeProps {
   pulse?: boolean;
   icon?: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export function Badge({
@@ -20,6 +21,7 @@ export function Badge({
   pulse = false,
   icon,
   className,
+  style,
 }: BadgeProps) {
   const variants = {
     default: "bg-white/10 text-white/80 border-white/10",
@@ -43,6 +45,7 @@ export function Badge({
         sizes[size],
         className
       )}
+      style={style}
     >
       {pulse && (
         <span className="relative flex h-2 w-2">

@@ -68,7 +68,7 @@ const mockQueueItems: QueueItem[] = Array.from({ length: 15 }, (_, i) => ({
   user: {
     id: i + 1,
     telegram_id: 100000 + i,
-    username: `user_${i + 1}`,
+    telegram_username: `user_${i + 1}`,
     display_name: `User ${i + 1}`,
     reputation_score: 100 + i * 50,
     tier: ["new", "regular", "trusted", "vip", "elite"][i % 5] as any,

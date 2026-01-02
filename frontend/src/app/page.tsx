@@ -124,9 +124,9 @@ export default function HomePage() {
 
   // Calculate stats from API data
   const queueCount = displayQueue.length;
-  const generatedToday = stats?.generated_today ?? 0;
-  const avgWaitMinutes = stats?.avg_wait_minutes ?? 0;
-  const listeners = stats?.active_listeners ?? 0;
+  const generatedToday = stats?.completed_today ?? 0;
+  const avgWaitMinutes = stats?.average_wait_time ?? 0;
+  const listeners = nowPlaying?.listeners ?? 0;
 
   // Show loading state
   const isLoading = nowPlayingLoading || queueLoading;
@@ -572,7 +572,7 @@ function ChatPreview({ messages, isLoading, onSendMessage, isSending, isAuthenti
               animate={{ opacity: 1, y: 0 }}
               className="flex items-start gap-2"
             >
-              <Avatar name={`User ${msg.user_id || "?"}`} size="xs" />
+              <Avatar name={`User ${msg.user_id || "?"}`} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-medium text-white">
