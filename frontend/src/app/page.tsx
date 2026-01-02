@@ -1,174 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Users, Music, Clock } from "lucide-react";
+import { Sparkles, Users, Music, Clock, Loader2 } from "lucide-react";
 import { NowPlaying, QueueList, RequestModal } from "@/components/features";
-import { GlassCard, GlowButton, Badge } from "@/components/ui";
-import { formatNumber } from "@/lib/utils";
+import { GlassCard, GlowButton } from "@/components/ui";
+import { useNowPlaying, useQueue, useQueueStats, useVote, useSubmitRequest } from "@/hooks/useApi";
 import { type Song, type QueueItem, UserTier, QueueStatus } from "@/types";
 
-// Mock data for demo (replace with API data)
-const mockSong: Song = {
-  id: 1,
-  suno_song_id: "abc123",
-  suno_job_id: "job123",
-  title: "Neon Dreams",
-  artist: "AI Generated",
-  genre: "Synthwave",
-  style_tags: ["Retro", "Atmospheric"],
-  mood: "Dreamy",
-  duration_seconds: 195,
+// Fallback mock data for when API is unavailable
+const fallbackSong: Song = {
+  id: 0,
+  suno_song_id: "",
+  suno_job_id: "",
+  title: "Waiting for broadcast...",
+  artist: "AI Radio",
+  genre: "Various",
+  style_tags: [],
+  mood: null,
+  duration_seconds: 0,
   audio_url: null,
   cover_image_url: null,
-  original_prompt: "A dreamy synthwave track about summer nights",
+  original_prompt: "",
   enhanced_prompt: null,
   lyrics: null,
   is_instrumental: false,
-  play_count: 42,
-  total_upvotes: 128,
-  total_downvotes: 5,
+  play_count: 0,
+  total_upvotes: 0,
+  total_downvotes: 0,
   created_at: new Date().toISOString(),
 };
 
-const mockQueueItems: QueueItem[] = [
-  {
-    id: 1,
-    user_id: 1,
-    song_id: 1,
-    telegram_user_id: 123456,
-    original_prompt: "An energetic EDM drop with heavy bass",
-    enhanced_prompt: null,
-    genre_hint: "EDM",
-    style_tags: ["Energetic", "Heavy"],
-    is_instrumental: true,
-    status: QueueStatus.GENERATING,
-    priority_score: 850,
-    base_priority: 100,
-    upvotes: 15,
-    downvotes: 2,
-    suno_job_id: null,
-    error_message: null,
-    retry_count: 0,
-    requested_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    queued_at: null,
-    generation_started_at: null,
-    generation_completed_at: null,
-    broadcast_started_at: null,
-    completed_at: null,
-    user: {
-      id: 1,
-      telegram_id: 123456,
-      username: "dj_master",
-      display_name: "DJ Master",
-      reputation_score: 1500,
-      tier: UserTier.VIP,
-      total_requests: 45,
-      successful_requests: 42,
-      total_upvotes_received: 320,
-      total_downvotes_received: 15,
-      is_banned: false,
-      is_premium: true,
-      created_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 2,
-    user_id: 2,
-    song_id: null,
-    telegram_user_id: 789012,
-    original_prompt: "Chill lofi beats for studying",
-    enhanced_prompt: null,
-    genre_hint: "Lofi",
-    style_tags: ["Chill", "Relaxing"],
-    is_instrumental: true,
-    status: QueueStatus.QUEUED,
-    priority_score: 720,
-    base_priority: 100,
-    upvotes: 8,
-    downvotes: 1,
-    suno_job_id: null,
-    error_message: null,
-    retry_count: 0,
-    requested_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    queued_at: null,
-    generation_started_at: null,
-    generation_completed_at: null,
-    broadcast_started_at: null,
-    completed_at: null,
-    user: {
-      id: 2,
-      telegram_id: 789012,
-      username: "lofi_lover",
-      display_name: "Lofi Lover",
-      reputation_score: 450,
-      tier: UserTier.TRUSTED,
-      total_requests: 22,
-      successful_requests: 20,
-      total_upvotes_received: 150,
-      total_downvotes_received: 8,
-      is_banned: false,
-      is_premium: false,
-      created_at: new Date().toISOString(),
-    },
-  },
-  {
-    id: 3,
-    user_id: 3,
-    song_id: null,
-    telegram_user_id: 345678,
-    original_prompt: "Epic orchestral battle music",
-    enhanced_prompt: null,
-    genre_hint: "Orchestral",
-    style_tags: ["Epic", "Cinematic"],
-    is_instrumental: true,
-    status: QueueStatus.PENDING,
-    priority_score: 580,
-    base_priority: 100,
-    upvotes: 4,
-    downvotes: 0,
-    suno_job_id: null,
-    error_message: null,
-    retry_count: 0,
-    requested_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    queued_at: null,
-    generation_started_at: null,
-    generation_completed_at: null,
-    broadcast_started_at: null,
-    completed_at: null,
-    user: {
-      id: 3,
-      telegram_id: 345678,
-      username: "epic_gamer",
-      display_name: "Epic Gamer",
-      reputation_score: 200,
-      tier: UserTier.REGULAR,
-      total_requests: 8,
-      successful_requests: 7,
-      total_upvotes_received: 45,
-      total_downvotes_received: 3,
-      is_banned: false,
-      is_premium: false,
-      created_at: new Date().toISOString(),
-    },
-  },
-];
+const fallbackQueueItem: QueueItem = {
+  id: 0,
+  user_id: 0,
+  song_id: null,
+  telegram_user_id: 0,
+  original_prompt: "No song currently playing",
+  enhanced_prompt: null,
+  genre_hint: null,
+  style_tags: [],
+  is_instrumental: false,
+  status: QueueStatus.PENDING,
+  priority_score: 0,
+  base_priority: 0,
+  upvotes: 0,
+  downvotes: 0,
+  suno_job_id: null,
+  error_message: null,
+  retry_count: 0,
+  requested_at: new Date().toISOString(),
+  queued_at: null,
+  generation_started_at: null,
+  generation_completed_at: null,
+  broadcast_started_at: null,
+  completed_at: null,
+  user: null,
+};
 
 export default function HomePage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState(45);
+  const [currentTime, setCurrentTime] = useState(0);
 
-  // In production, use these hooks:
-  // const { data: nowPlaying } = useNowPlaying();
-  // const { data: queueItems } = useQueue();
-  // const { data: stats } = useQueueStats();
-  // const voteMutation = useVote();
-  // const submitMutation = useSubmitRequest();
+  // Real API hooks
+  const { data: nowPlaying, isLoading: nowPlayingLoading, error: nowPlayingError } = useNowPlaying();
+  const { data: queueItems, isLoading: queueLoading, error: queueError } = useQueue();
+  const { data: stats, isLoading: statsLoading } = useQueueStats();
+  const voteMutation = useVote();
+  const submitMutation = useSubmitRequest();
+
+  // Extract current song and queue item from nowPlaying response
+  const currentSong: Song = nowPlaying?.song ?? fallbackSong;
+  const currentQueueItem: QueueItem = nowPlaying?.queue_item ?? fallbackQueueItem;
+  const displayQueue: QueueItem[] = queueItems ?? [];
 
   const handleVote = (itemId: number, type: "up" | "down") => {
-    console.log("Vote:", itemId, type);
-    // voteMutation.mutate({ queueItemId: itemId, voteType: type, userId: 1 });
+    // TODO: Get actual user ID from auth context
+    const userId = 1;
+    voteMutation.mutate({
+      queueItemId: itemId,
+      voteType: type === "up" ? "upvote" : "downvote",
+      userId,
+    });
   };
 
   const handleSubmitRequest = async (data: {
@@ -177,21 +91,36 @@ export default function HomePage() {
     isInstrumental: boolean;
     styleTags: string[];
   }) => {
-    console.log("Submit:", data);
-    // await submitMutation.mutateAsync(data);
-    // Simulate delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await submitMutation.mutateAsync(data);
   };
 
-  // Simulate time progress
-  useState(() => {
+  // Track playback time
+  useEffect(() => {
+    if (!isPlaying || !currentSong.duration_seconds) return;
+
     const interval = setInterval(() => {
-      if (isPlaying) {
-        setCurrentTime((prev) => (prev >= 195 ? 0 : prev + 1));
-      }
+      setCurrentTime((prev) => {
+        if (prev >= currentSong.duration_seconds) return 0;
+        return prev + 1;
+      });
     }, 1000);
+
     return () => clearInterval(interval);
-  });
+  }, [isPlaying, currentSong.duration_seconds]);
+
+  // Reset time when song changes
+  useEffect(() => {
+    setCurrentTime(0);
+  }, [currentSong.id]);
+
+  // Calculate stats from API data
+  const queueCount = displayQueue.length;
+  const generatedToday = stats?.generated_today ?? 0;
+  const avgWaitMinutes = stats?.avg_wait_minutes ?? 0;
+  const listeners = stats?.active_listeners ?? 0;
+
+  // Show loading state
+  const isLoading = nowPlayingLoading || queueLoading;
 
   return (
     <div className="space-y-8">
@@ -204,39 +133,46 @@ export default function HomePage() {
         <StatCard
           icon={<Users className="w-5 h-5" />}
           label="Listeners"
-          value="1,234"
+          value={statsLoading ? "..." : listeners.toLocaleString()}
           color="cyan"
         />
         <StatCard
           icon={<Music className="w-5 h-5" />}
           label="In Queue"
-          value="12"
+          value={queueLoading ? "..." : queueCount.toString()}
           color="violet"
         />
         <StatCard
           icon={<Sparkles className="w-5 h-5" />}
           label="Generated Today"
-          value="89"
+          value={statsLoading ? "..." : generatedToday.toString()}
           color="pink"
         />
         <StatCard
           icon={<Clock className="w-5 h-5" />}
           label="Avg Wait"
-          value="~3 min"
+          value={statsLoading ? "..." : `~${Math.round(avgWaitMinutes)} min`}
           color="orange"
         />
       </motion.div>
 
       {/* Now Playing section */}
-      <NowPlaying
-        song={mockSong}
-        queueItem={mockQueueItems[0]}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        onPlayPause={() => setIsPlaying(!isPlaying)}
-        onVote={(type) => handleVote(0, type)}
-        onSeek={setCurrentTime}
-      />
+      {nowPlayingLoading ? (
+        <GlassCard className="p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="ml-3 text-text-muted">Loading now playing...</span>
+        </GlassCard>
+      ) : (
+        <NowPlaying
+          song={currentSong}
+          queueItem={currentQueueItem}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          onPlayPause={() => setIsPlaying(!isPlaying)}
+          onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
+          onSeek={setCurrentTime}
+        />
+      )}
 
       {/* Request button (mobile) */}
       <div className="lg:hidden">
@@ -245,17 +181,25 @@ export default function HomePage() {
           className="w-full"
           size="lg"
           leftIcon={<Sparkles className="w-5 h-5" />}
+          disabled={submitMutation.isPending}
         >
-          Request a Song
+          {submitMutation.isPending ? "Submitting..." : "Request a Song"}
         </GlowButton>
       </div>
 
       {/* Queue section */}
-      <QueueList
-        items={mockQueueItems}
-        onVote={handleVote}
-        currentItemId={undefined}
-      />
+      {queueLoading ? (
+        <GlassCard className="p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="ml-3 text-text-muted">Loading queue...</span>
+        </GlassCard>
+      ) : (
+        <QueueList
+          items={displayQueue}
+          onVote={handleVote}
+          currentItemId={currentQueueItem?.id}
+        />
+      )}
 
       {/* Request modal */}
       <RequestModal
