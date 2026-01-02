@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db';
+import { sendNotification } from '@/lib/notifications';
 
 // POST /api/moderation/review - Approve or reject flagged content
 export async function POST(request: NextRequest) {
@@ -98,7 +99,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // TODO: Send notification to user via their platform (Telegram/WhatsApp)
+    // Send notification to user via their platform (Telegram/WhatsApp)
+    await sendNotification(submitterId, result.message).catch(err =>
+      console.error(`Failed to send notification to user ${submitterId}:`, err)
+    );
 
     return NextResponse.json({
       success: true,
