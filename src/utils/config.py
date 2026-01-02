@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # API Keys
     suno_api_url: str = ""
     suno_api_key: str = ""
+    mubert_api_key: str = ""
     openai_api_key: str = ""
 
     # Telegram

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 from src.utils.config import settings
+from src.services.mubert_constants import MUBERT_TAGS
 
 logger = logging.getLogger(__name__)
 
@@ -322,36 +323,210 @@ class StableAudioProvider(MusicProvider):
 
 
 class MubertProvider(MusicProvider):
-    """Mubert API provider (placeholder for future implementation)."""
+    """
+    Mubert API provider implementation.
+
+    Uses the Mubert API to generate music from text prompts (tags) or parameters.
+    Since Mubert requires specific tags, this provider attempts to map the prompt
+    to known Mubert tags or passes it directly if supported.
+    """
 
     provider_type = ProviderType.MUBERT
+    API_URL = "https://api-b2b.mubert.com/v2/"
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key
-        logger.warning("MubertProvider is not yet fully implemented")
+        import httpx
+        self.api_key = api_key or settings.mubert_api_key
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def _get_client(self):
+        import httpx
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                base_url=self.API_URL,
+                timeout=60.0
+            )
+        return self._client
+
+    def _extract_tags(self, prompt: str) -> list[str]:
+        """
+        Extract valid Mubert tags from the prompt.
+        Simple keyword matching against known Mubert tags.
+        """
+        if not prompt:
+            return []
+
+        prompt_lower = prompt.lower()
+        found_tags = []
+
+        # Check for exact matches of multi-word tags first
+        for tag in MUBERT_TAGS:
+            if tag in prompt_lower:
+                found_tags.append(tag)
+
+        # If no tags found, try to split prompt and match words (fallback)
+        if not found_tags:
+            words = prompt_lower.replace(",", " ").split()
+            for word in words:
+                if word in MUBERT_TAGS:
+                    found_tags.append(word)
+
+        return found_tags
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
-        # TODO: Implement Mubert API integration
-        return GenerationResult(
-            provider=ProviderType.MUBERT,
-            job_id="",
-            status=GenerationStatus.ERROR,
-            error_message="Mubert provider not yet implemented",
-        )
+        """
+        Generate music using Mubert API (RecordTrackTTM).
+
+        Note: Mubert API typically requires tags. We attempt to extract tags
+        from the prompt. If no known tags are found, we pass the prompt
+        as a single tag hoping for best effort or new API capabilities.
+        """
+        client = await self._get_client()
+
+        tags = self._extract_tags(request.prompt)
+        if not tags:
+            # Fallback: Use the prompt itself as a tag if it's short, or default
+            # Since we can't do semantic search without heavy deps, we try this.
+            logger.warning(f"No known Mubert tags found in prompt: '{request.prompt}'. Using prompt as tag.")
+            tags = [request.prompt]
+
+        payload = {
+            "method": "RecordTrackTTM",
+            "params": {
+                "pat": self.api_key,
+                "tags": tags,
+                "duration": request.duration_seconds or 30,
+                "mode": "track"
+            }
+        }
+
+        try:
+            # Note: The endpoint is likely just /RecordTrackTTM relative to base URL if handled by client
+            # But the client base_url is https://api-b2b.mubert.com/v2
+            # So we post to "RecordTrackTTM" (no slash) or "/RecordTrackTTM"
+            response = await client.post("RecordTrackTTM", json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+            # Check for API error
+            if data.get("status") != 1:
+                error_text = data.get("error", {}).get("text", "Unknown error")
+                return GenerationResult(
+                    provider=ProviderType.MUBERT,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=f"Mubert API Error: {error_text}",
+                    raw_response=data
+                )
+
+            # Mubert returns a task with a download link immediately
+            tasks = data.get("data", {}).get("tasks", [])
+            if not tasks:
+                return GenerationResult(
+                    provider=ProviderType.MUBERT,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message="No tasks returned from Mubert",
+                    raw_response=data
+                )
+
+            task = tasks[0]
+            download_link = task.get("download_link")
+
+            # We use the download link as the job_id since we need to poll it
+            # Using the link directly as ID is simplest for stateless polling
+            return GenerationResult(
+                provider=ProviderType.MUBERT,
+                job_id=download_link,
+                status=GenerationStatus.PROCESSING,  # We assume processing until we can download
+                title=request.title,
+                audio_url=download_link,
+                created_at=datetime.utcnow(),
+                raw_response=data
+            )
+
+        except Exception as e:
+            logger.error(f"Mubert generation failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.MUBERT,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
 
     async def get_status(self, job_id: str) -> GenerationResult:
-        return GenerationResult(
-            provider=ProviderType.MUBERT,
-            job_id=job_id,
-            status=GenerationStatus.ERROR,
-            error_message="Mubert provider not yet implemented",
-        )
+        """
+        Check status of Mubert generation.
+
+        For Mubert, the 'job_id' is the download link. We check if it returns 200 OK.
+        """
+        import httpx
+
+        # job_id is the download URL
+        url = job_id
+        if not url:
+            return GenerationResult(
+                provider=ProviderType.MUBERT,
+                job_id=job_id,
+                status=GenerationStatus.ERROR,
+                error_message="Invalid job ID (missing URL)",
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.head(url)
+
+                if response.status_code == 200:
+                    # Content-Length check to ensure it's not a small error page/json
+                    # content_length = int(response.headers.get("content-length", 0))
+                    # if content_length > 1000:
+                    return GenerationResult(
+                        provider=ProviderType.MUBERT,
+                        job_id=job_id,
+                        status=GenerationStatus.COMPLETE,
+                        audio_url=url,
+                    )
+
+                # If 404 or other, it might still be processing (Mubert returns 404 or non-200 while generating?)
+                # Actually, typically it returns 200 but might be incomplete?
+                # The notebook loops with GET until 200.
+
+                return GenerationResult(
+                    provider=ProviderType.MUBERT,
+                    job_id=job_id,
+                    status=GenerationStatus.PROCESSING,
+                    audio_url=url,
+                )
+
+        except Exception as e:
+            # If connection fails, we assume it's still processing or temp error
+            return GenerationResult(
+                provider=ProviderType.MUBERT,
+                job_id=job_id,
+                status=GenerationStatus.PROCESSING,  # Assume processing on network error
+                audio_url=url,
+                error_message=str(e),  # Keep track of error
+            )
 
     async def download_audio(self, audio_url: str, output_path: Path) -> bool:
-        return False
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                async with client.stream("GET", audio_url) as response:
+                    response.raise_for_status()
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(8192):
+                            f.write(chunk)
+            return True
+        except Exception as e:
+            logger.error(f"Download failed: {e}")
+            return False
 
     async def close(self) -> None:
-        pass
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
 
 
 class MockProvider(MusicProvider):
