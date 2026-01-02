@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import select
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, QueueStatus, Song, SunoStatus, User
 from src.services.suno_client import SunoClient, SunoJobStatus, get_suno_client
+from src.services.audio_processor import AudioProcessor, get_audio_processor
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -21,12 +24,16 @@ class QueueManager:
     def __init__(
         self,
         suno_client: Optional[SunoClient] = None,
+        audio_processor: Optional[AudioProcessor] = None,
         max_concurrent: int = 3,
         poll_interval: float = 10.0,
+        auto_master: bool = True,
     ):
         self.suno_client = suno_client or get_suno_client()
+        self.audio_processor = audio_processor or get_audio_processor()
         self.max_concurrent = max_concurrent
         self.poll_interval = poll_interval
+        self.auto_master = auto_master
         self._running = False
         self._active_jobs: dict[int, str] = {}  # queue_id -> suno_job_id
 
@@ -179,6 +186,10 @@ class QueueManager:
                 song.local_file_path = str(download_path)
                 song.downloaded_at = datetime.utcnow()
 
+                # Auto-master the downloaded audio
+                if self.auto_master:
+                    await self._master_audio(song, download_path)
+
         # Update queue item
         item.song_id = song.id
         item.status = QueueStatus.GENERATED.value
@@ -224,6 +235,79 @@ class QueueManager:
                 await self._update_user_stats(session, item.user_id, success=False)
 
         await session.flush()
+
+    async def _master_audio(self, song: Song, audio_path: Path) -> None:
+        """
+        Apply audio mastering (loudness normalization) to downloaded song.
+
+        Uses EBU R128 standard targeting -14 LUFS for consistent broadcast levels.
+        Updates song record with LUFS data. If mastering fails, the original
+        file is kept and the song remains usable (just not normalized).
+
+        Args:
+            song: Song record to update with mastering data
+            audio_path: Path to the downloaded audio file
+        """
+        try:
+            # Ensure path is a Path object
+            if isinstance(audio_path, str):
+                audio_path = Path(audio_path)
+
+            # First analyze the original audio
+            loudness = await self.audio_processor.analyze_loudness(audio_path)
+            if loudness:
+                original_lufs = float(loudness.get("input_i", -24))
+                logger.info(
+                    f"Song {song.id} original loudness: {original_lufs:.1f} LUFS"
+                )
+
+            # Create normalized version
+            normalized_path = audio_path.parent / f"{audio_path.stem}_mastered.mp3"
+
+            result = await self.audio_processor.normalize(
+                input_path=audio_path,
+                output_path=normalized_path,
+            )
+
+            if result.success and result.output_path and result.output_path.exists():
+                # Analyze the normalized file to get final LUFS
+                final_loudness = await self.audio_processor.analyze_loudness(
+                    result.output_path
+                )
+
+                # Replace original with mastered version
+                os.replace(result.output_path, audio_path)
+
+                # Update song record with mastering data
+                song.is_normalized = True
+                if final_loudness:
+                    song.lufs_level = float(final_loudness.get("input_i", -14))
+                    song.peak_db = float(final_loudness.get("input_tp", -1))
+                else:
+                    # Use target values if analysis failed
+                    song.lufs_level = AudioProcessor.TARGET_LUFS
+                    song.peak_db = AudioProcessor.TARGET_TRUE_PEAK
+
+                logger.info(
+                    f"Song {song.id} mastered successfully: "
+                    f"{song.lufs_level:.1f} LUFS, {song.peak_db:.1f} dB peak"
+                )
+            else:
+                # Mastering failed - log but don't fail the song
+                error_msg = result.error_message or "Unknown error"
+                logger.warning(
+                    f"Audio mastering failed for song {song.id}: {error_msg}. "
+                    "Original file will be used."
+                )
+                # Clean up failed normalized file if it exists
+                if normalized_path.exists():
+                    normalized_path.unlink()
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during audio mastering for song {song.id}: {e}. "
+                "Original file will be used."
+            )
 
     async def _update_user_stats(
         self,
