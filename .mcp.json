@@ -10,6 +10,10 @@
         "--header",
         "authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlY2FiYmI0MC0xMDM4LTQxNWUtYmE3MC1hMjdkOGIwZWQ1NmUiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6IjlmNjQ2NDk0LWQyOWYtNDM5Ny04OTg3LTVkODZmNzdmZDBlOSIsImlhdCI6MTc2NzE4NTc4MH0.FZ9ZzUhZrOjk3ySFQddiWKCCDu_UpYpfUDJXTqPYCiQ"
       ]
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=ekkqkxnjxxnjzkvxnoyg&features=debugging%2Cdatabase%2Cfunctions%2Cbranching%2Cstorage%2Cdocs%2Cdevelopment"
     }
   }
 }
