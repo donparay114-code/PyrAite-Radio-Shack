@@ -16,15 +16,21 @@ import {
   type TelegramUser,
 } from "@/lib/telegram";
 
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { UserTier } from "@/types";
+
 // Auth state types
 export interface AuthUser {
   id: number;
-  telegramId: number;
+  telegramId: number | null;
   username: string | null;
   firstName: string;
   lastName: string | null;
   isPremium: boolean;
   photoUrl: string | null;
+  isNewUser?: boolean;
+  tier?: UserTier;
+  reputation_score?: number;
 }
 
 export interface AuthState {
@@ -37,6 +43,7 @@ export interface AuthState {
 
 export interface AuthContextType extends AuthState {
   login: () => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -48,9 +55,10 @@ const defaultContext: AuthContextType = {
   isAuthenticated: false,
   isTelegramApp: false,
   error: null,
-  login: async () => {},
-  logout: () => {},
-  refreshUser: async () => {},
+  login: async () => { },
+  loginWithGoogle: async () => { },
+  logout: () => { },
+  refreshUser: async () => { },
 };
 
 // Create context
@@ -58,6 +66,7 @@ const AuthContext = createContext<AuthContextType>(defaultContext);
 
 // API base URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -81,6 +90,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     lastName: tgUser.last_name ?? null,
     isPremium: tgUser.is_premium ?? false,
     photoUrl: tgUser.photo_url ?? null,
+    tier: UserTier.NEW,
+    reputation_score: 0,
   });
 
   // Validate init data with backend
@@ -101,17 +112,61 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const data = await response.json();
       return {
-        id: data.user_id,
+        id: data.id, // Response uses id, not user_id
         telegramId: data.telegram_id,
-        username: data.username,
-        firstName: data.first_name,
-        lastName: data.last_name,
+        username: data.telegram_username, // Map telegram_username to username
+        firstName: data.display_name.split(' ')[0], // Approximate
+        lastName: null, // response doesn't strictly have last_name separately if we stick to display_name
         isPremium: data.is_premium,
-        photoUrl: data.photo_url,
+        photoUrl: null, // API might not return photoUrl if it's not stored
+        tier: data.tier as UserTier,
+        reputation_score: data.reputation_score,
       };
     } catch (error) {
       console.error("Backend validation failed:", error);
       return null;
+    }
+  }, []);
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: credential }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Google authentication failed");
+      }
+
+      const data = await response.json();
+      setState({
+        user: {
+          id: data.id, // Response uses id
+          telegramId: null,
+          username: data.telegram_username || data.email, // Fallback
+          firstName: data.display_name,
+          lastName: null,
+          isPremium: data.is_premium,
+          photoUrl: null,
+          isNewUser: false, // API doesn't return is_new_user in UserResponse usually?
+          tier: data.tier as UserTier,
+          reputation_score: data.reputation_score,
+        },
+        isLoading: false,
+        isAuthenticated: true,
+        isTelegramApp: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Google login error:", error);
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : "Google login failed"
+      }));
     }
   }, []);
 
@@ -150,14 +205,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           });
         }
       } else {
-        // Not in Telegram - use demo/guest mode
-        setState({
-          user: null,
+        // Not in Telegram - check if we have a persisted session? 
+        // For now, just stop loading.
+        setState((prev) => ({
+          ...prev,
           isLoading: false,
-          isAuthenticated: false,
+          isAuthenticated: false, // Explicitly false unless we restore session
           isTelegramApp: false,
-          error: "Not running in Telegram WebApp",
-        });
+        }));
       }
     } catch (error) {
       setState({
@@ -183,10 +238,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
-    if (state.isAuthenticated) {
+    if (state.isAuthenticated && state.isTelegramApp) {
       await login();
     }
-  }, [state.isAuthenticated, login]);
+    // TODO: Add refresh for Google/Session auth
+  }, [state.isAuthenticated, state.isTelegramApp, login]);
 
   // Initialize on mount
   useEffect(() => {
@@ -204,16 +260,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [login]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        login,
-        logout,
-        refreshUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthContext.Provider
+        value={{
+          ...state,
+          login,
+          loginWithGoogle,
+          logout,
+          refreshUser,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </GoogleOAuthProvider>
   );
 }
 

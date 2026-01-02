@@ -13,5 +13,4 @@ export {
 
 export { useAudioPlayer, useRadioStream } from "./useAudioPlayer";
 
-export { useChat, useSendChatMessage } from "./useChat";
-export type { SendMessageData, UseChatOptions } from "./useChat";
+export { useChat } from "./useChat";

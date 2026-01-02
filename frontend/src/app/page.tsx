@@ -69,7 +69,7 @@ const fallbackQueueItem: QueueItem = {
   generation_completed_at: null,
   broadcast_started_at: null,
   completed_at: null,
-  user: null,
+  user: undefined,
 };
 
 export default function HomePage() {

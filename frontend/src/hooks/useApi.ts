@@ -108,6 +108,7 @@ export function useSubmitRequest() {
       isInstrumental: boolean;
       styleTags: string[];
       telegramUserId?: number;
+      userId?: number;
     }) =>
       fetchApi<QueueItem>("/api/queue/", {
         method: "POST",
@@ -117,6 +118,7 @@ export function useSubmitRequest() {
           is_instrumental: data.isInstrumental,
           style_tags: data.styleTags,
           telegram_user_id: data.telegramUserId,
+          user_id: data.userId,
         }),
       }),
     onSuccess: () => {
@@ -159,6 +161,28 @@ export function useLeaderboard(period: "daily" | "weekly" | "monthly" | "all_tim
   return useQuery({
     queryKey: ["leaderboard", period],
     queryFn: () => fetchApi<Leaderboard>(`/api/users/leaderboard?period=${period}`),
+  });
+}
+
+export function useUserRequests(userId: number) {
+  return useQuery({
+    queryKey: ["userRequests", userId],
+    queryFn: () => fetchApi<QueueItem[]>(`/api/queue/?user_id=${userId}`),
+    enabled: !!userId,
+  });
+}
+
+export function useLinkTelegram() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { telegramUsername: string; userId: number }) =>
+      fetchApi(`/api/auth/link-telegram?user_id=${data.userId}`, {
+        method: "POST",
+        body: JSON.stringify({ telegram_username: data.telegramUsername })
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["user", variables.userId] });
+    }
   });
 }
 
