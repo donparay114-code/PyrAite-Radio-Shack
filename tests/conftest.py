@@ -51,11 +51,14 @@ def event_loop():
 @pytest.fixture(scope="function")
 def sync_engine():
     """Create synchronous test database engine."""
-    engine = create_engine(
-        SQLITE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    if USE_POSTGRES:
+        engine = create_engine(SQLITE_URL)
+    else:
+        engine = create_engine(
+            SQLITE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
@@ -77,11 +80,14 @@ def sync_session(sync_engine) -> Generator[Session, None, None]:
 @pytest_asyncio.fixture(scope="function")
 async def async_engine():
     """Create async test database engine."""
-    engine = create_async_engine(
-        ASYNC_SQLITE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    if USE_POSTGRES:
+        engine = create_async_engine(ASYNC_SQLITE_URL)
+    else:
+        engine = create_async_engine(
+            ASYNC_SQLITE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
