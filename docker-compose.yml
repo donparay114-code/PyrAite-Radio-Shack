@@ -41,6 +41,7 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - LIQUIDSOAP_URL=http://liquidsoap:8080
     volumes:
       - ./src:/app/src:ro
       - song_data:/app/data/songs
@@ -157,6 +158,37 @@ services:
       - ICECAST_RELAY_PASSWORD=hackme
     volumes:
       - icecast_logs:/var/log/icecast2
+    restart: unless-stopped
+    networks:
+      - radio-network
+    profiles:
+      - streaming
+
+  # Liquidsoap Radio Automation
+  liquidsoap:
+    build:
+      context: ./liquidsoap
+      dockerfile: Dockerfile
+    container_name: pyrte-radio-liquidsoap
+    ports:
+      - "1234:1234"  # Telnet
+      - "8081:8080"  # HTTP API (Mapped to 8081 to avoid conflict with Icecast on 8080)
+    environment:
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+      - ICECAST_PASSWORD=hackme
+      - ICECAST_MOUNT=/radio.mp3
+      - SONGS_DIR=/app/data/songs
+      - FALLBACK_DIR=/app/data/fallback
+      - API_URL=http://api:8000
+    volumes:
+      - ./liquidsoap/radio.liq:/app/radio.liq:ro
+      - song_data:/app/data/songs:ro
+      - broadcast_data:/app/data/broadcast
+      - ./data/fallback:/app/data/fallback:ro
+    depends_on:
+      - icecast
+      - api
     restart: unless-stopped
     networks:
       - radio-network
