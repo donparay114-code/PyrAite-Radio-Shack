@@ -119,8 +119,8 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 def client(sync_engine) -> Generator[TestClient, None, None]:
     """Create FastAPI test client."""
-    # Override the database dependency - import from src.models for consistency with routes
-    from src.models import get_session
+    # Override both sync and async database dependencies
+    from src.models import get_session, get_async_session
 
     TestSessionLocal = sessionmaker(bind=sync_engine, autoflush=False, autocommit=False)
 
@@ -131,7 +131,27 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
         finally:
             session.close()
 
+    # Create async engine using same database URL as sync engine
+    # Tables are already created by sync_engine fixture
+    test_async_engine = create_async_engine(
+        ASYNC_SQLITE_URL,
+        connect_args={} if USE_POSTGRES else {"check_same_thread": False},
+        poolclass=None if USE_POSTGRES else StaticPool,
+    )
+    test_async_session_maker = async_sessionmaker(
+        bind=test_async_engine,
+        class_=AsyncSession,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+
+    async def override_get_async_session():
+        async with test_async_session_maker() as session:
+            yield session
+
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_async_session] = override_get_async_session
 
     with TestClient(app) as c:
         yield c
