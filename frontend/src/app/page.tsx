@@ -2,11 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Users, Music, Clock, Loader2 } from "lucide-react";
-import { NowPlaying, QueueList, RequestModal } from "@/components/features";
-import { GlassCard, GlowButton } from "@/components/ui";
+import Link from "next/link";
+import { Sparkles, Users, Music, Clock, MessageCircle, User, ChevronRight, Send } from "lucide-react";
+import { NowPlaying, QueueList, RequestModal, Chat } from "@/components/features";
+import {
+  GlassCard,
+  GlowButton,
+  Skeleton,
+  StaggerContainer,
+  StaggerItem,
+  PulseGlow,
+  Avatar,
+  Badge,
+  easings,
+} from "@/components/ui";
 import { useNowPlaying, useQueue, useQueueStats, useVote, useSubmitRequest } from "@/hooks/useApi";
-import { type Song, type QueueItem, UserTier, QueueStatus } from "@/types";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/providers/AuthProvider";
+import { cn, formatTimeAgo } from "@/lib/utils";
+import { type Song, type QueueItem, UserTier, QueueStatus, TIER_LABELS } from "@/types";
 
 // Fallback mock data for when API is unavailable
 const fallbackSong: Song = {
@@ -63,6 +77,9 @@ export default function HomePage() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
 
+  // Auth context
+  const { user, isAuthenticated } = useAuth();
+
   // Real API hooks
   const { data: nowPlaying, isLoading: nowPlayingLoading, error: nowPlayingError } = useNowPlaying();
   const { data: queueItems, isLoading: queueLoading, error: queueError } = useQueue();
@@ -70,14 +87,20 @@ export default function HomePage() {
   const voteMutation = useVote();
   const submitMutation = useSubmitRequest();
 
+  // Chat hook for preview
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, isSending } = useChat();
+
   // Extract current song and queue item from nowPlaying response
   const currentSong: Song = nowPlaying?.song ?? fallbackSong;
   const currentQueueItem: QueueItem = nowPlaying?.queue_item ?? fallbackQueueItem;
   const displayQueue: QueueItem[] = queueItems ?? [];
 
   const handleVote = (itemId: number, type: "up" | "down") => {
-    // TODO: Get actual user ID from auth context
-    const userId = 1;
+    // Use authenticated user ID, fallback to 1 for unauthenticated users
+    const userId = user?.id ?? 1;
+    if (!isAuthenticated) {
+      console.warn("User not authenticated, using guest mode for voting");
+    }
     voteMutation.mutate({
       queueItemId: itemId,
       voteType: type === "up" ? "upvote" : "downvote",
@@ -94,20 +117,6 @@ export default function HomePage() {
     await submitMutation.mutateAsync(data);
   };
 
-  // Track playback time
-  useEffect(() => {
-    if (!isPlaying || !currentSong.duration_seconds) return;
-
-    const interval = setInterval(() => {
-      setCurrentTime((prev) => {
-        if (prev >= currentSong.duration_seconds) return 0;
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentSong.duration_seconds]);
-
   // Reset time when song changes
   useEffect(() => {
     setCurrentTime(0);
@@ -122,84 +131,181 @@ export default function HomePage() {
   // Show loading state
   const isLoading = nowPlayingLoading || queueLoading;
 
+  // Get recent chat messages for preview (last 5)
+  const recentMessages = chatMessages.slice(-5);
+
   return (
-    <div className="space-y-8">
-      {/* Stats bar */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        <StatCard
-          icon={<Users className="w-5 h-5" />}
-          label="Listeners"
-          value={statsLoading ? "..." : listeners.toLocaleString()}
-          color="cyan"
-        />
-        <StatCard
-          icon={<Music className="w-5 h-5" />}
-          label="In Queue"
-          value={queueLoading ? "..." : queueCount.toString()}
-          color="violet"
-        />
-        <StatCard
-          icon={<Sparkles className="w-5 h-5" />}
-          label="Generated Today"
-          value={statsLoading ? "..." : generatedToday.toString()}
-          color="pink"
-        />
-        <StatCard
-          icon={<Clock className="w-5 h-5" />}
-          label="Avg Wait"
-          value={statsLoading ? "..." : `~${Math.round(avgWaitMinutes)} min`}
-          color="orange"
-        />
-      </motion.div>
-
-      {/* Now Playing section */}
-      {nowPlayingLoading ? (
-        <GlassCard className="p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="ml-3 text-text-muted">Loading now playing...</span>
-        </GlassCard>
-      ) : (
-        <NowPlaying
-          song={currentSong}
-          queueItem={currentQueueItem}
-          isPlaying={isPlaying}
-          currentTime={currentTime}
-          onPlayPause={() => setIsPlaying(!isPlaying)}
-          onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
-          onSeek={setCurrentTime}
-        />
-      )}
-
-      {/* Request button (mobile) */}
-      <div className="lg:hidden">
-        <GlowButton
-          onClick={() => setIsRequestModalOpen(true)}
-          className="w-full"
-          size="lg"
-          leftIcon={<Sparkles className="w-5 h-5" />}
-          disabled={submitMutation.isPending}
-        >
-          {submitMutation.isPending ? "Submitting..." : "Request a Song"}
-        </GlowButton>
+    <div className="relative">
+      {/* Ambient background glow effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <PulseGlow color="#8b5cf6" size="lg" className="-top-32 -left-32" intensity={0.15} />
+        <PulseGlow color="#06b6d4" size="lg" className="-bottom-32 -right-32" intensity={0.15} />
       </div>
 
-      {/* Queue section */}
-      {queueLoading ? (
-        <GlassCard className="p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="ml-3 text-text-muted">Loading queue...</span>
-        </GlassCard>
-      ) : (
-        <QueueList
-          items={displayQueue}
-          onVote={handleVote}
-          currentItemId={currentQueueItem?.id}
-        />
-      )}
+      {/* Main grid layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Main content - takes 3/4 on xl screens */}
+        <div className="xl:col-span-3 space-y-8">
+          {/* Stats bar with staggered animation */}
+          <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4" staggerDelay={0.1}>
+            <StaggerItem>
+              <StatCard
+                icon={<Users className="w-5 h-5" />}
+                label="Listeners"
+                value={statsLoading ? "..." : listeners.toLocaleString()}
+                color="cyan"
+                isLoading={statsLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                icon={<Music className="w-5 h-5" />}
+                label="In Queue"
+                value={queueLoading ? "..." : queueCount.toString()}
+                color="violet"
+                isLoading={queueLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                icon={<Sparkles className="w-5 h-5" />}
+                label="Generated Today"
+                value={statsLoading ? "..." : generatedToday.toString()}
+                color="pink"
+                isLoading={statsLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard
+                icon={<Clock className="w-5 h-5" />}
+                label="Avg Wait"
+                value={statsLoading ? "..." : `~${Math.round(avgWaitMinutes)} min`}
+                color="orange"
+                isLoading={statsLoading}
+              />
+            </StaggerItem>
+          </StaggerContainer>
+
+          {/* Now Playing section with sleek skeleton loader */}
+          {nowPlayingLoading ? (
+            <NowPlayingSkeleton />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: easings.smooth }}
+            >
+              <NowPlaying
+                song={currentSong}
+                queueItem={currentQueueItem}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
+                onPlayPause={() => setIsPlaying(!isPlaying)}
+                onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
+                onSeek={setCurrentTime}
+              />
+            </motion.div>
+          )}
+
+          {/* Request button (mobile) with sleek hover */}
+          <motion.div
+            className="lg:hidden"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <GlowButton
+              onClick={() => setIsRequestModalOpen(true)}
+              className="w-full"
+              size="lg"
+              leftIcon={<Sparkles className="w-5 h-5" />}
+              disabled={submitMutation.isPending}
+            >
+              {submitMutation.isPending ? "Submitting..." : "Request a Song"}
+            </GlowButton>
+          </motion.div>
+
+          {/* Queue section with sleek skeleton loader */}
+          {queueLoading ? (
+            <QueueSkeleton />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: easings.smooth }}
+            >
+              <QueueList
+                items={displayQueue}
+                onVote={handleVote}
+                currentItemId={currentQueueItem?.id}
+              />
+            </motion.div>
+          )}
+        </div>
+
+        {/* Sidebar - visible on xl screens */}
+        <motion.div
+          className="hidden xl:flex flex-col gap-6"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: easings.smooth }}
+        >
+          {/* Profile Quick Access */}
+          <ProfileWidget user={user} isAuthenticated={isAuthenticated} />
+
+          {/* Chat Preview */}
+          <ChatPreview
+            messages={recentMessages}
+            isLoading={chatLoading}
+            onSendMessage={(content) => {
+              if (user?.id) {
+                sendMessage(content);
+              }
+            }}
+            isSending={isSending}
+            isAuthenticated={isAuthenticated}
+          />
+        </motion.div>
+      </div>
+
+      {/* Mobile Chat & Profile Links */}
+      <motion.div
+        className="xl:hidden mt-8 grid grid-cols-2 gap-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4, ease: easings.smooth }}
+      >
+        <Link href="/chat">
+          <GlassCard className="p-4 hover:bg-white/10 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-violet-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">Live Chat</p>
+                <p className="text-xs text-text-muted">{chatMessages.length} messages</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-text-muted" />
+            </div>
+          </GlassCard>
+        </Link>
+
+        <Link href="/profile">
+          <GlassCard className="p-4 hover:bg-white/10 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-violet-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">Your Profile</p>
+                <p className="text-xs text-text-muted">
+                  {isAuthenticated ? user?.tier || "View stats" : "Sign in"}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-text-muted" />
+            </div>
+          </GlassCard>
+        </Link>
+      </motion.div>
 
       {/* Request modal */}
       <RequestModal
@@ -216,9 +322,10 @@ interface StatCardProps {
   label: string;
   value: string;
   color: "cyan" | "violet" | "pink" | "orange";
+  isLoading?: boolean;
 }
 
-function StatCard({ icon, label, value, color }: StatCardProps) {
+function StatCard({ icon, label, value, color, isLoading }: StatCardProps) {
   const colors = {
     cyan: "from-cyan-500/20 to-cyan-600/10 border-cyan-500/20 text-cyan-400",
     violet: "from-violet-500/20 to-violet-600/10 border-violet-500/20 text-violet-400",
@@ -227,14 +334,307 @@ function StatCard({ icon, label, value, color }: StatCardProps) {
   };
 
   return (
-    <GlassCard noAnimation className={`bg-gradient-to-br ${colors[color]} p-4`}>
-      <div className="flex items-center gap-3">
-        <div className={`${colors[color].split(" ").pop()}`}>{icon}</div>
-        <div>
-          <p className="text-xs text-text-muted">{label}</p>
-          <p className="text-lg font-bold text-white">{value}</p>
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      transition={{ duration: 0.2, ease: easings.snappy }}
+    >
+      <GlassCard noAnimation className={`bg-gradient-to-br ${colors[color]} p-4`}>
+        <div className="flex items-center gap-3">
+          <div className={`${colors[color].split(" ").pop()}`}>{icon}</div>
+          <div>
+            <p className="text-xs text-text-muted">{label}</p>
+            {isLoading ? (
+              <Skeleton variant="text" className="h-7 w-16 mt-0.5" />
+            ) : (
+              <p className="text-lg font-bold text-white">{value}</p>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+    </motion.div>
+  );
+}
+
+// Sleek skeleton loader for Now Playing section
+function NowPlayingSkeleton() {
+  return (
+    <GlassCard className="p-6 lg:p-8">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Album art skeleton */}
+        <Skeleton variant="rounded" className="w-full lg:w-80 aspect-square" />
+
+        {/* Content skeleton */}
+        <div className="flex-1 space-y-6">
+          <div className="space-y-3">
+            <Skeleton variant="text" className="h-8 w-3/4" />
+            <Skeleton variant="text" className="h-5 w-1/2" />
+            <div className="flex gap-2 mt-4">
+              <Skeleton variant="rounded" className="h-6 w-16" />
+              <Skeleton variant="rounded" className="h-6 w-20" />
+            </div>
+          </div>
+
+          {/* Visualizer skeleton */}
+          <div className="flex items-end justify-center gap-1 h-20">
+            {Array.from({ length: 32 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                variant="rectangular"
+                className="w-1.5 rounded-full"
+                height={`${Math.random() * 60 + 20}%`}
+              />
+            ))}
+          </div>
+
+          {/* Progress skeleton */}
+          <Skeleton variant="rounded" className="h-2 w-full" />
+
+          {/* Controls skeleton */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Skeleton variant="rounded" className="h-10 w-20" />
+              <Skeleton variant="rounded" className="h-10 w-20" />
+            </div>
+            <Skeleton variant="circular" className="h-14 w-14" />
+            <div className="flex gap-2">
+              <Skeleton variant="circular" className="h-10 w-10" />
+              <Skeleton variant="circular" className="h-10 w-10" />
+            </div>
+          </div>
         </div>
       </div>
+    </GlassCard>
+  );
+}
+
+// Sleek skeleton loader for Queue section
+function QueueSkeleton() {
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton variant="text" className="h-6 w-32" />
+        <Skeleton variant="rounded" className="h-6 w-16" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1, ease: easings.smooth }}
+            className="flex items-center gap-4 p-3 rounded-xl bg-white/5"
+          >
+            <Skeleton variant="text" className="h-6 w-6" />
+            <Skeleton variant="circular" className="h-10 w-10" />
+            <div className="flex-1 space-y-2">
+              <Skeleton variant="text" className="h-4 w-3/4" />
+              <Skeleton variant="text" className="h-3 w-1/2" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton variant="rounded" className="h-8 w-14" />
+              <Skeleton variant="rounded" className="h-8 w-14" />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+// Profile Quick Access Widget
+interface ProfileWidgetProps {
+  user: {
+    id: number;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    photoUrl?: string | null;
+    tier?: UserTier;
+    reputation_score?: number;
+  } | null;
+  isAuthenticated: boolean;
+}
+
+function ProfileWidget({ user, isAuthenticated }: ProfileWidgetProps) {
+  return (
+    <Link href="/profile">
+      <GlassCard className="p-4 hover:bg-white/10 transition-colors cursor-pointer group">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
+            <User className="w-4 h-4 text-violet-400" />
+          </div>
+          <span className="text-sm font-medium text-white">Your Profile</span>
+          <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
+        </div>
+
+        {isAuthenticated && user ? (
+          <div className="flex items-center gap-3">
+            <Avatar
+              name={user.firstName || user.username || "User"}
+              src={user.photoUrl}
+              size="md"
+              tier={user.tier}
+              showTierBorder
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {user.firstName || user.username || "Anonymous"}
+              </p>
+              <div className="flex items-center gap-2">
+                <Badge variant="violet" size="sm">
+                  {user.tier ? TIER_LABELS[user.tier] : "NEW"}
+                </Badge>
+                {user.reputation_score !== undefined && (
+                  <span className="text-xs text-text-muted">
+                    {user.reputation_score.toLocaleString()} rep
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-text-muted">
+            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+              <User className="w-5 h-5" />
+            </div>
+            <p className="text-sm">Sign in with Telegram</p>
+          </div>
+        )}
+      </GlassCard>
+    </Link>
+  );
+}
+
+// Chat Preview Widget
+interface ChatPreviewProps {
+  messages: Array<{
+    id: number;
+    content: string;
+    message_type: string;
+    created_at: string;
+    user_id: number | null;
+  }>;
+  isLoading: boolean;
+  onSendMessage: (content: string) => void;
+  isSending: boolean;
+  isAuthenticated: boolean;
+}
+
+function ChatPreview({ messages, isLoading, onSendMessage, isSending, isAuthenticated }: ChatPreviewProps) {
+  const [inputValue, setInputValue] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isSending || !isAuthenticated) return;
+    onSendMessage(inputValue.trim());
+    setInputValue("");
+  };
+
+  return (
+    <GlassCard className="flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 text-violet-400" />
+          </div>
+          <span className="text-sm font-medium text-white">Live Chat</span>
+        </div>
+        <Link href="/chat">
+          <Badge variant="violet" size="sm" className="cursor-pointer hover:bg-violet-500/30 transition-colors">
+            <span className="flex items-center gap-1">
+              View All <ChevronRight className="w-3 h-3" />
+            </span>
+          </Badge>
+        </Link>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 p-3 space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full"
+            />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-8 text-text-muted text-sm">
+            <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>No messages yet</p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-2"
+            >
+              <Avatar name={`User ${msg.user_id || "?"}`} size="xs" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium text-white">
+                    User {msg.user_id || "Anonymous"}
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {formatTimeAgo(msg.created_at)}
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted line-clamp-2">{msg.content}</p>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+
+      {/* Quick Input */}
+      {isAuthenticated ? (
+        <form onSubmit={handleSubmit} className="p-3 border-t border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Say something..."
+              disabled={isSending}
+              className={cn(
+                "flex-1 text-xs px-3 py-2 rounded-lg",
+                "bg-white/5 border border-white/10",
+                "text-white placeholder:text-text-muted",
+                "focus:outline-none focus:ring-1 focus:ring-violet-500/50",
+                "disabled:opacity-50"
+              )}
+            />
+            <motion.button
+              type="submit"
+              disabled={!inputValue.trim() || isSending}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center",
+                "bg-violet-500 text-white",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {isSending ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </motion.button>
+          </div>
+        </form>
+      ) : (
+        <div className="p-3 border-t border-white/[0.06] text-center">
+          <p className="text-xs text-text-muted">Sign in to chat</p>
+        </div>
+      )}
     </GlassCard>
   );
 }

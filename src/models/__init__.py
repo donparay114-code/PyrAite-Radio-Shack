@@ -9,6 +9,7 @@ from src.models.base import (
     get_async_session,
     get_session,
 )
+from src.models.chat import ChatMessage, MessageType
 from src.models.history import RadioHistory
 from src.models.queue import RadioQueue, QueueStatus
 from src.models.song import Song, SunoStatus
@@ -33,4 +34,6 @@ __all__ = [
     "RadioHistory",
     "Vote",
     "VoteType",
+    "ChatMessage",
+    "MessageType",
 ]

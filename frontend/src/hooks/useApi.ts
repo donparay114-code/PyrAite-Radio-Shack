@@ -2,21 +2,72 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueueItem, Song, User, QueueStats, NowPlaying, Leaderboard } from "@/types";
+import type { ChatMessage } from "@/lib/supabase";
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
+// Get auth token from localStorage (set by AuthProvider)
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("auth_token");
+}
+
+// Custom error class for API errors
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+
+  // Add auth header if token exists
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(error.detail || error.error || "Request failed");
+    const error = await res.json().catch(() => ({ detail: "Request failed" }));
+
+    // Log detailed error for debugging
+    console.error(`API Error [${res.status}] ${endpoint}:`, error);
+
+    // Handle specific error codes
+    if (res.status === 401) {
+      // Clear invalid token
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+      }
+      throw new ApiError(401, "Authentication required. Please log in.");
+    }
+
+    if (res.status === 422) {
+      const validationErrors = error.detail;
+      const message = Array.isArray(validationErrors)
+        ? validationErrors.map((e: { msg: string }) => e.msg).join(", ")
+        : error.detail || "Validation error";
+      throw new ApiError(422, message);
+    }
+
+    throw new ApiError(res.status, error.detail || error.error || "Request failed");
   }
 
   return res.json();
@@ -148,5 +199,39 @@ export function useAdminStats() {
         };
       }>("/api/admin/stats"),
     refetchInterval: 30000,
+  });
+}
+
+// Chat hooks
+export function useChatHistory(limit = 50) {
+  return useQuery({
+    queryKey: ["chat", "history"],
+    queryFn: () => fetchApi<{ messages: ChatMessage[]; total: number; has_more: boolean }>(`/api/chat/?limit=${limit}`),
+    staleTime: Infinity, // History doesn't change, we rely on realtime for updates
+  });
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { content: string; replyToId?: number; userId: number }) =>
+      fetchApi<ChatMessage>(`/api/chat/?user_id=${data.userId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: data.content,
+          reply_to_id: data.replyToId,
+        }),
+      }),
+    // optimistic updates handled in useChat
+  });
+}
+
+export function useDeleteMessage() {
+  return useMutation({
+    mutationFn: (data: { messageId: number; moderatorId: number; reason?: string }) =>
+      fetchApi(`/api/chat/${data.messageId}?moderator_id=${data.moderatorId}&reason=${data.reason || "Moderation"}`, {
+        method: "DELETE",
+      }),
   });
 }

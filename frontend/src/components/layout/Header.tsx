@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Radio, Menu, Bell, Settings, User } from "lucide-react";
+import Link from "next/link";
+import { Radio, Menu, Bell, Settings, User, MessageCircle } from "lucide-react";
 import { GlowButton, IconButton, Avatar, Badge, LiveBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -127,6 +128,15 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           )}
         </div>
 
+        {/* Chat */}
+        <Link href="/chat">
+          <IconButton
+            icon={<MessageCircle className="w-5 h-5" />}
+            variant="ghost"
+            className="hidden sm:flex"
+          />
+        </Link>
+
         {/* Settings */}
         <IconButton
           icon={<Settings className="w-5 h-5" />}
@@ -134,17 +144,19 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           className="hidden sm:flex"
         />
 
-        {/* User avatar */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="ml-2"
-        >
-          <Avatar
-            name="User"
-            size="sm"
-          />
-        </motion.button>
+        {/* User avatar - links to profile */}
+        <Link href="/profile">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="ml-2 cursor-pointer"
+          >
+            <Avatar
+              name="User"
+              size="sm"
+            />
+          </motion.div>
+        </Link>
       </div>
     </motion.header>
   );
