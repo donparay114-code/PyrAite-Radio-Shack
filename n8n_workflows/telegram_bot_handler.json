@@ -9,7 +9,7 @@
       "id": "telegram-trigger",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [240, 400],
       "webhookId": "telegram-bot-trigger",
       "credentials": {
@@ -70,7 +70,7 @@
       "id": "upsert-user",
       "name": "Upsert User",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [900, 400],
       "credentials": {
         "postgres": {
@@ -119,7 +119,7 @@
       "id": "send-banned-notice",
       "name": "Send Banned Notice",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [1340, 280],
       "credentials": {
         "telegramApi": {
@@ -168,7 +168,7 @@
       "id": "send-timeout-notice",
       "name": "Send Timeout Notice",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [1560, 400],
       "credentials": {
         "telegramApi": {
@@ -208,33 +208,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "request-cmd",
-              "leftValue": "={{ $('Parse Message').item.json.command }}",
-              "rightValue": "request",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "route-command",
-      "name": "Route Command",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [1780, 520],
-      "parameters": {
         "rules": {
           "rules": [
             {
@@ -262,7 +235,12 @@
         "dataType": "string",
         "value": "={{ $('Parse Message').item.json.command }}",
         "fallbackOutput": "extra"
-      }
+      },
+      "id": "route-command",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1780, 520]
     },
     {
       "parameters": {
@@ -275,7 +253,7 @@
       "id": "check-blocklist",
       "name": "Check Blocklist",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [2000, 200],
       "alwaysOutputData": true,
       "credentials": {
@@ -325,7 +303,7 @@
       "id": "register-violation",
       "name": "Register Violation",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [2440, 80],
       "credentials": {
         "postgres": {
@@ -375,7 +353,7 @@
       "id": "send-timeout-penalty",
       "name": "Send Timeout Penalty",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2880, 0],
       "credentials": {
         "telegramApi": {
@@ -396,7 +374,7 @@
       "id": "send-warning",
       "name": "Send Warning",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2880, 160],
       "credentials": {
         "telegramApi": {
@@ -416,7 +394,7 @@
       "id": "check-rate-limit",
       "name": "Check Rate Limit",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [2440, 320],
       "credentials": {
         "postgres": {
@@ -466,7 +444,7 @@
       "id": "send-rate-limit",
       "name": "Send Rate Limit",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2880, 400],
       "credentials": {
         "telegramApi": {
@@ -489,7 +467,7 @@
       "id": "openai-moderation",
       "name": "OpenAI Moderation",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "typeVersion": 4,
       "position": [2880, 240],
       "credentials": {
         "openAiApi": {
@@ -538,7 +516,7 @@
       "id": "register-ai-violation",
       "name": "Register AI Violation",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [3320, 120],
       "credentials": {
         "postgres": {
@@ -558,7 +536,7 @@
       "id": "log-moderation",
       "name": "Log Moderation",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [3540, 120],
       "credentials": {
         "postgres": {
@@ -579,7 +557,7 @@
       "id": "send-moderation-rejection",
       "name": "Send Moderation Rejection",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [3760, 120],
       "credentials": {
         "telegramApi": {
@@ -599,7 +577,7 @@
       "id": "add-to-queue",
       "name": "Add to Queue",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [3320, 360],
       "credentials": {
         "postgres": {
@@ -619,7 +597,7 @@
       "id": "get-queue-position",
       "name": "Get Queue Position",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [3540, 360],
       "credentials": {
         "postgres": {
@@ -640,7 +618,7 @@
       "id": "send-queue-confirmation",
       "name": "Send Queue Confirmation",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [3760, 360],
       "credentials": {
         "telegramApi": {
@@ -658,7 +636,7 @@
       "id": "get-queue-stats",
       "name": "Get Queue Stats",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [2000, 520],
       "credentials": {
         "postgres": {
@@ -679,7 +657,7 @@
       "id": "send-status",
       "name": "Send Status",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2220, 520],
       "credentials": {
         "telegramApi": {
@@ -700,7 +678,7 @@
       "id": "send-help",
       "name": "Send Help",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2000, 680],
       "credentials": {
         "telegramApi": {
@@ -720,7 +698,7 @@
       "id": "get-user-stats",
       "name": "Get User Stats",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
+      "typeVersion": 2,
       "position": [2000, 840],
       "credentials": {
         "postgres": {
@@ -741,7 +719,7 @@
       "id": "send-user-stats",
       "name": "Send User Stats",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2220, 840],
       "credentials": {
         "telegramApi": {
@@ -791,7 +769,7 @@
       "id": "send-no-prompt",
       "name": "Send No Prompt",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [2000, 1000],
       "credentials": {
         "telegramApi": {
@@ -1143,35 +1121,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "errorWorkflow": "",
-    "saveManualExecutions": true,
-    "timezone": "UTC"
+    "executionOrder": "v1"
   },
   "staticData": null,
-  "tags": [
-    {
-      "name": "radio",
-      "createdAt": "2024-12-30T00:00:00.000Z",
-      "updatedAt": "2024-12-30T00:00:00.000Z"
-    },
-    {
-      "name": "telegram",
-      "createdAt": "2024-12-30T00:00:00.000Z",
-      "updatedAt": "2024-12-30T00:00:00.000Z"
-    },
-    {
-      "name": "bot",
-      "createdAt": "2024-12-30T00:00:00.000Z",
-      "updatedAt": "2024-12-30T00:00:00.000Z"
-    },
-    {
-      "name": "moderation",
-      "createdAt": "2024-12-30T00:00:00.000Z",
-      "updatedAt": "2024-12-30T00:00:00.000Z"
-    }
-  ],
-  "meta": {
-    "templateId": "pyrte-telegram-bot"
-  }
+  "tags": ["radio", "telegram", "bot", "moderation"]
 }

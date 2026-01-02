@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, QueueStatus, get_async_session
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
@@ -22,6 +23,7 @@ class QueueItemCreate(BaseModel):
     is_instrumental: bool = False
     telegram_user_id: Optional[int] = None
     telegram_message_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 
 class QueueItemResponse(BaseModel):
@@ -50,9 +52,79 @@ class QueueStatsResponse(BaseModel):
     average_wait_minutes: float
 
 
+class SongResponse(BaseModel):
+    """Song response for now playing."""
+
+    id: int
+    suno_song_id: Optional[str] = None
+    suno_job_id: Optional[str] = None
+    title: Optional[str] = None
+    artist: str = "AI Radio"
+    genre: Optional[str] = None
+    style_tags: list[str] = []
+    mood: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    audio_url: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    original_prompt: Optional[str] = None
+    enhanced_prompt: Optional[str] = None
+    lyrics: Optional[str] = None
+    is_instrumental: bool = False
+    play_count: int = 0
+    total_upvotes: int = 0
+    total_downvotes: int = 0
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NowPlayingQueueItem(BaseModel):
+    """Queue item for now playing response."""
+
+    id: int
+    user_id: Optional[int] = None
+    song_id: Optional[int] = None
+    telegram_user_id: Optional[int] = None
+    original_prompt: str
+    enhanced_prompt: Optional[str] = None
+    genre_hint: Optional[str] = None
+    style_tags: list[str] = []
+    is_instrumental: bool = False
+    status: str
+    priority_score: float
+    base_priority: float = 100.0
+    upvotes: int = 0
+    downvotes: int = 0
+    suno_job_id: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    requested_at: datetime
+    queued_at: Optional[datetime] = None
+    generation_started_at: Optional[datetime] = None
+    generation_completed_at: Optional[datetime] = None
+    broadcast_started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    user: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NowPlayingResponse(BaseModel):
+    """Now playing response."""
+
+    queue_item: Optional[NowPlayingQueueItem] = None
+    song: Optional[SongResponse] = None
+    started_at: Optional[datetime] = None
+    progress_seconds: float = 0.0
+    listeners: int = 0
+
+
 @router.get("/", response_model=list[QueueItemResponse])
 async def list_queue(
     status: Optional[str] = Query(None, description="Filter by status"),
+    user_id: Optional[int] = Query(None, description="Filter by user ID"),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
@@ -62,6 +134,9 @@ async def list_queue(
 
     if status:
         query = query.where(RadioQueue.status == status)
+
+    if user_id:
+        query = query.where(RadioQueue.user_id == user_id)
 
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
@@ -80,6 +155,7 @@ async def create_queue_item(
         is_instrumental=item.is_instrumental,
         telegram_user_id=item.telegram_user_id,
         telegram_message_id=item.telegram_message_id,
+        user_id=item.user_id,
         status=QueueStatus.PENDING.value,
         requested_at=datetime.utcnow(),
     )
@@ -130,6 +206,110 @@ async def get_queue_stats(
         generating=generating,
         completed_today=completed_today,
         average_wait_minutes=0.0,  # TODO: Calculate actual average
+    )
+
+
+@router.get("/now-playing", response_model=NowPlayingResponse)
+async def get_now_playing(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get the currently playing or most recent broadcast item."""
+    # First, try to find a currently broadcasting item
+    query = (
+        select(RadioQueue)
+        .options(selectinload(RadioQueue.song), selectinload(RadioQueue.user))
+        .where(RadioQueue.status == QueueStatus.BROADCASTING.value)
+        .order_by(RadioQueue.broadcast_started_at.desc())
+        .limit(1)
+    )
+    result = await session.execute(query)
+    queue_item = result.scalar_one_or_none()
+
+    # If nothing is broadcasting, get the most recently completed item
+    if not queue_item:
+        query = (
+            select(RadioQueue)
+            .options(selectinload(RadioQueue.song), selectinload(RadioQueue.user))
+            .where(RadioQueue.status == QueueStatus.COMPLETED.value)
+            .order_by(RadioQueue.completed_at.desc())
+            .limit(1)
+        )
+        result = await session.execute(query)
+        queue_item = result.scalar_one_or_none()
+
+    # If still nothing, return empty response
+    if not queue_item:
+        return NowPlayingResponse()
+
+    # Calculate progress if broadcasting
+    progress_seconds = 0.0
+    if (
+        queue_item.broadcast_started_at
+        and queue_item.status == QueueStatus.BROADCASTING.value
+    ):
+        delta = datetime.utcnow() - queue_item.broadcast_started_at
+        progress_seconds = delta.total_seconds()
+
+    # Build song response if available
+    song_response = None
+    if queue_item.song:
+        song = queue_item.song
+        song_response = SongResponse(
+            id=song.id,
+            suno_song_id=None,
+            suno_job_id=song.suno_job_id,
+            title=song.title,
+            artist=song.artist,
+            genre=song.genre,
+            style_tags=[],
+            mood=song.mood,
+            duration_seconds=song.duration_seconds,
+            audio_url=song.audio_url,
+            cover_image_url=None,
+            original_prompt=song.original_prompt,
+            enhanced_prompt=song.enhanced_prompt,
+            lyrics=song.lyrics,
+            is_instrumental=song.is_instrumental,
+            play_count=song.play_count,
+            total_upvotes=song.total_upvotes,
+            total_downvotes=song.total_downvotes,
+            created_at=song.created_at,
+        )
+
+    # Build queue item response
+    queue_item_response = NowPlayingQueueItem(
+        id=queue_item.id,
+        user_id=queue_item.user_id,
+        song_id=queue_item.song_id,
+        telegram_user_id=queue_item.telegram_user_id,
+        original_prompt=queue_item.original_prompt,
+        enhanced_prompt=queue_item.enhanced_prompt,
+        genre_hint=queue_item.genre_hint,
+        style_tags=[],
+        is_instrumental=queue_item.is_instrumental,
+        status=queue_item.status,
+        priority_score=queue_item.priority_score,
+        base_priority=queue_item.base_priority,
+        upvotes=queue_item.upvotes,
+        downvotes=queue_item.downvotes,
+        suno_job_id=queue_item.suno_job_id,
+        error_message=queue_item.error_message,
+        retry_count=queue_item.retry_count,
+        requested_at=queue_item.requested_at,
+        queued_at=queue_item.queued_at,
+        generation_started_at=queue_item.generation_started_at,
+        generation_completed_at=queue_item.generation_completed_at,
+        broadcast_started_at=queue_item.broadcast_started_at,
+        completed_at=queue_item.completed_at,
+        user=None,  # TODO: serialize user if needed
+    )
+
+    return NowPlayingResponse(
+        queue_item=queue_item_response,
+        song=song_response,
+        started_at=queue_item.broadcast_started_at,
+        progress_seconds=progress_seconds,
+        listeners=0,  # TODO: track active listeners
     )
 
 

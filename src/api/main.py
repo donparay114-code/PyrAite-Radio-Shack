@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes
+from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 
@@ -70,6 +70,10 @@ TAGS_METADATA = [
     {
         "name": "Webhooks",
         "description": "Webhook endpoints for external integrations (Suno, Telegram, n8n)",
+    },
+    {
+        "name": "Chat",
+        "description": "Real-time community chat with WebSocket support",
     },
 ]
 
@@ -147,11 +151,13 @@ async def root():
 
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(songs.router, prefix="/api/songs", tags=["Songs"])
 app.include_router(votes.router, prefix="/api/votes", tags=["Votes"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 
 
 if __name__ == "__main__":

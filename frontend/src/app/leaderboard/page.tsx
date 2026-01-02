@@ -9,6 +9,7 @@ import type { User, UserTier } from "@/types";
 const mockLeaderboardUsers = Array.from({ length: 20 }, (_, i) => ({
   id: i + 1,
   telegram_id: 100000 + i,
+  telegram_username: `user_${i + 1}`,
   username: `user_${i + 1}`,
   display_name: [
     "DJ Master",
@@ -39,6 +40,9 @@ const mockLeaderboardUsers = Array.from({ length: 20 }, (_, i) => ({
   successful_requests: 95 - i * 4,
   total_upvotes_received: 500 - i * 20,
   total_downvotes_received: 10 + i,
+  total_upvotes_given: 50 + i,
+  total_downvotes_given: 2 + i,
+  success_rate: 0.95,
   is_banned: false,
   is_premium: i < 5,
   created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30 * (i + 1)).toISOString(),

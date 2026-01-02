@@ -1,15 +1,21 @@
 // User types
 export interface User {
   id: number;
-  telegram_id: number;
-  username: string | null;
+  telegram_id: number | null;
+  telegram_username: string | null;
+  username?: string | null; // Keep for compatibility if needed, or remove
+  email?: string | null;
+  google_id?: string | null;
   display_name: string | null;
   reputation_score: number;
   tier: UserTier;
   total_requests: number;
   successful_requests: number;
+  success_rate?: number;
   total_upvotes_received: number;
   total_downvotes_received: number;
+  total_upvotes_given?: number;
+  total_downvotes_given?: number;
   is_banned: boolean;
   is_premium: boolean;
   created_at: string;

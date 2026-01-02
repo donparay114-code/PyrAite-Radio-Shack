@@ -149,6 +149,7 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
     async def override_get_async_session():
         async with test_async_session_maker() as session:
             yield session
+            await session.commit()
 
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_async_session] = override_get_async_session
@@ -161,7 +162,7 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
-    """Create async FastAPI test client."""
+    """Create async FastAPI test client with shared session for test isolation."""
     # Import from src.models for consistency with routes
     from src.models import get_async_session
 
@@ -173,9 +174,12 @@ async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
         expire_on_commit=False,
     )
 
+    # Create a single shared session for all requests in this test
+    # This ensures data created in one request is visible to subsequent requests
+    shared_session = test_async_session_maker()
+
     async def override_get_async_session():
-        async with test_async_session_maker() as session:
-            yield session
+        yield shared_session
 
     app.dependency_overrides[get_async_session] = override_get_async_session
 
@@ -183,6 +187,9 @@ async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
+    # Cleanup: commit any pending changes and close the session
+    await shared_session.commit()
+    await shared_session.close()
     app.dependency_overrides.clear()
 
 

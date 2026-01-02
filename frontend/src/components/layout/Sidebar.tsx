@@ -13,6 +13,8 @@ import {
   HelpCircle,
   Crown,
   X,
+  MessageCircle,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui";
@@ -34,9 +36,19 @@ const navItems = [
     icon: ListMusic,
   },
   {
+    label: "Chat",
+    href: "/chat",
+    icon: MessageCircle,
+  },
+  {
     label: "Leaderboard",
     href: "/leaderboard",
     icon: TrendingUp,
+  },
+  {
+    label: "Profile",
+    href: "/profile",
+    icon: User,
   },
   {
     label: "Community",

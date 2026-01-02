@@ -12,3 +12,5 @@ export {
 } from "./useApi";
 
 export { useAudioPlayer, useRadioStream } from "./useAudioPlayer";
+
+export { useChat } from "./useChat";

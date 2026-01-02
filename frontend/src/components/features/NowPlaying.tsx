@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import {
   Play,
@@ -42,6 +42,53 @@ export function NowPlaying({
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [audioData, setAudioData] = useState<number[]>(new Array(32).fill(0));
+
+  // Audio player ref for real playback
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const isSeekingRef = useRef(false);
+
+  // Sync audio playback with isPlaying prop
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !song?.audio_url) return;
+
+    if (isPlaying) {
+      audio.play().catch(() => {
+        // Autoplay may be blocked by browser - user needs to interact first
+      });
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, song?.audio_url]);
+
+  // Sync audio mute state
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // Handle audio time updates for progress bar
+  const handleTimeUpdate = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && !isSeekingRef.current) {
+      onSeek(audio.currentTime);
+    }
+  }, [onSeek]);
+
+  // Handle seeking from progress bar
+  const handleSeek = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (audio) {
+      isSeekingRef.current = true;
+      audio.currentTime = time;
+      onSeek(time);
+      isSeekingRef.current = false;
+    } else {
+      onSeek(time);
+    }
+  }, [onSeek]);
 
   // Simulate audio visualizer data
   useEffect(() => {
@@ -106,6 +153,15 @@ export function NowPlaying({
             : undefined
         }
       >
+        {/* Hidden audio element for real playback */}
+        <audio
+          ref={audioRef}
+          src={song.audio_url ?? undefined}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={onPlayPause}
+          preload="metadata"
+        />
+
         <div className="p-6 lg:p-8">
           {/* Header with live badge */}
           <div className="flex items-center justify-between mb-6">
@@ -233,7 +289,7 @@ export function NowPlaying({
                 <AudioProgress
                   currentTime={currentTime}
                   duration={song.duration_seconds || 180}
-                  onSeek={onSeek}
+                  onSeek={handleSeek}
                   color={glowColor}
                 />
                 <div className="flex justify-between text-xs text-text-muted">
