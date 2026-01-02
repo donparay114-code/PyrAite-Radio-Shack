@@ -26,6 +26,7 @@ from src.services.cost_tracker import (
     track_suno_usage,
     track_openai_usage,
 )
+from src.services.liquidsoap_client import LiquidsoapClient, get_liquidsoap_client
 
 __all__ = [
     "SunoClient",
@@ -50,4 +51,6 @@ __all__ = [
     "get_cost_tracker",
     "track_suno_usage",
     "track_openai_usage",
+    "LiquidsoapClient",
+    "get_liquidsoap_client",
 ]
