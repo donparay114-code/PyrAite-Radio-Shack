@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioHistory, RadioQueue, QueueStatus, Song, get_async_session
 from src.utils.config import settings
+from src.services.liquidsoap_client import get_liquidsoap_client
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +278,46 @@ async def broadcast_status_webhook(
             # Future improvement: Create a "Unknown" placeholder song?
 
     await session.commit()
+
+    # 3. Trigger next song logic (Check if queue needs filling)
+    try:
+        liquidsoap = get_liquidsoap_client()
+        queue_len = await liquidsoap.get_queue_length()
+
+        if queue_len is not None and queue_len < 2:
+            # Queue is low, push next generated song
+            next_query = (
+                select(RadioQueue)
+                .join(Song, RadioQueue.song_id == Song.id)
+                .where(RadioQueue.status == QueueStatus.GENERATED.value)
+                .order_by(
+                    RadioQueue.priority_score.desc(),  # Priority first
+                    RadioQueue.queued_at.asc()         # Then oldest
+                )
+                .limit(1)
+            )
+            next_result = await session.execute(next_query)
+            next_item = next_result.scalar_one_or_none()
+
+            if next_item:
+                # Get song path
+                song_query = select(Song).where(Song.id == next_item.song_id)
+                song_result = await session.execute(song_query)
+                next_song = song_result.scalar_one_or_none()
+
+                if next_song and next_song.local_file_path:
+                    # Push to Liquidsoap
+                    # Note: We send the full local path. Liquidsoap needs to be able to access this path.
+                    # Since they share volumes (presumably), this should work.
+                    success = await liquidsoap.push_song(next_song.local_file_path)
+
+                    if success:
+                        logger.info(f"Pushed next song to Liquidsoap: {next_song.title}")
+                        # We don't change status to BROADCASTING yet, that happens when it starts playing
+                    else:
+                        logger.error(f"Failed to push song to Liquidsoap: {next_song.title}")
+    except Exception as e:
+        logger.error(f"Error in trigger next song logic: {e}")
 
     return {
         "received": True,
