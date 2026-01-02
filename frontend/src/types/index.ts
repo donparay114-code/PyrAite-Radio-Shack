@@ -178,6 +178,9 @@ export interface Leaderboard {
   period: "daily" | "weekly" | "monthly" | "all_time";
 }
 
+// Type alias for socket events
+export type SongRequest = QueueItem;
+
 export interface LeaderboardEntry {
   rank: number;
   user: User;
