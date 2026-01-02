@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel
 
 from src.utils.config import settings
+from src.services.telegram_bot import get_telegram_bot
+from src.services.telegram_handlers import register_handlers
 
 router = APIRouter()
 
@@ -87,11 +89,14 @@ async def telegram_webhook(
 
     payload = await request.json()
 
-    # TODO: Process Telegram update
-    # This would typically:
-    # 1. Parse the update (message or callback_query)
-    # 2. Handle song requests (/request command)
-    # 3. Handle votes (callback button presses)
+    bot = get_telegram_bot()
+
+    # Ensure handlers are registered
+    if "request" not in bot._handlers["command"]:
+        register_handlers(bot)
+
+    # Process update
+    await bot._process_update(payload)
 
     return {
         "ok": True,
