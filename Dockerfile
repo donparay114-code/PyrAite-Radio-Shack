@@ -1,59 +1,66 @@
-# PYrte Radio Shack - Next.js Application Dockerfile
-# Multi-stage build for optimized production image
+# PYrte Radio Shack API Dockerfile
+# Multi-stage build for smaller production image
 
-# Stage 1: Dependencies
-FROM node:18-alpine AS deps
-
-RUN apk add --no-cache libc6-compat
+# Build stage
+FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci --only=production
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
 
-# Stage 2: Builder
-FROM node:18-alpine AS builder
+# Production stage
+FROM python:3.11-slim as production
 
-WORKDIR /app
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED 1
-
-# Build application
-RUN npm run build
-
-# Stage 3: Runner
-FROM node:18-alpine AS runner
+# Create non-root user for security
+RUN groupadd -r radio && useradd -r -g radio radio
 
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy wheels and install
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/*
 
-# Copy necessary files
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy application code
+COPY src/ ./src/
+COPY alembic.ini .
+COPY sql/ ./sql/
 
-# Set proper ownership
-RUN chown -R nextjs:nodejs /app
+# Create data directories
+RUN mkdir -p /app/data/songs /app/data/temp /app/data/broadcast \
+    && chown -R radio:radio /app
 
-USER nextjs
+# Switch to non-root user
+USER radio
 
-EXPOSE 3000
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    DEBUG=false \
+    LOG_LEVEL=INFO \
+    SONGS_DIR=/app/data/songs \
+    TEMP_DIR=/app/data/temp \
+    BROADCAST_DIR=/app/data/broadcast
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+# Expose port
+EXPOSE 8000
 
-CMD ["node", "server.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the application
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

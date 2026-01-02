@@ -1,269 +1,277 @@
-# 🎵 PYrte Radio Shack
+# PYrte Radio Shack
 
-> **AI-Powered Multi-Channel Community Radio Platform**
+An AI-powered community radio station platform with comprehensive Claude Code integration for development assistance.
 
-A full-stack platform that accepts music generation prompts via WhatsApp and Telegram, generates tracks using Suno API, and broadcasts them on genre-specific live radio channels. Premium users can create private channels for their communities.
+## Overview
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-black)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-blue)](https://www.postgresql.org/)
+PYrte Radio Shack is a Python-based AI radio station system that integrates:
 
----
+- **n8n Workflow Automation** - 4 integrated workflows for music generation and broadcasting
+- **Suno AI Music Generation** - Automated music creation from user prompts
+- **Telegram Bot** - User interface for song requests
+- **Reputation System** - Community-driven content prioritization
+- **Liquidsoap Broadcasting** - Professional audio streaming
 
-## 📋 Table of Contents
+## Features
 
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Tech Stack](#-tech-stack)
-- [Getting Started](#-getting-started)
-- [Development](#-development)
-- [Deployment](#-deployment)
-- [API Documentation](#-api-documentation)
-- [License](#-license)
+- User song requests via Telegram bot
+- AI-powered music generation with Suno
+- Content moderation with OpenAI
+- Priority queue based on user reputation
+- Automated DJ intros and audio stitching
+- Multi-format streaming (MP3, AAC, HLS)
 
----
+## Architecture
 
-## ✨ Features
+```
+User Request (Telegram)
+        |
+        v
+  [AI Radio Bot] --> [Moderation] --> [Queue]
+        |                                |
+        v                                v
+  [Reputation System]           [Queue Processor]
+                                        |
+                                        v
+                                [Suno API] --> [MP3 Download]
+                                                    |
+                                                    v
+                                        [Radio Director]
+                                                    |
+                                                    v
+                                        [DJ Intro + Stitch]
+                                                    |
+                                                    v
+                                            [Broadcast]
+```
 
-### Core Features
-- **Multi-Channel Broadcasting**: Genre-based public channels (Rap, Jazz, Lo-Fi, Electronic, Rock, Classical, Indie, Pop, Country, R&B)
-- **Private Premium Channels**: Paying users can create isolated channels for their communities
-- **AI Music Generation**: Integration with Suno API for track generation
-- **Multi-Platform Input**: Accept prompts via WhatsApp and Telegram
-- **Real-Time Updates**: Live now-playing info and queue status via Socket.io
-- **HLS Streaming**: Adaptive bitrate streaming with CloudFront CDN
+## Tech Stack
 
-### Advanced Moderation
-- **4-Layer AI Moderation**:
-  1. Prompt injection detection
-  2. OpenAI Moderation API
-  3. Claude contextual analysis
-  4. Local blocklist
-- **Moderator Controls**: Toggle moderation, adjust strictness, allow explicit lyrics
-- **Manual Review**: Moderators can approve/reject flagged content
-- **Three-Strike System**: Automatic timeouts for policy violations
+| Component | Technology |
+|-----------|------------|
+| Workflow Automation | n8n |
+| Music Generation | Suno API |
+| Database | PostgreSQL |
+| Frontend | Next.js + Tailwind CSS |
+| Bot Interface | Telegram Bot API |
+| Audio Processing | FFmpeg, Liquidsoap |
+| LLM Integration | OpenAI GPT-4, Claude |
+| Streaming | Icecast, HLS |
 
-### Queue Management
-- **Smart Priority**: Wait time + reputation + premium status
-- **Weighted Selection**: Top 5 candidates with probabilistic selection
-- **Fair Play**: Recent play penalty to avoid spam
-
----
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Runtime**: Node.js 18+
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript 5.4+
-- **Database**: PostgreSQL 14 (AWS RDS Multi-AZ)
-- **Cache**: Redis 7 (AWS ElastiCache)
-- **Workflow**: n8n (queue mode with Redis)
-
-### Frontend
-- **Framework**: Next.js 14 with React 18
-- **Styling**: Tailwind CSS + Custom Design System
-- **Real-Time**: Socket.io Client
-- **Streaming**: HLS.js for adaptive streaming
-
-### Streaming
-- **Encoder**: Liquidsoap 2.0+
-- **Server**: Icecast 2
-- **CDN**: AWS CloudFront
-- **Storage**: AWS S3 with lifecycle policies
-
-### AI Services
-- **Music Generation**: Suno API
-- **Moderation**: OpenAI Moderation API + Anthropic Claude
-- **Genre Classification**: Anthropic Claude Sonnet 4
-
-### Infrastructure
-- **Cloud**: AWS (VPC, RDS, ElastiCache, S3, CloudFront)
-- **IaC**: Terraform
-- **Containers**: Docker + Docker Compose
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Docker and Docker Compose
-- PostgreSQL 14+ (or use Docker)
-- Redis 7+ (or use Docker)
-- AWS Account (for production)
-- API Keys:
-  - Anthropic API key
-  - OpenAI API key
-  - Suno API key
-  - Telegram Bot Token
-  - WhatsApp API credentials
-
-### Local Development Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/donparay114-code/PYrte-Radio-Shack.git
-   cd PYrte-Radio-Shack
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-4. **Start services with Docker Compose**:
-   ```bash
-   docker-compose up -d
-   ```
-
-5. **Run database migrations**:
-   ```bash
-   npm run db:migrate
-   ```
-
-6. **Start development server**:
-   ```bash
-   npm run dev
-   ```
-
-7. **Access the application**:
-   - Frontend: http://localhost:3000
-   - n8n: http://localhost:5678 (admin/admin)
-   - Icecast: http://localhost:8000
-
----
-
-## 💻 Development
-
-### Project Structure
+## Project Structure
 
 ```
 PYrte-Radio-Shack/
 ├── .claude/                    # Claude Code configuration
-├── src/
-│   ├── app/                    # Next.js App Router
-│   ├── components/             # React components
-│   ├── lib/                    # Utilities and helpers
-│   ├── hooks/                  # React hooks
-│   ├── types/                  # TypeScript types
-│   └── styles/                 # Global styles
-├── database/
-│   ├── migrations/             # SQL migration files
-│   └── seeds/                  # Seed data
-├── n8n-workflows/              # n8n workflow JSONs
-├── infrastructure/
-│   ├── terraform/              # AWS infrastructure
-│   ├── docker/                 # Docker configs
-│   └── liquidsoap/             # Streaming configs
-├── scripts/                    # Utility scripts
-└── docs/                       # Documentation
+│   ├── settings.json           # Permissions and hooks
+│   ├── skills/                 # 71 domain expertise skills
+│   ├── agents/                 # 70 specialized sub-agents
+│   └── commands/               # Slash commands
+├── src/                        # Source code
+│   ├── api/                    # API endpoints
+│   ├── services/               # Business logic
+│   ├── models/                 # Data models
+│   └── utils/                  # Utilities
+├── tests/                      # Test files
+├── docs/                       # Documentation
+├── n8n_workflows/              # n8n workflow JSON exports
+├── sql/                        # Database migrations
+├── README.md                   # This file
+└── CLAUDE.md                   # Claude Code guide
 ```
 
-### Available Scripts
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 16+
+- n8n (self-hosted or cloud)
+- Suno AI access
+- Telegram Bot Token
+- OpenAI API key (for moderation)
+
+### Installation
+
+1. Clone the repository:
 
 ```bash
-# Development
-npm run dev                     # Start dev server
-npm run build                   # Build for production
-npm run start                   # Start production server
+git clone https://github.com/your-org/PYrte-Radio-Shack.git
+cd PYrte-Radio-Shack
+```
 
+### Installation (Docker Recommended)
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/your-org/PYrte-Radio-Shack.git
+cd PYrte-Radio-Shack
+```
+
+1. Configure environment:
+
+```bash
+cp .env.example .env
+# Edit .env with your credentials if needed
+# Also configure frontend env
+cp frontend/.env.example frontend/.env
+```
+
+1. Start with Docker Compose:
+
+```bash
+docker-compose up -d --build
+```
+
+### Access
+
+| Service | URL | Credentials (Default) |
+| :--- | :--- | :--- |
+| **Frontend** | [http://localhost:3000](http://localhost:3000) | N/A |
+| **API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | N/A |
+| **n8n** | [http://localhost:5678](http://localhost:5678) | `admin` / `admin` |
+| **Stream** | `http://localhost:8000/stream` | N/A |
+
+### Manual Installation (Legacy)
+
+1. Create virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+1. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+1. Initialize database:
+
+```bash
+# Ensure you have a running Postgres instance first
+python -c "from src.db.session import init_db; init_db()"
+```
+
+1. Import n8n workflows from `n8n_workflows/` directory
+
+### Configuration
+
+Required environment variables:
+
+```bash
 # Database
-npm run db:migrate              # Run migrations
-npm run db:seed                 # Seed database
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=radio_user
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=radio_station
 
-# Code Quality
-npm run lint                    # Lint code
-npm run type-check              # TypeScript check
-npm run format                  # Format with Prettier
+# APIs
+SUNO_API_URL=https://your-suno-api.example.com
+OPENAI_API_KEY=sk-...
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_CHAT_ID=-1001234567890
+
+# Icecast (optional)
+ICECAST_HOST=localhost
+ICECAST_PORT=8000
+ICECAST_PASSWORD=hackme
 ```
 
----
+## n8n Workflows
 
-## 🌐 Deployment
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| AI Radio Bot | Handle Telegram requests | Webhook |
+| Queue Processor | Generate music via Suno | Schedule (30s) |
+| Radio Director | Stitch DJ intros + broadcast | Schedule (check queue) |
+| Reputation Calculator | Update user reputation | Schedule (5min) |
 
-### Production Deployment (AWS)
+## Database Schema
 
-1. **Set up AWS infrastructure**:
-   ```bash
-   cd infrastructure/terraform
-   terraform init
-   terraform plan
-   terraform apply
-   ```
+Key tables in `radio_station` database (PostgreSQL):
 
-2. **Deploy Next.js app** to Railway/Vercel/AWS ECS
+- `radio_users` - User accounts and reputation
+- `song_requests` - All song requests
+- `radio_queue` - Active queue with priorities
+- `radio_history` - Broadcast history
+- `moderation_logs` - Content moderation decisions
+- `user_reputation_log` - Reputation change history
 
-3. **Deploy n8n** to AWS ECS with queue mode
+## Claude Code Integration
 
-4. **Set up Liquidsoap + Icecast** on EC2
+This project includes extensive Claude Code configuration with:
 
-5. **Import n8n workflows** from `n8n-workflows/` directory
+- **71 Skills** - Domain expertise for music, n8n, databases, security, and more
+- **70 Agents** - Specialized sub-agents for code review, testing, DevOps, etc.
+- **8 Slash Commands** - Structured workflows for development
 
-See `docs/DEPLOYMENT.md` for detailed deployment guide.
+See [CLAUDE.md](CLAUDE.md) for detailed Claude Code usage guide.
 
----
+## Development
 
-## 📡 API Documentation
+### Running Tests
 
-### Channels API
-
-#### GET `/api/channels`
-List all radio channels
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Rap Radio",
-      "slug": "rap",
-      "genre": "Rap",
-      "listenerCount": 1234
-    }
-  ]
-}
+```bash
+pytest
+pytest --cov=src --cov-report=html
 ```
 
-#### POST `/api/channels`
-Create new private channel (premium only)
+### Code Quality
 
-### Moderation API
+```bash
+# Format
+black src/ tests/
 
-#### GET `/api/moderation/pending`
-Get flagged content awaiting review
+# Lint
+ruff check src/ tests/
 
-#### POST `/api/moderation/review`
-Approve or reject flagged content
+# Type check
+mypy src/
+```
 
-See full API documentation in each route file.
+### Using Claude Code
 
----
+```bash
+# Start Claude Code
+claude
 
-## 📄 License
+# Use skills
+/skill music-theory-agent
 
-This project is licensed under the MIT License.
+# Use workflows
+/workflows:feature Add new API endpoint
+```
 
----
+## API Reference
 
-## 🙏 Acknowledgments
+API documentation available at `/docs` when running the server.
 
-- **Suno AI** for music generation API
-- **Anthropic** for Claude API
-- **OpenAI** for moderation API
-- **Liquidsoap** for streaming capabilities
-- **n8n** for workflow automation
+Key endpoints:
 
----
+- `POST /api/request` - Submit song request
+- `GET /api/queue` - View current queue
+- `GET /api/history` - View broadcast history
+- `GET /api/users/{id}/reputation` - Get user reputation
 
-Built with ❤️ for the community
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
+
+## Acknowledgments
+
+- [Suno AI](https://suno.ai) for music generation
+- [n8n](https://n8n.io) for workflow automation
+- [Liquidsoap](https://www.liquidsoap.info) for audio streaming
+- [Claude Code](https://claude.ai) for development assistance
