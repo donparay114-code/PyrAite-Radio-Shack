@@ -197,6 +197,21 @@ export function useSongs(page = 1, limit = 20) {
   });
 }
 
+export interface SearchResult {
+  songs: Song[];
+  users: User[];
+  queue_items: QueueItem[];
+}
+
+export function useSearch(query: string, enabled = true) {
+  return useQuery({
+    queryKey: ["search", query],
+    queryFn: () => fetchApi<SearchResult>(`/api/search?q=${encodeURIComponent(query)}`),
+    enabled: enabled && query.length >= 2,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+}
+
 export function useSong(songId: number) {
   return useQuery({
     queryKey: ["song", songId],
@@ -222,6 +237,56 @@ export function useAdminStats() {
           total: number;
         };
       }>("/api/admin/stats"),
+    refetchInterval: 30000,
+  });
+}
+
+export interface SystemHealth {
+  api: { status: string; latency: number };
+  database: { status: string; latency: number };
+  redis: { status: string; latency: number };
+  suno: { status: string; latency: number };
+  liquidsoap: { status: string; uptime: string };
+  icecast: { status: string; listeners: number };
+}
+
+export function useSystemHealth() {
+  return useQuery({
+    queryKey: ["admin", "health"],
+    queryFn: () => fetchApi<SystemHealth>("/api/admin/health"),
+    refetchInterval: 15000,
+  });
+}
+
+export interface RecentActivity {
+  type: string;
+  user?: string;
+  song?: string;
+  action?: string;
+  status?: string;
+  time: string;
+}
+
+export function useRecentActivity(limit = 10) {
+  return useQuery({
+    queryKey: ["admin", "activity", limit],
+    queryFn: () => fetchApi<RecentActivity[]>(`/api/admin/activity?limit=${limit}`),
+    refetchInterval: 10000,
+  });
+}
+
+export interface TodayStats {
+  requests: number;
+  success_rate: number;
+  peak_listeners: number;
+  avg_wait_time: string;
+  hourly_data: number[];
+}
+
+export function useTodayStats() {
+  return useQuery({
+    queryKey: ["admin", "today"],
+    queryFn: () => fetchApi<TodayStats>("/api/admin/today"),
     refetchInterval: 30000,
   });
 }

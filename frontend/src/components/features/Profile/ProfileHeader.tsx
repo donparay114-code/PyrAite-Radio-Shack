@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { User, UserTier, TIER_LABELS } from "@/types";
 import { useLinkTelegram } from "@/hooks/useApi";
 
@@ -13,14 +14,29 @@ export function ProfileHeader({ user, isOwnProfile }: ProfileHeaderProps) {
     const linkTelegramMutation = useLinkTelegram();
 
     const handleLink = () => {
-        if (!telegramUsername) return;
+        if (!telegramUsername) {
+            toast.error("Please enter your Telegram username");
+            return;
+        }
+
+        const username = telegramUsername.startsWith("@")
+            ? telegramUsername.slice(1)
+            : telegramUsername;
+
         linkTelegramMutation.mutate({
-            telegramUsername,
+            telegramUsername: username,
             userId: user.id
         }, {
             onSuccess: () => {
                 setTelegramUsername("");
-                alert("Telegram linked! (Mock)");
+                toast.success("Telegram account linked successfully!", {
+                    description: `Your account is now linked to @${username}`
+                });
+            },
+            onError: (error) => {
+                toast.error("Failed to link Telegram", {
+                    description: error instanceof Error ? error.message : "Please try again"
+                });
             }
         });
     };

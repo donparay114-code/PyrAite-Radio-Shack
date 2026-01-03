@@ -160,7 +160,7 @@ export function hapticFeedback(
 }
 
 /**
- * Show a Telegram-native alert
+ * Show a Telegram-native alert or fallback to toast
  */
 export function showTelegramAlert(message: string): Promise<void> {
   return new Promise((resolve) => {
@@ -168,14 +168,17 @@ export function showTelegramAlert(message: string): Promise<void> {
     if (webapp) {
       webapp.showAlert(message, resolve);
     } else {
-      alert(message);
-      resolve();
+      // Fallback: import toast dynamically to avoid SSR issues
+      import("sonner").then(({ toast }) => {
+        toast.info(message);
+        resolve();
+      });
     }
   });
 }
 
 /**
- * Show a Telegram-native confirm dialog
+ * Show a Telegram-native confirm dialog or fallback to browser confirm
  */
 export function showTelegramConfirm(message: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -183,6 +186,7 @@ export function showTelegramConfirm(message: string): Promise<boolean> {
     if (webapp) {
       webapp.showConfirm(message, resolve);
     } else {
+      // For confirm, we still need browser confirm as toast can't return a boolean
       resolve(confirm(message));
     }
   });

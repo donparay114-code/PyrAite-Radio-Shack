@@ -14,45 +14,49 @@ import {
   Zap,
   Server,
   Activity,
+  Loader2,
 } from "lucide-react";
 import { GlassCard, Badge, Progress } from "@/components/ui";
 import { cn, formatNumber } from "@/lib/utils";
-import { useAdminStats } from "@/hooks";
-
-// Mock admin data
-const mockStats = {
-  total_users: 2847,
-  total_songs: 1523,
-  total_requests: 4892,
-  active_queue: 12,
-  daily_requests: 89,
-  api_costs: {
-    suno: 45.20,
-    openai: 12.50,
-    total: 57.70,
-  },
-};
-
-const mockSystemHealth = {
-  api: { status: "healthy", latency: 45 },
-  database: { status: "healthy", latency: 12 },
-  redis: { status: "healthy", latency: 2 },
-  suno: { status: "healthy", latency: 1200 },
-  liquidsoap: { status: "healthy", uptime: "99.9%" },
-  icecast: { status: "healthy", listeners: 1234 },
-};
-
-const mockRecentActivity = [
-  { type: "request", user: "DJ Master", action: "Submitted song request", time: "2m ago" },
-  { type: "generation", song: "Neon Dreams", status: "completed", time: "5m ago" },
-  { type: "broadcast", song: "Summer Vibes", status: "started", time: "8m ago" },
-  { type: "moderation", user: "spammer123", action: "Request rejected", time: "12m ago" },
-  { type: "vote", user: "Lofi Lover", action: "Upvoted 'Chill Beats'", time: "15m ago" },
-];
+import { useAdminStats, useSystemHealth, useRecentActivity, useTodayStats } from "@/hooks";
+import type { SystemHealth, RecentActivity } from "@/hooks";
 
 export default function AdminDashboard() {
-  // In production:
-  // const { data: stats, isLoading } = useAdminStats();
+  const { data: stats, isLoading: statsLoading } = useAdminStats();
+  const { data: systemHealth, isLoading: healthLoading } = useSystemHealth();
+  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity(5);
+  const { data: todayStats, isLoading: todayLoading } = useTodayStats();
+
+  const isLoading = statsLoading || healthLoading;
+
+  // Fallback values while loading
+  const displayStats = stats || {
+    total_users: 0,
+    total_songs: 0,
+    total_requests: 0,
+    active_queue: 0,
+    daily_requests: 0,
+    api_costs: { suno: 0, openai: 0, total: 0 },
+  };
+
+  const displayHealth: SystemHealth = systemHealth || {
+    api: { status: "unknown", latency: 0 },
+    database: { status: "unknown", latency: 0 },
+    redis: { status: "unknown", latency: 0 },
+    suno: { status: "unknown", latency: 0 },
+    liquidsoap: { status: "unknown", uptime: "N/A" },
+    icecast: { status: "unknown", listeners: 0 },
+  };
+
+  const displayActivity: RecentActivity[] = recentActivity || [];
+
+  const displayToday = todayStats || {
+    requests: 0,
+    success_rate: 0,
+    peak_listeners: 0,
+    avg_wait_time: "N/A",
+    hourly_data: Array(24).fill(0),
+  };
 
   return (
     <div className="space-y-6">
@@ -72,27 +76,27 @@ export default function AdminDashboard() {
         <MetricCard
           icon={<Users className="w-5 h-5" />}
           label="Total Users"
-          value={formatNumber(mockStats.total_users)}
+          value={isLoading ? "..." : formatNumber(displayStats.total_users)}
           change="+12%"
           positive
         />
         <MetricCard
           icon={<Music className="w-5 h-5" />}
           label="Songs Generated"
-          value={formatNumber(mockStats.total_songs)}
+          value={isLoading ? "..." : formatNumber(displayStats.total_songs)}
           change="+8%"
           positive
         />
         <MetricCard
           icon={<Radio className="w-5 h-5" />}
           label="Active Queue"
-          value={mockStats.active_queue.toString()}
+          value={isLoading ? "..." : displayStats.active_queue.toString()}
           sublabel="requests"
         />
         <MetricCard
           icon={<DollarSign className="w-5 h-5" />}
           label="Today's Costs"
-          value={`$${mockStats.api_costs.total.toFixed(2)}`}
+          value={isLoading ? "..." : `$${displayStats.api_costs.total.toFixed(2)}`}
           change="-5%"
           positive
         />
@@ -108,7 +112,7 @@ export default function AdminDashboard() {
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {Object.entries(mockSystemHealth).map(([name, data]) => (
+            {Object.entries(displayHealth).map(([name, data]) => (
               <HealthCard key={name} name={name} data={data} />
             ))}
           </div>
@@ -124,13 +128,13 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <CostItem
               name="Suno API"
-              amount={mockStats.api_costs.suno}
+              amount={displayStats.api_costs.suno}
               budget={100}
               color="#8b5cf6"
             />
             <CostItem
               name="OpenAI"
-              amount={mockStats.api_costs.openai}
+              amount={displayStats.api_costs.openai}
               budget={50}
               color="#06b6d4"
             />
@@ -138,7 +142,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-text-muted">Total</span>
                 <span className="text-xl font-bold text-white">
-                  ${mockStats.api_costs.total.toFixed(2)}
+                  ${displayStats.api_costs.total.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-text-muted mt-1">
@@ -159,26 +163,37 @@ export default function AdminDashboard() {
           </h2>
 
           <div className="space-y-3">
-            {mockRecentActivity.map((activity, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
-              >
-                <ActivityIcon type={activity.type} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">
-                    {activity.user && <span className="font-medium">{activity.user}</span>}
-                    {activity.song && <span className="font-medium">{activity.song}</span>}
-                    {" "}
-                    {activity.action || activity.status}
-                  </p>
-                </div>
-                <span className="text-xs text-text-muted">{activity.time}</span>
-              </motion.div>
-            ))}
+            {activityLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+              </div>
+            ) : displayActivity.length > 0 ? (
+              displayActivity.map((activity, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+                >
+                  <ActivityIcon type={activity.type} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white truncate">
+                      {activity.user && <span className="font-medium">{activity.user}</span>}
+                      {activity.song && <span className="font-medium">{activity.song}</span>}
+                      {" "}
+                      {activity.action || activity.status}
+                    </p>
+                  </div>
+                  <span className="text-xs text-text-muted">{activity.time}</span>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-text-muted">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No recent activity</p>
+              </div>
+            )}
           </div>
         </GlassCard>
 
@@ -191,36 +206,49 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-3xl font-bold text-white">{mockStats.daily_requests}</p>
+              <p className="text-3xl font-bold text-white">
+                {todayLoading ? "..." : displayToday.requests}
+              </p>
               <p className="text-sm text-text-muted">Requests</p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-3xl font-bold text-green-400">94%</p>
+              <p className="text-3xl font-bold text-green-400">
+                {todayLoading ? "..." : `${Math.round(displayToday.success_rate * 100)}%`}
+              </p>
               <p className="text-sm text-text-muted">Success Rate</p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-3xl font-bold text-violet-400">1,234</p>
+              <p className="text-3xl font-bold text-violet-400">
+                {todayLoading ? "..." : formatNumber(displayToday.peak_listeners)}
+              </p>
               <p className="text-sm text-text-muted">Peak Listeners</p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-3xl font-bold text-cyan-400">2.3m</p>
+              <p className="text-3xl font-bold text-cyan-400">
+                {todayLoading ? "..." : displayToday.avg_wait_time}
+              </p>
               <p className="text-sm text-text-muted">Avg Wait Time</p>
             </div>
           </div>
 
-          {/* Hourly chart placeholder */}
+          {/* Hourly chart */}
           <div className="mt-6">
             <p className="text-sm text-text-muted mb-2">Requests (24h)</p>
             <div className="flex items-end gap-1 h-20">
-              {Array.from({ length: 24 }, (_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${20 + Math.random() * 80}%` }}
-                  transition={{ delay: i * 0.02 }}
-                  className="flex-1 bg-gradient-to-t from-violet-500/50 to-violet-500 rounded-t"
-                />
-              ))}
+              {displayToday.hourly_data.map((value, i) => {
+                const maxValue = Math.max(...displayToday.hourly_data, 1);
+                const percentage = (value / maxValue) * 100;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(percentage, 5)}%` }}
+                    transition={{ delay: i * 0.02 }}
+                    className="flex-1 bg-gradient-to-t from-violet-500/50 to-violet-500 rounded-t"
+                    title={`Hour ${i}: ${value} requests`}
+                  />
+                );
+              })}
             </div>
           </div>
         </GlassCard>
@@ -259,8 +287,16 @@ function MetricCard({ icon, label, value, change, positive, sublabel }: MetricCa
   );
 }
 
-function HealthCard({ name, data }: { name: string; data: any }) {
+interface HealthData {
+  status: string;
+  latency?: number;
+  uptime?: string;
+  listeners?: number;
+}
+
+function HealthCard({ name, data }: { name: string; data: HealthData }) {
   const isHealthy = data.status === "healthy";
+  const isUnknown = data.status === "unknown";
 
   return (
     <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
@@ -269,14 +305,14 @@ function HealthCard({ name, data }: { name: string; data: any }) {
         <div
           className={cn(
             "w-2 h-2 rounded-full",
-            isHealthy ? "bg-green-500" : "bg-red-500"
+            isHealthy ? "bg-green-500" : isUnknown ? "bg-yellow-500" : "bg-red-500"
           )}
         />
       </div>
       <p className="text-xs text-text-muted">
-        {data.latency && `${data.latency}ms`}
+        {data.latency !== undefined && `${data.latency}ms`}
         {data.uptime && `Uptime: ${data.uptime}`}
-        {data.listeners && `${data.listeners} listeners`}
+        {data.listeners !== undefined && `${data.listeners} listeners`}
       </p>
     </div>
   );

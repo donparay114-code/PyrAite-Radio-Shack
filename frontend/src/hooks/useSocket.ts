@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { NowPlaying, SongRequest } from '@/types';
 
+interface ModerationSettings {
+  enabled: boolean;
+  strictMode?: boolean;
+  blockedWords?: string[];
+  maxRequestsPerHour?: number;
+}
+
+interface SocketError {
+  message: string;
+  code?: string;
+}
+
 interface UseSocketReturn {
   socket: Socket | null;
   nowPlaying: NowPlaying | null;
@@ -56,13 +68,12 @@ export function useSocket(channelId: string): UseSocketReturn {
       setListenerCount(count);
     });
 
-    s.on('moderation-settings-changed', (data: any) => {
+    s.on('moderation-settings-changed', (data: ModerationSettings) => {
       console.log('Moderation settings changed:', data);
-      // You could show a toast notification here
     });
 
-    s.on('error', (error: any) => {
-      console.error('Socket error:', error);
+    s.on('error', (error: SocketError) => {
+      console.error('Socket error:', error.message);
     });
 
     setSocket(s);
