@@ -285,36 +285,50 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh user data
   const refreshUser = useCallback(async () => {
     if (state.isAuthenticated) {
-        if (state.isTelegramApp) {
-           await login();
-        } else {
-           // Refresh Google/Session auth
-           const token = localStorage.getItem("auth_token");
-           if (token) {
-              try {
-                  const response = await fetch(`${API_BASE}/api/auth/google/me`, {
-                      headers: { "Authorization": `Bearer ${token}` }
-                  });
-                  if (response.ok) {
-                      const data = await response.json();
-                      setState(prev => ({
-                          ...prev,
-                          user: {
-                              ...prev.user!, // Keep existing fields if needed, or strictly overwrite
-                              id: data.user_id,
-                              username: data.telegram_username,
-                              firstName: data.display_name,
-                              tier: data.tier as UserTier,
-                              reputation_score: data.reputation_score,
-                              isPremium: data.is_premium || false
-                          }
-                      }));
-                  }
-              } catch (e) {
-                  console.error("Failed to refresh user", e);
+      if (state.isTelegramApp) {
+        await login();
+      } else {
+        // Refresh Google/Session auth
+        const token = localStorage.getItem("auth_token");
+        if (token) {
+          try {
+            const response = await fetch(`${API_BASE}/api/auth/google/me`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
               }
-           }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              setState((prev) => ({
+                ...prev,
+                user: {
+                  ...prev.user!,
+                  id: data.user_id,
+                  telegramId: null,
+                  username: data.telegram_username,
+                  firstName: data.display_name,
+                  tier: data.tier as UserTier,
+                  reputation_score: data.reputation_score,
+                  isPremium: data.is_premium || false,
+                }
+              }));
+            } else if (response.status === 401) {
+              // Token expired
+              localStorage.removeItem("auth_token");
+              setState({
+                user: null,
+                isLoading: false,
+                isAuthenticated: false,
+                isTelegramApp: false,
+                error: "Session expired",
+              });
+            }
+          } catch (e) {
+            console.error("Failed to refresh user data", e);
+          }
         }
+      }
     }
   }, [state.isAuthenticated, state.isTelegramApp, login]);
 
