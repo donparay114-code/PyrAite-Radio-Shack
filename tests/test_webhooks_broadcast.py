@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from sqlalchemy import select
 
 from src.models import RadioHistory, Song, RadioQueue, QueueStatus, SunoStatus
@@ -40,7 +40,12 @@ async def test_broadcast_status_start_song(async_client, async_session):
     }
 
     # Send webhook
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    # We patch get_liquidsoap_client to avoid actual HTTP calls and test side effects
+    mock_client = AsyncMock()
+    mock_client.get_queue_length.return_value = 5  # High enough to not trigger push
+
+    with patch("src.api.routes.webhooks.get_liquidsoap_client", return_value=mock_client):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -107,7 +112,11 @@ async def test_broadcast_status_end_song(async_client, async_session):
         "artist": "AI Radio"
     }
 
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    mock_client = AsyncMock()
+    mock_client.get_queue_length.return_value = 5
+
+    with patch("src.api.routes.webhooks.get_liquidsoap_client", return_value=mock_client):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
     assert response.status_code == 200
 
     # Verify Song A (Previous)
@@ -142,7 +151,11 @@ async def test_broadcast_unknown_song(async_client, async_session):
         "artist": "Unknown Artist"
     }
 
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    mock_client = AsyncMock()
+    mock_client.get_queue_length.return_value = 5
+
+    with patch("src.api.routes.webhooks.get_liquidsoap_client", return_value=mock_client):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
     assert response.status_code == 200
 
     # Verify no new history created (since we can't link it)
@@ -165,3 +178,47 @@ async def test_broadcast_invalid_secret(async_client):
     with patch("src.api.routes.webhooks.verify_webhook_secret", return_value=False):
         response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
         assert response.status_code == 401
+
+@pytest.mark.asyncio
+async def test_broadcast_triggers_next_song(async_client, async_session):
+    """Test that broadcast status update triggers next song push if queue is low."""
+
+    # 1. Setup: A generated song ready to be played
+    next_song = Song(
+        title="Next Song",
+        artist="AI Radio",
+        suno_status=SunoStatus.COMPLETE.value,
+        local_file_path="/tmp/next_song.mp3"
+    )
+    async_session.add(next_song)
+    await async_session.flush()
+
+    next_queue = RadioQueue(
+        song_id=next_song.id,
+        status=QueueStatus.GENERATED.value,
+        queued_at=datetime.utcnow(),
+        priority_score=10,  # Higher priority
+        original_prompt="test prompt"
+    )
+    async_session.add(next_queue)
+    await async_session.commit()
+
+    # 2. Mock LiquidsoapClient
+    mock_client = AsyncMock()
+    mock_client.get_queue_length.return_value = 1  # Queue is low (< 2)
+    mock_client.push_song.return_value = True
+
+    # 3. Trigger webhook
+    payload = {
+        "event": "track_change",
+        "title": "Some Song",
+        "artist": "Some Artist"
+    }
+
+    with patch("src.api.routes.webhooks.get_liquidsoap_client", return_value=mock_client):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+        assert response.status_code == 200
+
+    # 4. Verify push_song was called
+    mock_client.get_queue_length.assert_called_once()
+    mock_client.push_song.assert_called_once_with("/tmp/next_song.mp3")
