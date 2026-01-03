@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { GlassCard, Badge, StatusBadge, Avatar, GlowButton } from "@/components/ui";
 import { cn, formatTimeAgo, truncate } from "@/lib/utils";
-import type { QueueItem, QueueStatus, STATUS_COLORS, STATUS_LABELS } from "@/types";
+import { QueueStatus, STATUS_COLORS, STATUS_LABELS } from "@/types";
+import type { QueueItem } from "@/types";
 
 interface QueueListProps {
   items: QueueItem[];
@@ -107,48 +108,23 @@ interface QueueItemCardProps {
   onCancel?: (itemId: number) => void;
 }
 
+/** Icons for each queue status */
+const STATUS_ICONS: Record<QueueStatus, React.ElementType> = {
+  [QueueStatus.PENDING]: Clock,
+  [QueueStatus.MODERATION]: AlertCircle,
+  [QueueStatus.QUEUED]: Music,
+  [QueueStatus.GENERATING]: Sparkles,
+  [QueueStatus.GENERATED]: CheckCircle2,
+  [QueueStatus.READY]: CheckCircle2,
+  [QueueStatus.BROADCASTING]: Radio,
+  [QueueStatus.COMPLETED]: CheckCircle2,
+  [QueueStatus.FAILED]: XCircle,
+  [QueueStatus.REJECTED]: XCircle,
+  [QueueStatus.CANCELLED]: XCircle,
+};
+
 function QueueItemCard({ item, index, isPlaying, onVote, onCancel }: QueueItemCardProps) {
-  const statusColors: Record<string, string> = {
-    pending: "#71717a",
-    moderation: "#f59e0b",
-    queued: "#3b82f6",
-    generating: "#8b5cf6",
-    generated: "#22c55e",
-    ready: "#22c55e",
-    broadcasting: "#ef4444",
-    completed: "#22c55e",
-    failed: "#ef4444",
-    rejected: "#ef4444",
-    cancelled: "#71717a",
-  };
-
-  const statusLabels: Record<string, string> = {
-    pending: "Pending",
-    moderation: "In Review",
-    queued: "Queued",
-    generating: "Generating",
-    generated: "Generated",
-    ready: "Ready",
-    broadcasting: "On Air",
-    completed: "Completed",
-    failed: "Failed",
-    rejected: "Rejected",
-    cancelled: "Cancelled",
-  };
-
-  const StatusIcon = {
-    pending: Clock,
-    moderation: AlertCircle,
-    queued: Music,
-    generating: Sparkles,
-    generated: CheckCircle2,
-    ready: CheckCircle2,
-    broadcasting: Radio,
-    completed: CheckCircle2,
-    failed: XCircle,
-    rejected: XCircle,
-    cancelled: XCircle,
-  }[item.status] || Clock;
+  const StatusIcon = STATUS_ICONS[item.status] || Clock;
 
   return (
     <motion.div
@@ -229,8 +205,8 @@ function QueueItemCard({ item, index, isPlaying, onVote, onCancel }: QueueItemCa
           {/* Status badge */}
           <StatusBadge
             status={item.status}
-            color={statusColors[item.status]}
-            label={statusLabels[item.status]}
+            color={STATUS_COLORS[item.status]}
+            label={STATUS_LABELS[item.status]}
           />
 
           {/* Vote buttons */}

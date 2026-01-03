@@ -136,27 +136,47 @@
 
 ---
 
+## Completed (Jan 2026 - Session 5)
+
+### Feature Completion
+- [x] Implement Skip back button in AudioPlayer
+  - [x] Add onSkipBack and onSkipForward props
+  - [x] Implement buffer seek for skip back (-10 seconds)
+  - [x] Enable/disable forward skip based on callback
+
+### Type Safety
+- [x] Validate socket event data types
+  - [x] Add type guard functions for NowPlaying, SongRequest, etc.
+  - [x] Validate incoming socket data before state updates
+  - [x] Log invalid data in development mode
+- [x] Fix unsafe type assertions in AuthProvider
+  - [x] Create parseUserTier and isValidUserTier functions
+  - [x] Add AuthApiResponse interface for API responses
+  - [x] Replace `as UserTier` casts with safe parsing
+
+### Performance
+- [x] Share status colors/labels via shared types
+  - [x] Use STATUS_COLORS and STATUS_LABELS from @/types
+  - [x] Add STATUS_ICON_NAMES constant
+  - [x] Remove duplicate definitions from QueueList
+
+### UI/UX Polish
+- [x] Standardize spinner styles across components
+  - [x] Create Spinner and SpinnerWithLabel components
+  - [x] Export from @/components/ui
+
+---
+
 ## Pending
-
-### Medium Priority
-
-#### Feature Completion (Remaining)
-- [ ] Implement Skip back button in AudioPlayer
-
-#### Type Safety (Remaining)
-- [ ] Validate socket event data types
-- [ ] Fix unsafe type assertions in AuthProvider
 
 ### Low Priority
 
 #### Performance
 - [ ] Add virtualization for long chat message lists
 - [ ] Optimize form state for large tag lists in RequestModal
-- [ ] Share status colors/labels via shared types (avoid duplication)
 
 #### UI/UX Polish
 - [ ] Improve error messages to be more user-friendly
-- [ ] Standardize spinner styles across components
 - [ ] Add confirmation dialogs for destructive actions
 
 #### Backend TODOs

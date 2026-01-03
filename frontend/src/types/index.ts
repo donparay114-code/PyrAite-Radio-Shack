@@ -140,6 +140,21 @@ export const STATUS_LABELS: Record<QueueStatus, string> = {
   [QueueStatus.CANCELLED]: "Cancelled",
 };
 
+/** Icon names for each queue status (component mapping done in UI layer) */
+export const STATUS_ICON_NAMES: Record<QueueStatus, string> = {
+  [QueueStatus.PENDING]: "Clock",
+  [QueueStatus.MODERATION]: "AlertCircle",
+  [QueueStatus.QUEUED]: "Music",
+  [QueueStatus.GENERATING]: "Sparkles",
+  [QueueStatus.GENERATED]: "CheckCircle2",
+  [QueueStatus.READY]: "CheckCircle2",
+  [QueueStatus.BROADCASTING]: "Radio",
+  [QueueStatus.COMPLETED]: "CheckCircle2",
+  [QueueStatus.FAILED]: "XCircle",
+  [QueueStatus.REJECTED]: "XCircle",
+  [QueueStatus.CANCELLED]: "XCircle",
+};
+
 // Vote types
 export interface Vote {
   id: number;

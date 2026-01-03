@@ -15,7 +15,12 @@ interface AudioPlayerProps {
   hlsUrl: string;
   fallbackUrl: string;
   artwork?: string;
+  onSkipBack?: () => void;
+  onSkipForward?: () => void;
 }
+
+/** Seek amount in seconds for skip back */
+const SEEK_BACK_SECONDS = 10;
 
 export function AudioPlayer({
   channelId,
@@ -24,6 +29,8 @@ export function AudioPlayer({
   hlsUrl,
   fallbackUrl,
   artwork,
+  onSkipBack,
+  onSkipForward,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -118,6 +125,37 @@ export function AudioPlayer({
     setIsMuted(!isMuted);
   };
 
+  /**
+   * Skip back by seeking the audio buffer backwards.
+   * For live streams with HLS buffer, this seeks back within available buffer.
+   * Falls back to custom callback if provided.
+   */
+  const handleSkipBack = () => {
+    if (onSkipBack) {
+      onSkipBack();
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Seek back within the buffer (for live streams with some buffer)
+    const newTime = Math.max(0, audio.currentTime - SEEK_BACK_SECONDS);
+    audio.currentTime = newTime;
+  };
+
+  /**
+   * Skip forward to next track.
+   * Uses custom callback if provided.
+   */
+  const handleSkipForward = () => {
+    if (onSkipForward) {
+      onSkipForward();
+    }
+    // Note: For live streams, skipping forward typically requires
+    // backend coordination (vote-to-skip or admin skip)
+  };
+
   const genreColor = genre ? getGenreColor(genre) : '#1DB954';
 
   return (
@@ -196,10 +234,9 @@ export function AudioPlayer({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            /* Skip back functionality */
-          }}
-          disabled
+          onClick={handleSkipBack}
+          aria-label="Skip back 10 seconds"
+          title="Skip back 10 seconds"
         >
           <svg
             className="h-6 w-6"
@@ -239,10 +276,10 @@ export function AudioPlayer({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
-            /* Skip forward functionality */
-          }}
-          disabled
+          onClick={handleSkipForward}
+          disabled={!onSkipForward}
+          aria-label="Skip to next track"
+          title={onSkipForward ? "Skip to next track" : "Skip not available"}
         >
           <svg
             className="h-6 w-6"

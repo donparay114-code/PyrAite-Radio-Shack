@@ -19,6 +19,51 @@ import {
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { UserTier } from "@/types";
 
+/**
+ * Validates that a value is a valid UserTier enum value
+ */
+function isValidUserTier(value: unknown): value is UserTier {
+  return (
+    typeof value === "string" &&
+    Object.values(UserTier).includes(value as UserTier)
+  );
+}
+
+/**
+ * Safely parses a UserTier from an unknown value, returning a default if invalid
+ */
+function parseUserTier(value: unknown, defaultTier: UserTier = UserTier.NEW): UserTier {
+  return isValidUserTier(value) ? value : defaultTier;
+}
+
+/**
+ * API response shape for auth endpoints
+ */
+interface AuthApiResponse {
+  id?: number;
+  user_id?: number;
+  telegram_id?: number;
+  telegram_username?: string | null;
+  email?: string;
+  display_name?: string;
+  is_premium?: boolean;
+  tier?: string;
+  reputation_score?: number;
+  is_new_user?: boolean;
+  token?: string;
+}
+
+/**
+ * Safely extracts user ID from API response
+ */
+function getUserIdFromResponse(data: AuthApiResponse): number {
+  const id = data.id ?? data.user_id;
+  if (typeof id !== "number") {
+    throw new Error("Invalid user ID in response");
+  }
+  return id;
+}
+
 // Auth state types
 export interface AuthUser {
   id: number;
@@ -110,17 +155,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(error.detail || "Authentication failed");
       }
 
-      const data = await response.json();
+      const data: AuthApiResponse = await response.json();
       return {
-        id: data.id, // Response uses id, not user_id
-        telegramId: data.telegram_id,
-        username: data.telegram_username, // Map telegram_username to username
-        firstName: data.display_name.split(' ')[0], // Approximate
-        lastName: null, // response doesn't strictly have last_name separately if we stick to display_name
-        isPremium: data.is_premium,
-        photoUrl: null, // API might not return photoUrl if it's not stored
-        tier: data.tier as UserTier,
-        reputation_score: data.reputation_score,
+        id: getUserIdFromResponse(data),
+        telegramId: data.telegram_id ?? null,
+        username: data.telegram_username ?? null,
+        firstName: data.display_name?.split(' ')[0] ?? "User",
+        lastName: null,
+        isPremium: data.is_premium ?? false,
+        photoUrl: null,
+        tier: parseUserTier(data.tier),
+        reputation_score: data.reputation_score ?? 0,
       };
     } catch {
       // Backend validation failed - will fallback to client-side data
@@ -141,7 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error("Google authentication failed");
       }
 
-      const data = await response.json();
+      const data: AuthApiResponse = await response.json();
 
       // Store token in localStorage
       if (data.token) {
@@ -150,16 +195,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setState({
         user: {
-          id: data.user_id, // Response uses user_id
+          id: getUserIdFromResponse(data),
           telegramId: null,
-          username: data.telegram_username || data.email, // Fallback
-          firstName: data.display_name,
+          username: data.telegram_username ?? data.email ?? null,
+          firstName: data.display_name ?? "User",
           lastName: null,
-          isPremium: data.is_premium || false,
+          isPremium: data.is_premium ?? false,
           photoUrl: null,
-          isNewUser: data.is_new_user,
-          tier: data.tier as UserTier,
-          reputation_score: data.reputation_score,
+          isNewUser: data.is_new_user ?? false,
+          tier: parseUserTier(data.tier),
+          reputation_score: data.reputation_score ?? 0,
         },
         isLoading: false,
         isAuthenticated: true,
@@ -222,19 +267,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
               });
 
               if (response.ok) {
-                 const data = await response.json();
+                 const data: AuthApiResponse = await response.json();
                  setState({
                     user: {
-                       id: data.user_id,
+                       id: getUserIdFromResponse(data),
                        telegramId: null,
-                       username: data.telegram_username,
-                       firstName: data.display_name,
+                       username: data.telegram_username ?? null,
+                       firstName: data.display_name ?? "User",
                        lastName: null,
-                       isPremium: data.is_premium || false,
+                       isPremium: data.is_premium ?? false,
                        photoUrl: null,
                        isNewUser: false,
-                       tier: data.tier as UserTier,
-                       reputation_score: data.reputation_score
+                       tier: parseUserTier(data.tier),
+                       reputation_score: data.reputation_score ?? 0
                     },
                     isLoading: false,
                     isAuthenticated: true,
@@ -296,18 +341,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
                       headers: { "Authorization": `Bearer ${token}` }
                   });
                   if (response.ok) {
-                      const data = await response.json();
+                      const data: AuthApiResponse = await response.json();
                       setState(prev => ({
                           ...prev,
-                          user: {
-                              ...prev.user!, // Keep existing fields if needed, or strictly overwrite
-                              id: data.user_id,
-                              username: data.telegram_username,
-                              firstName: data.display_name,
-                              tier: data.tier as UserTier,
-                              reputation_score: data.reputation_score,
-                              isPremium: data.is_premium || false
-                          }
+                          user: prev.user ? {
+                              ...prev.user,
+                              id: getUserIdFromResponse(data),
+                              username: data.telegram_username ?? prev.user.username,
+                              firstName: data.display_name ?? prev.user.firstName,
+                              tier: parseUserTier(data.tier, prev.user.tier),
+                              reputation_score: data.reputation_score ?? prev.user.reputation_score ?? 0,
+                              isPremium: data.is_premium ?? prev.user.isPremium
+                          } : null
                       }));
                   }
               } catch {
