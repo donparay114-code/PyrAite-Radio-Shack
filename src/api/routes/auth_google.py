@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +8,6 @@ from google.auth.transport import requests
 import os
 
 from src.models import User, get_async_session
-from src.utils.config import settings
 
 from src.utils.security import create_access_token, get_current_user
 
@@ -41,7 +40,6 @@ async def google_login(
         email = id_info.get("email")
         google_id = id_info.get("sub")
         name = id_info.get("name", "")
-        picture = id_info.get("picture")
         
         if not email:
             raise HTTPException(status_code=400, detail="Email not found in token")
