@@ -88,3 +88,5 @@ n8n-data/
 
 # Claude Code local settings (contains sensitive MCP tokens)
 .claude/settings.local.json
+node_modules/
+!src/lib/
