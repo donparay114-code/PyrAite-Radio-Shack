@@ -7,16 +7,21 @@ import { useEffect, Suspense } from "react";
 import { X } from "lucide-react";
 
 function LoginContent() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirect = searchParams.get("redirect") || "/";
 
     useEffect(() => {
-        if (isAuthenticated) {
-            router.push(redirect);
+        if (isAuthenticated && user) {
+            // New users should go to profile to complete setup (link Telegram)
+            if (user.isNewUser) {
+                router.push("/profile");
+            } else {
+                router.push(redirect);
+            }
         }
-    }, [isAuthenticated, router, redirect]);
+    }, [isAuthenticated, user, router, redirect]);
 
     return (
         <div className="relative max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 text-center backdrop-blur-xl shadow-2xl shadow-violet-500/10">
