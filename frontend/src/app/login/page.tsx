@@ -13,11 +13,18 @@ function LoginContent() {
     const redirect = searchParams.get("redirect") || "/";
 
     useEffect(() => {
+        // Debug: Log auth state
+        if (process.env.NODE_ENV === "development") {
+            console.log("[Login] Auth state:", { isAuthenticated, user, redirect });
+        }
+
         if (isAuthenticated && user) {
             // New users should go to profile to complete setup (link Telegram)
             if (user.isNewUser) {
+                console.log("[Login] New user detected, redirecting to /profile");
                 router.push("/profile");
             } else {
+                console.log("[Login] Returning user, redirecting to:", redirect);
                 router.push(redirect);
             }
         }

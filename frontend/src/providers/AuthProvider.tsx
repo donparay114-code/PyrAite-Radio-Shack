@@ -176,6 +176,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const loginWithGoogle = useCallback(async (credential: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
+      console.log("[Auth] Starting Google login...");
       const response = await fetch(`${API_BASE}/api/auth/google/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,35 +184,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Google authentication failed");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[Auth] Google login failed:", response.status, errorData);
+        throw new Error(errorData.detail || "Google authentication failed");
       }
 
       const data: AuthApiResponse = await response.json();
+      console.log("[Auth] Google login response:", {
+        user_id: data.id ?? data.user_id,
+        is_new_user: data.is_new_user,
+        has_token: !!data.token,
+        telegram_username: data.telegram_username,
+      });
 
       // Store token in localStorage
       if (data.token) {
         localStorage.setItem("auth_token", data.token);
+        console.log("[Auth] Token saved to localStorage");
       }
 
+      const newUser = {
+        id: getUserIdFromResponse(data),
+        telegramId: null,
+        username: data.telegram_username ?? data.email ?? null,
+        firstName: data.display_name ?? "User",
+        lastName: null,
+        isPremium: data.is_premium ?? false,
+        photoUrl: null,
+        isNewUser: data.is_new_user ?? false,
+        tier: parseUserTier(data.tier),
+        reputation_score: data.reputation_score ?? 0,
+      };
+      console.log("[Auth] Setting user state:", { isNewUser: newUser.isNewUser });
+
       setState({
-        user: {
-          id: getUserIdFromResponse(data),
-          telegramId: null,
-          username: data.telegram_username ?? data.email ?? null,
-          firstName: data.display_name ?? "User",
-          lastName: null,
-          isPremium: data.is_premium ?? false,
-          photoUrl: null,
-          isNewUser: data.is_new_user ?? false,
-          tier: parseUserTier(data.tier),
-          reputation_score: data.reputation_score ?? 0,
-        },
+        user: newUser,
         isLoading: false,
         isAuthenticated: true,
         isTelegramApp: false,
         error: null,
       });
     } catch (error) {
+      console.error("[Auth] Google login error:", error);
       // Google login error - update state with error message
       setState((prev) => ({
         ...prev,
