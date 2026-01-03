@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from src.api.routes import (
     auth,
+    auth_email,
     auth_google,
     chat,
     generate,
@@ -169,6 +170,7 @@ async def root():
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(auth_email.router, prefix="/api/auth/email", tags=["Auth"])
 app.include_router(auth_google.router, prefix="/api/auth/google", tags=["Auth"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])

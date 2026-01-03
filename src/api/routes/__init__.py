@@ -4,6 +4,7 @@
 # Export all route modules for easy importing
 from . import (
     auth,
+    auth_email,
     auth_google,
     chat,
     generate,
@@ -25,6 +26,7 @@ __all__ = [
     "votes",
     "webhooks",
     "auth",
+    "auth_email",
     "chat",
     "auth_google",
     "moderation",
