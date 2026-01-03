@@ -197,12 +197,24 @@ export function useSongs(page = 1, limit = 20) {
   });
 }
 
+/**
+ * Search result containing songs, users, and queue items matching the query
+ */
 export interface SearchResult {
   songs: Song[];
   users: User[];
   queue_items: QueueItem[];
 }
 
+/**
+ * Search across songs, users, and queue items
+ * @param query - Search query string (minimum 2 characters)
+ * @param enabled - Whether the query should execute (default: true)
+ * @returns Query result with songs, users, and queue_items arrays
+ * @example
+ * const { data, isLoading } = useSearch(debouncedQuery, isSearchOpen);
+ * // Results cached for 30 seconds
+ */
 export function useSearch(query: string, enabled = true) {
   return useQuery({
     queryKey: ["search", query],
@@ -220,7 +232,17 @@ export function useSong(songId: number) {
   });
 }
 
-// Admin hooks
+// ============================================================================
+// Admin Hooks
+// ============================================================================
+
+/**
+ * Fetch admin dashboard statistics
+ * @returns Query with total users, songs, requests, queue size, and API costs
+ * @example
+ * const { data: stats, isLoading } = useAdminStats();
+ * // Refetches every 30 seconds
+ */
 export function useAdminStats() {
   return useQuery({
     queryKey: ["admin", "stats"],
@@ -241,6 +263,9 @@ export function useAdminStats() {
   });
 }
 
+/**
+ * System health status for all services
+ */
 export interface SystemHealth {
   api: { status: string; latency: number };
   database: { status: string; latency: number };
@@ -250,6 +275,14 @@ export interface SystemHealth {
   icecast: { status: string; listeners: number };
 }
 
+/**
+ * Fetch system health status for all services
+ * @returns Query with health status for API, database, Redis, Suno, Liquidsoap, Icecast
+ * @example
+ * const { data: health } = useSystemHealth();
+ * // Status can be "healthy", "degraded", or "unhealthy"
+ * // Refetches every 15 seconds
+ */
 export function useSystemHealth() {
   return useQuery({
     queryKey: ["admin", "health"],
@@ -258,15 +291,32 @@ export function useSystemHealth() {
   });
 }
 
+/**
+ * Recent activity item for activity feed
+ */
 export interface RecentActivity {
+  /** Activity type: "request", "generation", "broadcast", "moderation", "vote" */
   type: string;
+  /** Username who performed the action */
   user?: string;
+  /** Song title if relevant */
   song?: string;
+  /** Action description */
   action?: string;
+  /** Status (e.g., "completed", "started") */
   status?: string;
+  /** Relative time (e.g., "2m ago") */
   time: string;
 }
 
+/**
+ * Fetch recent activity feed for admin dashboard
+ * @param limit - Maximum number of items to fetch (default: 10)
+ * @returns Query with array of recent activities
+ * @example
+ * const { data: activity } = useRecentActivity(5);
+ * // Refetches every 10 seconds
+ */
 export function useRecentActivity(limit = 10) {
   return useQuery({
     queryKey: ["admin", "activity", limit],
@@ -275,14 +325,30 @@ export function useRecentActivity(limit = 10) {
   });
 }
 
+/**
+ * Today's statistics including hourly breakdown
+ */
 export interface TodayStats {
+  /** Total requests today */
   requests: number;
+  /** Success rate as decimal (0.94 = 94%) */
   success_rate: number;
+  /** Peak concurrent listeners */
   peak_listeners: number;
+  /** Average wait time formatted (e.g., "2.3m") */
   avg_wait_time: string;
+  /** Hourly request counts (24 elements, index 0 = midnight) */
   hourly_data: number[];
 }
 
+/**
+ * Fetch today's statistics with hourly breakdown
+ * @returns Query with today's metrics and hourly data for charts
+ * @example
+ * const { data: today } = useTodayStats();
+ * // hourly_data[14] = requests at 2 PM
+ * // Refetches every 30 seconds
+ */
 export function useTodayStats() {
   return useQuery({
     queryKey: ["admin", "today"],
