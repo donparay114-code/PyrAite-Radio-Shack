@@ -338,6 +338,7 @@ class UdioProvider(MusicProvider):
         if self._wrapper is None:
             try:
                 from udio_wrapper import UdioWrapper
+
                 self._wrapper = UdioWrapper(self.auth_token)
             except ImportError:
                 raise ImportError(
@@ -365,7 +366,7 @@ class UdioProvider(MusicProvider):
                     prompt=request.prompt,
                     seed=-1,  # Random generation
                     custom_lyrics=None if request.is_instrumental else request.prompt,
-                )
+                ),
             )
 
             # Parse the result - udio-wrapper returns song data
@@ -376,7 +377,11 @@ class UdioProvider(MusicProvider):
 
                 if isinstance(result, dict):
                     audio_url = result.get("audio_url") or result.get("song_path")
-                    song_id = result.get("id") or result.get("song_id") or str(hash(str(result)))
+                    song_id = (
+                        result.get("id")
+                        or result.get("song_id")
+                        or str(hash(str(result)))
+                    )
                 elif isinstance(result, str):
                     # If result is just a URL or path
                     audio_url = result
@@ -386,7 +391,9 @@ class UdioProvider(MusicProvider):
                     if isinstance(result, list) and len(result) > 0:
                         first_item = result[0]
                         if isinstance(first_item, dict):
-                            audio_url = first_item.get("audio_url") or first_item.get("song_path")
+                            audio_url = first_item.get("audio_url") or first_item.get(
+                                "song_path"
+                            )
                             song_id = first_item.get("id") or str(hash(str(first_item)))
                         else:
                             audio_url = str(first_item)
@@ -400,7 +407,9 @@ class UdioProvider(MusicProvider):
                     audio_url=audio_url,
                     created_at=datetime.utcnow(),
                     completed_at=datetime.utcnow(),
-                    raw_response=result if isinstance(result, dict) else {"result": result},
+                    raw_response=(
+                        result if isinstance(result, dict) else {"result": result}
+                    ),
                 )
             else:
                 return GenerationResult(

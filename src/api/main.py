@@ -7,7 +7,19 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation, generate
+from src.api.routes import (
+    queue,
+    health,
+    webhooks,
+    users,
+    songs,
+    votes,
+    auth,
+    chat,
+    auth_google,
+    moderation,
+    generate,
+)
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 from src.api.socket_manager import sio_app
