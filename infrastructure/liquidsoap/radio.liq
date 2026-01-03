@@ -24,6 +24,10 @@ icecast_host = getenv("ICECAST_HOST") or "localhost"
 icecast_port = int_of_string(getenv("ICECAST_PORT") or "8000")
 icecast_password = getenv("ICECAST_PASSWORD") or "hackme"
 
+# API configuration
+api_url = getenv("API_URL") or "http://api:8000"
+webhook_secret = getenv("SECRET_KEY") or "dev-secret-key-change-in-production"
+
 # =============================================================================
 # CHANNEL DEFINITIONS
 # =============================================================================
@@ -51,6 +55,14 @@ channels = [
 def create_emergency_fallback(id) =
   # Blank audio as last resort
   blank(duration=10.0)
+end
+
+# Simple JSON string escape function
+def json_escape(s) =
+  # Escape backslashes first
+  s = string.replace(pattern="\\\\", by="\\\\\\\\", s)
+  # Escape double quotes
+  string.replace(pattern="\"", by="\\\"", s)
 end
 
 # Function to create channel stream
@@ -159,8 +171,20 @@ def create_channel(id, name, mount, hls_dir, genre) =
   source = on_metadata(
     fun(m) ->
       log("Now playing on #{name}: #{m['title']}")
-      # TODO: Trigger webhook to update database now_playing table
-      # system("curl -X POST http://localhost:3000/api/internal/now-playing -d 'channel_id=#{id}&title=#{m['title']}'")
+
+      # Escape strings for JSON
+      title = json_escape(m["title"] or "Unknown")
+      artist = json_escape(m["artist"] or "Unknown")
+
+      # Trigger webhook to update database now_playing table
+      ignore(http.post(
+        headers=[
+          ("Content-Type", "application/json"),
+          ("X-Webhook-Secret", webhook_secret)
+        ],
+        "#{api_url}/api/webhooks/broadcast/status",
+        data='{"event": "track_change", "title": "#{title}", "artist": "#{artist}", "channel_id": "#{mount}"}'
+      ))
     ,
     source
   )
