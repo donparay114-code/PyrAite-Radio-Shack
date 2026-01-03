@@ -3,6 +3,7 @@
 
 # Export all route modules for easy importing
 from . import (
+    admin,
     auth,
     auth_email,
     auth_google,
@@ -19,6 +20,7 @@ from . import (
 )
 
 __all__ = [
+    "admin",
     "health",
     "queue",
     "users",
