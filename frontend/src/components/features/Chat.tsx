@@ -3,9 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, MessageCircle, Info } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { GlassCard, Avatar, Badge } from "@/components/ui";
 import { cn, formatTimeAgo } from "@/lib/utils";
-import { UserTier, TIER_COLORS, TIER_LABELS } from "@/types";
+import { UserTier } from "@/types";
 import type { ChatMessage as APIChatMessage } from "@/lib/supabase";
 
 // Extended chat message type for display
@@ -67,9 +68,23 @@ export function Chat({
     }
   }, [shouldAutoScroll]);
 
+  // Auto-scroll when new messages arrive
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    // Use virtual scroll for better performance with many messages
+    if (messages.length > 50) {
+      scrollToBottomVirtual();
+    } else {
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom, scrollToBottomVirtual]);
+
+  // Virtualization for long message lists
+  const rowVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => messagesContainerRef.current,
+    estimateSize: useCallback(() => 80, []), // Estimated height per message
+    overscan: 5, // Render 5 extra items above/below viewport
+  });
 
   // Detect if user has scrolled up
   const handleScroll = useCallback(() => {
@@ -80,6 +95,16 @@ export function Chat({
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
     setShouldAutoScroll(isNearBottom);
   }, []);
+
+  // Scroll to bottom using virtualizer
+  const scrollToBottomVirtual = useCallback(() => {
+    if (shouldAutoScroll && messages.length > 0) {
+      rowVirtualizer.scrollToIndex(messages.length - 1, {
+        align: "end",
+        behavior: "smooth",
+      });
+    }
+  }, [shouldAutoScroll, messages.length, rowVirtualizer]);
 
   // Handle message submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,50 +163,88 @@ export function Chat({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+        className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
         style={{ maxHeight }}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          {isLoading ? (
+        {isLoading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-12 text-center"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading messages"
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-12 text-center"
-              role="status"
-              aria-busy="true"
-              aria-label="Loading messages"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full mb-4"
-              />
-              <p className="text-text-muted">Loading messages...</p>
-            </motion.div>
-          ) : messages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-12 text-center"
-            >
-              <MessageCircle className="w-12 h-12 text-text-muted mb-4" />
-              <p className="text-text-muted">No messages yet</p>
-              <p className="text-text-muted text-sm mt-1">
-                Be the first to say something!
-              </p>
-            </motion.div>
-          ) : (
-            messages.map((message, index) => (
-              <ChatMessageItem
-                key={message.id}
-                message={message}
-                isOwnMessage={currentUser?.id === message.user_id}
-                index={index}
-              />
-            ))
-          )}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full mb-4"
+            />
+            <p className="text-text-muted">Loading messages...</p>
+          </motion.div>
+        ) : messages.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-12 text-center"
+          >
+            <MessageCircle className="w-12 h-12 text-text-muted mb-4" />
+            <p className="text-text-muted">No messages yet</p>
+            <p className="text-text-muted text-sm mt-1">
+              Be the first to say something!
+            </p>
+          </motion.div>
+        ) : messages.length > 50 ? (
+          /* Virtualized list for large message counts */
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+              const message = messages[virtualItem.index];
+              return (
+                <div
+                  key={message.id}
+                  data-index={virtualItem.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  className="pb-3"
+                >
+                  <ChatMessageItem
+                    message={message}
+                    isOwnMessage={currentUser?.id === message.user_id}
+                    index={virtualItem.index}
+                    skipAnimation
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Standard list with animations for small message counts */
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {messages.map((message, index) => (
+                <ChatMessageItem
+                  key={message.id}
+                  message={message}
+                  isOwnMessage={currentUser?.id === message.user_id}
+                  index={index}
+                />
+              ))}
+            </AnimatePresence>
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Scroll to bottom indicator */}
@@ -276,12 +339,63 @@ interface ChatMessageItemProps {
   message: APIChatMessage;
   isOwnMessage: boolean;
   index: number;
+  /** Skip entrance animations (used in virtualized mode) */
+  skipAnimation?: boolean;
 }
 
-function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps) {
+function ChatMessageItem({ message, isOwnMessage, index, skipAnimation = false }: ChatMessageItemProps) {
   // System messages have different styling
   if (message.message_type !== "text") {
-    return <SystemMessage message={message} index={index} />;
+    return <SystemMessage message={message} index={index} skipAnimation={skipAnimation} />;
+  }
+
+  // When virtualized, skip animations for performance
+  if (skipAnimation) {
+    return (
+      <div
+        className={cn(
+          "group flex gap-3",
+          isOwnMessage && "flex-row-reverse"
+        )}
+      >
+        <Avatar
+          name={`User ${message.user_id || "Unknown"}`}
+          size="sm"
+        />
+        <div
+          className={cn(
+            "flex-1 max-w-[75%]",
+            isOwnMessage && "flex flex-col items-end"
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2 mb-1",
+              isOwnMessage && "flex-row-reverse"
+            )}
+          >
+            <span className="text-sm font-medium text-white">
+              {message.user_id ? `User ${message.user_id}` : "Anonymous"}
+            </span>
+            <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+              {formatTimeAgo(message.created_at)}
+            </span>
+          </div>
+          <div
+            className={cn(
+              "px-4 py-2.5 rounded-2xl",
+              isOwnMessage
+                ? "bg-violet-500/20 border border-violet-500/30 rounded-tr-md"
+                : "bg-white/5 border border-white/10 rounded-tl-md"
+            )}
+          >
+            <p className="text-sm text-white whitespace-pre-wrap break-words">
+              {message.content}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -348,9 +462,10 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
 interface SystemMessageProps {
   message: APIChatMessage;
   index: number;
+  skipAnimation?: boolean;
 }
 
-function SystemMessage({ message, index }: SystemMessageProps) {
+function SystemMessage({ message, index, skipAnimation = false }: SystemMessageProps) {
   const typeStyles: Record<string, string> = {
     system: "bg-blue-500/10 border-blue-500/20 text-blue-400",
     now_playing: "bg-pink-500/10 border-pink-500/20 text-pink-400",
@@ -359,6 +474,21 @@ function SystemMessage({ message, index }: SystemMessageProps) {
   };
 
   const style = typeStyles[message.message_type] || typeStyles.system;
+
+  if (skipAnimation) {
+    return (
+      <div className="flex justify-center">
+        <div
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-full border text-sm",
+            style
+          )}
+        >
+          <span>{message.content}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div

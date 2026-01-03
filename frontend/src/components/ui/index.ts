@@ -5,6 +5,7 @@ export { Badge, LiveBadge, StatusBadge } from "./Badge";
 export { Progress, CircularProgress, AudioProgress } from "./Progress";
 export { ErrorBoundary, InlineErrorBoundary } from "./ErrorBoundary";
 export { Spinner, SpinnerWithLabel, spinnerIconClass } from "./Spinner";
+export { ConfirmDialog, useConfirmDialog } from "./ConfirmDialog";
 export {
   Skeleton,
   HoverCard,

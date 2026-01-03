@@ -2,9 +2,10 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { X, Sparkles, Music, Mic2, Loader2 } from "lucide-react";
-import { GlassCard, GlowButton, Badge } from "@/components/ui";
+import { X, Sparkles, Music, Mic2 } from "lucide-react";
+import { GlassCard, GlowButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { ERROR_MESSAGES, getUserFriendlyError } from "@/lib/errorMessages";
 
 interface RequestModalProps {
   isOpen: boolean;
@@ -85,7 +86,8 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setError("Please enter a song description");
+      const validationError = ERROR_MESSAGES.VALIDATION_PROMPT_EMPTY;
+      setError(validationError.description);
       return;
     }
 
@@ -93,9 +95,6 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
     setError(null);
 
     try {
-      // If we passed an onSubmit prop that handles everything, keep using it?
-      // But user wants direct generation from modal. We'll use the API directly here.
-
       const fullPrompt = [
         prompt,
         genre && `Genre: ${genre}`,
@@ -126,10 +125,8 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
       setIsInstrumental(false);
       setSelectedTags([]);
 
-      // Notify parent? (Optional but good practice)
+      // Notify parent
       if (onSubmit) {
-        // We can still call onSubmit to maybe refresh the list or show a toast
-        // But the actual generation happens here now.
         await onSubmit({
           prompt: fullPrompt,
           genre,
@@ -139,7 +136,8 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate song");
+      const friendlyError = getUserFriendlyError(err, "GENERATION_FAILED");
+      setError(`${friendlyError.title}: ${friendlyError.description}`);
     } finally {
       setIsLoading(false);
     }

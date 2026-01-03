@@ -1,10 +1,11 @@
 "use strict";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase, isSupabaseConfigured, type ChatMessage } from "@/lib/supabase";
 import { useChatHistory, useSendMessage } from "./useApi";
 import { toast } from "sonner";
+import { ERROR_MESSAGES } from "@/lib/errorMessages";
 
 export function useChat(userId?: number) {
   const queryClient = useQueryClient();
@@ -97,7 +98,9 @@ export function useChat(userId?: number) {
 
   const sendMessage = useCallback(async (content: string) => {
     if (!userId) {
-      toast.error("You must be logged in to chat");
+      toast.error("Sign in required", {
+        description: "Please sign in to join the chat conversation.",
+      });
       return;
     }
 
@@ -106,11 +109,14 @@ export function useChat(userId?: number) {
         content,
         userId,
       });
-      // Note: We don't manually add to 'messages' here because 
+      // Note: We don't manually add to 'messages' here because
       // Supabase Realtime will trigger the INSERT event and handle it.
       // Or we could do optimistic updates if we want instant feedback before server ack.
     } catch {
-      toast.error("Failed to send message");
+      const error = ERROR_MESSAGES.CHAT_SEND_FAILED;
+      toast.error(error.title, {
+        description: error.action || error.description,
+      });
     }
   }, [userId, sendMessageMutation]);
 

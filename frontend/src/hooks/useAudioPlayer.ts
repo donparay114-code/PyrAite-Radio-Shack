@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ERROR_MESSAGES } from "@/lib/errorMessages";
 
 interface AudioPlayerState {
   isPlaying: boolean;
@@ -71,10 +72,11 @@ export function useAudioPlayer(initialUrl?: string): UseAudioPlayerReturn {
     };
 
     const handleError = () => {
+      const audioError = ERROR_MESSAGES.AUDIO_LOAD_FAILED;
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: "Failed to load audio",
+        error: `${audioError.title}: ${audioError.description}`,
       }));
     };
 
@@ -107,7 +109,8 @@ export function useAudioPlayer(initialUrl?: string): UseAudioPlayerReturn {
 
   const play = useCallback(() => {
     audioRef.current?.play().catch(() => {
-      setState((prev) => ({ ...prev, error: "Playback failed" }));
+      const playbackError = ERROR_MESSAGES.AUDIO_PLAYBACK_ERROR;
+      setState((prev) => ({ ...prev, error: `${playbackError.title}: ${playbackError.description}` }));
     });
   }, []);
 

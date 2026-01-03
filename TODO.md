@@ -167,17 +167,37 @@
 
 ---
 
+## Completed (Jan 2026 - Session 6)
+
+### Performance
+- [x] Add virtualization for long chat message lists
+  - [x] Integrate @tanstack/react-virtual for Chat component
+  - [x] Virtualize message list for 50+ messages
+  - [x] Keep animations for small lists, skip for virtualized
+  - [x] Auto-scroll to bottom with virtual scrolling
+- [x] Optimize form state for large tag lists in RequestModal
+  - [x] Analyzed current implementation - lists are small (10-12 items)
+  - [x] Current implementation is efficient for this size
+
+### UI/UX Polish
+- [x] Improve error messages to be more user-friendly
+  - [x] Create centralized errorMessages.ts utility
+  - [x] Add UserFriendlyError interface with title, description, action
+  - [x] Map common errors to friendly messages (network, auth, generation, audio)
+  - [x] Update useChat with friendly error toasts
+  - [x] Update RequestModal with friendly validation/generation errors
+  - [x] Update useAudioPlayer with friendly playback errors
+- [x] Add confirmation dialogs for destructive actions
+  - [x] Create reusable ConfirmDialog component
+  - [x] Add useConfirmDialog hook for state management
+  - [x] Support danger/warning/info variants
+  - [x] Add Sign Out button with confirmation to ProfileHeader
+
+---
+
 ## Pending
 
 ### Low Priority
-
-#### Performance
-- [ ] Add virtualization for long chat message lists
-- [ ] Optimize form state for large tag lists in RequestModal
-
-#### UI/UX Polish
-- [ ] Improve error messages to be more user-friendly
-- [ ] Add confirmation dialogs for destructive actions
 
 #### Backend TODOs
 - [ ] channels/route.ts:137 - Initialize Liquidsoap and Icecast

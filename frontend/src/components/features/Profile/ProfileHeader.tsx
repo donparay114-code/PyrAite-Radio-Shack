@@ -1,8 +1,13 @@
+"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { User, UserTier, TIER_LABELS } from "@/types";
 import { useLinkTelegram } from "@/hooks/useApi";
+import { useAuth } from "@/providers/AuthProvider";
+import { ConfirmDialog } from "@/components/ui";
 
 interface ProfileHeaderProps {
     user: User;
@@ -11,7 +16,16 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ user, isOwnProfile }: ProfileHeaderProps) {
     const [telegramUsername, setTelegramUsername] = useState("");
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const linkTelegramMutation = useLinkTelegram();
+    const { logout } = useAuth();
+    const router = useRouter();
+
+    const handleLogout = () => {
+        logout();
+        toast.success("Signed out successfully");
+        router.push("/");
+    };
 
     const handleLink = () => {
         if (!telegramUsername) {
@@ -102,7 +116,30 @@ export function ProfileHeader({ user, isOwnProfile }: ProfileHeaderProps) {
                         <div className="text-xs text-zinc-500 uppercase tracking-widest">Requests</div>
                     </div>
                 </div>
+
+                {/* Sign Out Button */}
+                {isOwnProfile && (
+                    <button
+                        onClick={() => setShowLogoutConfirm(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        <span className="text-sm">Sign Out</span>
+                    </button>
+                )}
             </div>
+
+            {/* Logout Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleLogout}
+                title="Sign out?"
+                description="You'll need to sign in again to access your account and continue earning reputation."
+                confirmText="Sign out"
+                cancelText="Stay signed in"
+                variant="warning"
+            />
         </div>
     );
 }
