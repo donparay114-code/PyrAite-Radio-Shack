@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { MessageCircle, Users, Radio, AlertCircle } from "lucide-react";
 import { Chat } from "@/components/features";
-import { GlassCard, Badge, PulseGlow, easings } from "@/components/ui";
+import { GlassCard, Badge, PulseGlow, easings, InlineErrorBoundary } from "@/components/ui";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/providers/AuthProvider";
 import { useNowPlaying } from "@/hooks/useApi";
@@ -71,19 +71,21 @@ export default function ChatPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: easings.smooth }}
         >
-          <Chat
-            messages={chatHook.messages}
-            isLoading={chatHook.isLoading}
-            isSending={chatHook.isSending}
-            onSendMessage={(content) => {
-              if (user?.id) {
-                chatHook.sendMessage(content);
-              }
-            }}
-            currentUser={user}
-            isAuthenticated={isAuthenticated}
-            maxHeight="calc(100vh - 250px)"
-          />
+          <InlineErrorBoundary fallbackText="Failed to load Chat">
+            <Chat
+              messages={chatHook.messages}
+              isLoading={chatHook.isLoading}
+              isSending={chatHook.isSending}
+              onSendMessage={(content) => {
+                if (user?.id) {
+                  chatHook.sendMessage(content);
+                }
+              }}
+              currentUser={user}
+              isAuthenticated={isAuthenticated}
+              maxHeight="calc(100vh - 250px)"
+            />
+          </InlineErrorBoundary>
         </motion.div>
 
         {/* Sidebar - Now Playing + Chat Rules */}

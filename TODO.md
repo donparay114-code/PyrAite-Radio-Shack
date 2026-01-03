@@ -90,22 +90,33 @@
 
 ---
 
+## Completed (Jan 2026 - Session 3)
+
+### Error Handling
+- [x] Add error boundaries for critical components
+  - [x] Create ErrorBoundary and InlineErrorBoundary components
+  - [x] Wrap Layout children with ErrorBoundary
+  - [x] Wrap NowPlaying and QueueList on home page
+  - [x] Wrap Chat component on chat page
+  - [x] Wrap QueueList on queue page
+
+### Accessibility (a11y)
+- [x] Add aria-label to Chat textarea
+- [x] Add aria-busy to loading spinners
+  - [x] Profile page loading state
+  - [x] Leaderboard page loading state
+  - [x] Queue page loading state
+  - [x] Admin page activity loading state
+  - [x] Chat component loading state
+
+---
+
 ## Pending
 
 ### High Priority
 
-#### Error Handling (Remaining)
-- [ ] Add error boundaries for critical components
-
 #### Loading States
-- [ ] Add skeleton loaders for Queue list
 - [ ] Add loading indicator for NowPlaying song changes
-
-### Medium Priority
-
-#### Accessibility (a11y) (Remaining)
-- [ ] Add aria-label to Chat textarea
-- [ ] Add aria-busy to loading spinners
 
 #### Feature Completion
 - [ ] Implement Skip button in NowPlaying

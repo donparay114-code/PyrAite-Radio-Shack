@@ -147,6 +147,9 @@ export function Chat({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-12 text-center"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading messages"
             >
               <motion.div
                 animate={{ rotate: 360 }}
@@ -226,6 +229,7 @@ export function Chat({
                 placeholder="Type a message..."
                 disabled={!isConnected || isSending}
                 rows={1}
+                aria-label="Chat message input"
                 className={cn(
                   "w-full resize-none rounded-xl px-4 py-3 pr-12",
                   "bg-white/5 border border-white/10",

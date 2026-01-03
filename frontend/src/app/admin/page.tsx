@@ -180,7 +180,7 @@ export default function AdminDashboard() {
 
           <div className="space-y-3">
             {activityLoading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-8" role="status" aria-busy="true" aria-label="Loading activity">
                 <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
               </div>
             ) : displayActivity.length > 0 ? (

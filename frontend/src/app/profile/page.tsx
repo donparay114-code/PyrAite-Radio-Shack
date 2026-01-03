@@ -25,7 +25,7 @@ export default function ProfilePage() {
 
   if (authLoading || (isAuthenticated && userLoading)) {
     return (
-      <div className="min-h-screen pl-64 pt-20 flex items-center justify-center">
+      <div className="min-h-screen pl-64 pt-20 flex items-center justify-center" role="status" aria-busy="true" aria-label="Loading profile">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     );

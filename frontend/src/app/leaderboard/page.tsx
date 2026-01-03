@@ -21,7 +21,7 @@ export default function LeaderboardPage() {
     return (
       <div className="max-w-4xl mx-auto">
         <GlassCard className="p-12">
-          <div className="flex flex-col items-center justify-center gap-4">
+          <div className="flex flex-col items-center justify-center gap-4" role="status" aria-busy="true" aria-label="Loading leaderboard">
             <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
             <p className="text-text-muted">Loading leaderboard...</p>
           </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ListMusic, Filter, SortAsc, RefreshCw, Loader2 } from "lucide-react";
 import { QueueList, RequestModal } from "@/components/features";
-import { GlassCard, GlowButton, IconButton } from "@/components/ui";
+import { GlassCard, GlowButton, IconButton, InlineErrorBoundary } from "@/components/ui";
 import { useQueue, useQueueStats, useVote, useSubmitRequest } from "@/hooks";
 import { useAuth } from "@/providers/AuthProvider";
 import type { QueueItem, QueueStatus } from "@/types";
@@ -81,7 +81,7 @@ export default function QueuePage() {
           </div>
         </div>
         <GlassCard className="p-12">
-          <div className="flex flex-col items-center justify-center gap-4">
+          <div className="flex flex-col items-center justify-center gap-4" role="status" aria-busy="true" aria-label="Loading queue">
             <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
             <p className="text-text-muted">Loading queue...</p>
           </div>
@@ -160,10 +160,12 @@ export default function QueuePage() {
 
       {/* Queue list */}
       {items.length > 0 ? (
-        <QueueList
-          items={items}
-          onVote={handleVote}
-        />
+        <InlineErrorBoundary fallbackText="Failed to load Queue list">
+          <QueueList
+            items={items}
+            onVote={handleVote}
+          />
+        </InlineErrorBoundary>
       ) : (
         <GlassCard className="p-12">
           <div className="flex flex-col items-center justify-center gap-4">

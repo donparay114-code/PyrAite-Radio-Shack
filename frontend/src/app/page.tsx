@@ -15,6 +15,7 @@ import {
   Avatar,
   Badge,
   easings,
+  InlineErrorBoundary,
 } from "@/components/ui";
 import { useNowPlaying, useQueue, useQueueStats, useVote, useSubmitRequest } from "@/hooks/useApi";
 import { useChat } from "@/hooks/useChat";
@@ -219,15 +220,17 @@ export default function HomePage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: easings.smooth }}
             >
-              <NowPlaying
-                song={currentSong}
-                queueItem={currentQueueItem}
-                isPlaying={isPlaying}
-                currentTime={currentTime}
-                onPlayPause={() => setIsPlaying(!isPlaying)}
-                onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
-                onSeek={setCurrentTime}
-              />
+              <InlineErrorBoundary fallbackText="Failed to load Now Playing">
+                <NowPlaying
+                  song={currentSong}
+                  queueItem={currentQueueItem}
+                  isPlaying={isPlaying}
+                  currentTime={currentTime}
+                  onPlayPause={() => setIsPlaying(!isPlaying)}
+                  onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
+                  onSeek={setCurrentTime}
+                />
+              </InlineErrorBoundary>
             </motion.div>
           )}
 
@@ -257,11 +260,13 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2, ease: easings.smooth }}
             >
-              <QueueList
-                items={displayQueue}
-                onVote={handleVote}
-                currentItemId={currentQueueItem?.id}
-              />
+              <InlineErrorBoundary fallbackText="Failed to load Queue">
+                <QueueList
+                  items={displayQueue}
+                  onVote={handleVote}
+                  currentItemId={currentQueueItem?.id}
+                />
+              </InlineErrorBoundary>
             </motion.div>
           )}
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { ErrorBoundary } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -35,7 +36,9 @@ export function Layout({ children }: LayoutProps) {
         )}
       >
         <div className="p-4 md:p-6 lg:p-8">
-          {children}
+          <ErrorBoundary name="Page Content">
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
     </div>
