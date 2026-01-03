@@ -201,8 +201,12 @@
 
 #### Backend TODOs
 - [ ] channels/route.ts:137 - Initialize Liquidsoap and Icecast
-- [ ] moderation/pending/route.ts:10 - Get authenticated user from session
-- [ ] moderation/review/route.ts:10 - Get authenticated user from session
+- [x] moderation/pending/route.ts:10 - Get authenticated user from session
+  - Created lib/auth.ts with JWT verification
+  - Uses getAuthenticatedUser() for Bearer token extraction
+- [x] moderation/review/route.ts:10 - Get authenticated user from session
+  - Uses getAuthenticatedUser() for JWT auth
+  - Falls back to x-user-id header in development only
 - [ ] moderation/review/route.ts:101 - Send notification to user
 - [ ] music_provider.py:299 - Stable Audio API integration
 - [ ] telegram_handlers.py:114 - Daily limit check

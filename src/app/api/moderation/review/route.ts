@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // POST /api/moderation/review - Approve or reject flagged content
 export async function POST(request: NextRequest) {
@@ -7,15 +8,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { requestId, decision, reason } = body;
 
-    // TODO: Get authenticated user from session/JWT
-    const userId = request.headers.get('x-user-id'); // Placeholder
-
-    if (!userId) {
+    // Get authenticated user from JWT
+    const auth = getAuthenticatedUser(request);
+    if (!auth.success || !auth.userId) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: auth.error || 'Unauthorized' },
         { status: 401 }
       );
     }
+    const userId = auth.userId;
 
     // Validate input
     if (!requestId || !decision || !['approve', 'reject'].includes(decision)) {

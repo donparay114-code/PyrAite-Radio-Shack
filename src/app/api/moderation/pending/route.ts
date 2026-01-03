@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // GET /api/moderation/pending - Get flagged content awaiting review
 export async function GET(request: NextRequest) {
@@ -7,15 +8,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const channelId = searchParams.get('channelId');
 
-    // TODO: Get authenticated user from session/JWT
-    const userId = request.headers.get('x-user-id'); // Placeholder
-
-    if (!userId) {
+    // Get authenticated user from JWT
+    const auth = getAuthenticatedUser(request);
+    if (!auth.success || !auth.userId) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: auth.error || 'Unauthorized' },
         { status: 401 }
       );
     }
+    const userId = auth.userId;
 
     // Get channels where user is moderator
     const moderatedChannels = await query(
