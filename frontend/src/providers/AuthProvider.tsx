@@ -166,6 +166,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isTelegramApp: false,
         error: null,
       });
+
+      // Redirect new users to profile settings to complete their profile
+      if (data.is_new_user && typeof window !== "undefined") {
+        window.location.href = "/profile/settings";
+      }
     } catch (error) {
       console.error("Google login error:", error);
       setState((prev) => ({
@@ -214,42 +219,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Not in Telegram - check if we have a persisted session? 
         const token = localStorage.getItem("auth_token");
         if (token) {
-           try {
-              const response = await fetch(`${API_BASE}/api/auth/google/me`, {
-                 headers: {
-                    "Authorization": `Bearer ${token}`
-                 }
-              });
-
-              if (response.ok) {
-                 const data = await response.json();
-                 setState({
-                    user: {
-                       id: data.user_id,
-                       telegramId: null,
-                       username: data.telegram_username,
-                       firstName: data.display_name,
-                       lastName: null,
-                       isPremium: data.is_premium || false,
-                       photoUrl: null,
-                       isNewUser: false,
-                       tier: data.tier as UserTier,
-                       reputation_score: data.reputation_score
-                    },
-                    isLoading: false,
-                    isAuthenticated: true,
-                    isTelegramApp: false,
-                    error: null
-                 });
-                 return;
-              } else {
-                 // Token invalid/expired
-                 localStorage.removeItem("auth_token");
+          try {
+            const response = await fetch(`${API_BASE}/api/auth/google/me`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
               }
-           } catch (e) {
-              console.error("Token verification failed", e);
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              setState({
+                user: {
+                  id: data.user_id,
+                  telegramId: null,
+                  username: data.telegram_username,
+                  firstName: data.display_name,
+                  lastName: null,
+                  isPremium: data.is_premium || false,
+                  photoUrl: null,
+                  isNewUser: false,
+                  tier: data.tier as UserTier,
+                  reputation_score: data.reputation_score
+                },
+                isLoading: false,
+                isAuthenticated: true,
+                isTelegramApp: false,
+                error: null
+              });
+              return;
+            } else {
+              // Token invalid/expired
               localStorage.removeItem("auth_token");
-           }
+            }
+          } catch (e) {
+            console.error("Token verification failed", e);
+            localStorage.removeItem("auth_token");
+          }
         }
 
         setState((prev) => ({
@@ -285,36 +290,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh user data
   const refreshUser = useCallback(async () => {
     if (state.isAuthenticated) {
-        if (state.isTelegramApp) {
-           await login();
-        } else {
-           // Refresh Google/Session auth
-           const token = localStorage.getItem("auth_token");
-           if (token) {
-              try {
-                  const response = await fetch(`${API_BASE}/api/auth/google/me`, {
-                      headers: { "Authorization": `Bearer ${token}` }
-                  });
-                  if (response.ok) {
-                      const data = await response.json();
-                      setState(prev => ({
-                          ...prev,
-                          user: {
-                              ...prev.user!, // Keep existing fields if needed, or strictly overwrite
-                              id: data.user_id,
-                              username: data.telegram_username,
-                              firstName: data.display_name,
-                              tier: data.tier as UserTier,
-                              reputation_score: data.reputation_score,
-                              isPremium: data.is_premium || false
-                          }
-                      }));
-                  }
-              } catch (e) {
-                  console.error("Failed to refresh user", e);
-              }
-           }
+      if (state.isTelegramApp) {
+        await login();
+      } else {
+        // Refresh Google/Session auth
+        const token = localStorage.getItem("auth_token");
+        if (token) {
+          try {
+            const response = await fetch(`${API_BASE}/api/auth/google/me`, {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setState(prev => ({
+                ...prev,
+                user: {
+                  ...prev.user!, // Keep existing fields if needed, or strictly overwrite
+                  id: data.user_id,
+                  username: data.telegram_username,
+                  firstName: data.display_name,
+                  tier: data.tier as UserTier,
+                  reputation_score: data.reputation_score,
+                  isPremium: data.is_premium || false
+                }
+              }));
+            }
+          } catch (e) {
+            console.error("Failed to refresh user", e);
+          }
         }
+      }
     }
   }, [state.isAuthenticated, state.isTelegramApp, login]);
 

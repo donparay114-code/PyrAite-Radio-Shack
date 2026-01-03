@@ -1,4 +1,33 @@
 # API Routes Package
 """Route modules for PYrte Radio Shack API."""
-from . import auth_google
-from . import moderation
+
+# Export all route modules for easy importing
+from . import (
+    health,
+    queue,
+    users,
+    songs,
+    votes,
+    webhooks,
+    auth,
+    chat,
+    auth_google,
+    moderation,
+    generate,
+    profile
+)
+
+__all__ = [
+    "health",
+    "queue",
+    "users",
+    "songs",
+    "votes",
+    "webhooks",
+    "auth",
+    "chat",
+    "auth_google",
+    "moderation",
+    "generate",
+    "profile"
+]

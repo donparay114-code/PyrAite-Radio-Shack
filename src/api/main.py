@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation, generate
+from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation, generate, profile
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 from src.api.socket_manager import sio_app
@@ -165,6 +165,13 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(moderation.router, prefix="/api/moderation", tags=["Moderation"])
 app.include_router(generate.router, prefix="/api/generate", tags=["Generate"])
+app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
+
+# Debug: Print all registered routes
+print("\n--- REGISTERED ROUTES ---")
+for route in app.routes:
+    print(f"Path: {route.path} | Name: {route.name}")
+print("--- END REGISTERED ROUTES ---\n")
 
 
 if __name__ == "__main__":
@@ -173,6 +180,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "src.api.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=settings.debug,
     )
