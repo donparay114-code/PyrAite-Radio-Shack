@@ -9,6 +9,7 @@ from src.models import QueueStatus, RadioHistory, RadioQueue, Song, SunoStatus
 # Payload structure as seen in liquidsoap/radio.liq
 # {"event": "track_change", "title": "#{title}", "artist": "#{artist}"}
 
+
 @pytest.mark.asyncio
 async def test_broadcast_status_start_song(async_client, async_session):
     """Test handling track_change event when a song starts."""
@@ -18,7 +19,7 @@ async def test_broadcast_status_start_song(async_client, async_session):
         title="My Cool Song",
         artist="AI Radio",
         suno_status=SunoStatus.COMPLETE.value,
-        duration_seconds=180.0
+        duration_seconds=180.0,
     )
     async_session.add(song)
     await async_session.flush()
@@ -26,7 +27,7 @@ async def test_broadcast_status_start_song(async_client, async_session):
     queue_item = RadioQueue(
         song_id=song.id,
         status=QueueStatus.GENERATED.value,
-        original_prompt="test prompt"
+        original_prompt="test prompt",
     )
     async_session.add(queue_item)
     await async_session.commit()
@@ -34,11 +35,7 @@ async def test_broadcast_status_start_song(async_client, async_session):
     # Verify initial state
     assert queue_item.status == QueueStatus.GENERATED.value
 
-    payload = {
-        "event": "track_change",
-        "title": "My Cool Song",
-        "artist": "AI Radio"
-    }
+    payload = {"event": "track_change", "title": "My Cool Song", "artist": "AI Radio"}
 
     # Send webhook
     response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
@@ -49,9 +46,11 @@ async def test_broadcast_status_start_song(async_client, async_session):
 
     # Verify side effects
     # 1. New RadioHistory created
-    history = (await async_session.execute(
-        select(RadioHistory).where(RadioHistory.song_id == song.id)
-    )).scalar_one_or_none()
+    history = (
+        await async_session.execute(
+            select(RadioHistory).where(RadioHistory.song_id == song.id)
+        )
+    ).scalar_one_or_none()
 
     assert history is not None
     assert history.ended_at is None
@@ -60,6 +59,7 @@ async def test_broadcast_status_start_song(async_client, async_session):
     await async_session.refresh(queue_item)
     assert queue_item.status == QueueStatus.BROADCASTING.value
     assert queue_item.broadcast_started_at is not None
+
 
 @pytest.mark.asyncio
 async def test_broadcast_status_end_song(async_client, async_session):
@@ -74,7 +74,7 @@ async def test_broadcast_status_end_song(async_client, async_session):
         song_id=song_a.id,
         status=QueueStatus.BROADCASTING.value,
         broadcast_started_at=datetime.utcnow() - timedelta(minutes=2),
-        original_prompt="prompt A"
+        original_prompt="prompt A",
     )
     async_session.add(queue_a)
     await async_session.flush()
@@ -83,7 +83,7 @@ async def test_broadcast_status_end_song(async_client, async_session):
     history_a = RadioHistory(
         song_id=song_a.id,
         queue_id=queue_a.id,  # Linked to queue item
-        played_at=datetime.utcnow() - timedelta(minutes=2)
+        played_at=datetime.utcnow() - timedelta(minutes=2),
     )
     async_session.add(history_a)
 
@@ -95,18 +95,14 @@ async def test_broadcast_status_end_song(async_client, async_session):
     queue_b = RadioQueue(
         song_id=song_b.id,
         status=QueueStatus.GENERATED.value,
-        original_prompt="prompt B"
+        original_prompt="prompt B",
     )
     async_session.add(queue_b)
 
     await async_session.commit()
 
     # Send webhook for Song B start
-    payload = {
-        "event": "track_change",
-        "title": "Song B",
-        "artist": "AI Radio"
-    }
+    payload = {"event": "track_change", "title": "Song B", "artist": "AI Radio"}
 
     response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
     assert response.status_code == 200
@@ -124,14 +120,17 @@ async def test_broadcast_status_end_song(async_client, async_session):
     assert song_a.play_count == 1
 
     # Verify Song B (Current)
-    history_b = (await async_session.execute(
-        select(RadioHistory).where(RadioHistory.song_id == song_b.id)
-    )).scalar_one_or_none()
+    history_b = (
+        await async_session.execute(
+            select(RadioHistory).where(RadioHistory.song_id == song_b.id)
+        )
+    ).scalar_one_or_none()
     assert history_b is not None
     assert history_b.ended_at is None
 
     await async_session.refresh(queue_b)
     assert queue_b.status == QueueStatus.BROADCASTING.value
+
 
 @pytest.mark.asyncio
 async def test_broadcast_unknown_song(async_client, async_session):
@@ -140,7 +139,7 @@ async def test_broadcast_unknown_song(async_client, async_session):
     payload = {
         "event": "track_change",
         "title": "Unknown Song",
-        "artist": "Unknown Artist"
+        "artist": "Unknown Artist",
     }
 
     response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
@@ -151,18 +150,17 @@ async def test_broadcast_unknown_song(async_client, async_session):
     count = (await async_session.execute(select(RadioHistory))).all()
     assert len(count) == 0
 
+
 @pytest.mark.asyncio
 async def test_broadcast_invalid_secret(async_client):
     """Test webhook security."""
 
     # Provide valid payload structure to pass validation, fail on secret
-    payload = {
-        "event": "track_change",
-        "title": "My Cool Song",
-        "artist": "AI Radio"
-    }
+    payload = {"event": "track_change", "title": "My Cool Song", "artist": "AI Radio"}
 
     # We need to ensure verify_webhook_secret returns False
     with patch("src.api.routes.webhooks.verify_webhook_secret", return_value=False):
-        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+        response = await async_client.post(
+            "/api/webhooks/broadcast/status", json=payload
+        )
         assert response.status_code == 401

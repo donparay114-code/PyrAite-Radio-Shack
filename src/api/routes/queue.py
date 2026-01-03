@@ -218,7 +218,9 @@ async def get_queue_stats(
             total_wait_seconds += (comp_at - req_at).total_seconds()
             count += 1
 
-    average_wait_minutes = round((total_wait_seconds / count / 60) if count > 0 else 0.0, 1)
+    average_wait_minutes = round(
+        (total_wait_seconds / count / 60) if count > 0 else 0.0, 1
+    )
 
     return QueueStatsResponse(
         total_items=total_items,

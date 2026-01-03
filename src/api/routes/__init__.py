@@ -29,5 +29,5 @@ __all__ = [
     "auth_google",
     "moderation",
     "generate",
-    "profile"
+    "profile",
 ]

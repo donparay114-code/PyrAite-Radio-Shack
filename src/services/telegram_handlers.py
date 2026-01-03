@@ -85,16 +85,13 @@ async def handle_request_command(message: dict):
         await bot.send_message(
             chat_id,
             "Please provide a description for your song.\n\n"
-            "Example: <code>/request chill lo-fi beats for studying</code>"
+            "Example: <code>/request chill lo-fi beats for studying</code>",
         )
         return
 
     prompt = parts[1].strip()
     if not prompt:
-        await bot.send_message(
-            chat_id,
-            "Please provide a description for your song."
-        )
+        await bot.send_message(chat_id, "Please provide a description for your song.")
         return
 
     session_maker = get_session_maker()
@@ -105,7 +102,7 @@ async def handle_request_command(message: dict):
             if user.is_banned:
                 await bot.send_message(
                     chat_id,
-                    f"🚫 You are banned from making requests.\nReason: {user.ban_reason or 'No reason provided'}"
+                    f"🚫 You are banned from making requests.\nReason: {user.ban_reason or 'No reason provided'}",
                 )
                 return
 
@@ -117,7 +114,9 @@ async def handle_request_command(message: dict):
             query = select(RadioQueue).where(
                 and_(
                     RadioQueue.user_id == user.id,
-                    RadioQueue.status.in_([QueueStatus.PENDING.value, QueueStatus.QUEUED.value])
+                    RadioQueue.status.in_(
+                        [QueueStatus.PENDING.value, QueueStatus.QUEUED.value]
+                    ),
                 )
             )
             result = await session.execute(query)
@@ -127,7 +126,7 @@ async def handle_request_command(message: dict):
             if pending_count >= 3:
                 await bot.send_message(
                     chat_id,
-                    "⚠️ You already have 3 pending requests. Please wait for them to complete."
+                    "⚠️ You already have 3 pending requests. Please wait for them to complete.",
                 )
                 return
 
@@ -139,7 +138,7 @@ async def handle_request_command(message: dict):
                 original_prompt=prompt,
                 status=QueueStatus.PENDING.value,
                 # Initial priority score based on user reputation
-                priority_score=100.0 + (user.reputation_score * 0.5)
+                priority_score=100.0 + (user.reputation_score * 0.5),
             )
             session.add(queue_item)
             await session.flush()
@@ -153,7 +152,7 @@ async def handle_request_command(message: dict):
                 f"✅ Request received!\n\n"
                 f"<b>Prompt:</b> {prompt}\n\n"
                 f"You will be notified when your song starts generating.",
-                reply_to_message_id=message.get("message_id")
+                reply_to_message_id=message.get("message_id"),
             )
 
         except Exception as e:
@@ -161,7 +160,7 @@ async def handle_request_command(message: dict):
             await session.rollback()
             await bot.send_message(
                 chat_id,
-                "❌ An error occurred while processing your request. Please try again later."
+                "❌ An error occurred while processing your request. Please try again later.",
             )
 
 
@@ -202,22 +201,29 @@ async def handle_callback_query(callback: dict):
                 queue_item = result.scalar_one_or_none()
 
                 if not queue_item:
-                    await bot.answer_callback_query(callback_id, "Request not found", show_alert=True)
+                    await bot.answer_callback_query(
+                        callback_id, "Request not found", show_alert=True
+                    )
                     return
 
                 # Check if user owns the request (optional: prevent self-voting?)
                 if queue_item.user_id == user.id:
-                    await bot.answer_callback_query(callback_id, "You cannot vote on your own request", show_alert=True)
+                    await bot.answer_callback_query(
+                        callback_id,
+                        "You cannot vote on your own request",
+                        show_alert=True,
+                    )
                     return
 
-                vote_type = VoteType.UPVOTE.value if action == CallbackAction.UPVOTE.value else VoteType.DOWNVOTE.value
+                vote_type = (
+                    VoteType.UPVOTE.value
+                    if action == CallbackAction.UPVOTE.value
+                    else VoteType.DOWNVOTE.value
+                )
 
                 # Check for existing vote
                 vote_query = select(Vote).where(
-                    and_(
-                        Vote.user_id == user.id,
-                        Vote.queue_item_id == queue_id
-                    )
+                    and_(Vote.user_id == user.id, Vote.queue_item_id == queue_id)
                 )
                 vote_result = await session.execute(vote_query)
                 existing_vote = vote_result.scalar_one_or_none()
@@ -251,7 +257,7 @@ async def handle_callback_query(callback: dict):
                         telegram_user_id=user.telegram_id,
                         queue_item_id=queue_id,
                         vote_type=vote_type,
-                        telegram_callback_id=callback_id
+                        telegram_callback_id=callback_id,
                     )
                     session.add(new_vote)
                     if vote_type == VoteType.UPVOTE.value:
@@ -268,9 +274,11 @@ async def handle_callback_query(callback: dict):
 
                 requester_rep = 0.0
                 if queue_item.user_id:
-                     requester_query = select(User.reputation_score).where(User.id == queue_item.user_id)
-                     requester_res = await session.execute(requester_query)
-                     requester_rep = requester_res.scalar() or 0.0
+                    requester_query = select(User.reputation_score).where(
+                        User.id == queue_item.user_id
+                    )
+                    requester_res = await session.execute(requester_query)
+                    requester_rep = requester_res.scalar() or 0.0
 
                 queue_item.update_priority(requester_rep)
 
@@ -280,25 +288,29 @@ async def handle_callback_query(callback: dict):
                 # Update message keyboard
                 # We need to reconstruct the keyboard with new counts
                 if message and message.get("chat"):
-                    keyboard = bot.vote_keyboard(queue_id, queue_item.upvotes, queue_item.downvotes)
+                    keyboard = bot.vote_keyboard(
+                        queue_id, queue_item.upvotes, queue_item.downvotes
+                    )
                     # We only update if the counts changed. The vote_keyboard function generates buttons.
 
                     try:
                         await bot.edit_message(
                             chat_id=message["chat"]["id"],
                             message_id=message["message_id"],
-                            text=message.get("text", "Song Request"), # Keep existing text
+                            text=message.get(
+                                "text", "Song Request"
+                            ),  # Keep existing text
                             reply_markup=keyboard,
-                            parse_mode="HTML" # Assume HTML
+                            parse_mode="HTML",  # Assume HTML
                         )
                     except Exception as e:
                         # Message might not be modified
                         logger.warning(f"Failed to update message keyboard: {e}")
 
             elif action == CallbackAction.INFO.value:
-                 # Show info about the request
-                 # For now just answer
-                 await bot.answer_callback_query(callback_id, "Info not implemented yet")
+                # Show info about the request
+                # For now just answer
+                await bot.answer_callback_query(callback_id, "Info not implemented yet")
 
             else:
                 await bot.answer_callback_query(callback_id, "Unknown action")

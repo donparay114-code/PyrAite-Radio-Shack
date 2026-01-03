@@ -15,12 +15,14 @@ router = APIRouter()
 # Request/Response models
 class ProfileUpdateRequest(BaseModel):
     """Update profile fields."""
+
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None
 
 
 class ProfileResponse(BaseModel):
     """Profile response model."""
+
     id: int
     display_name: str
     email: Optional[str] = None
@@ -49,7 +51,7 @@ async def get_profile_settings(
         google_id=user.google_id,
         telegram_id=user.telegram_id,
         telegram_username=user.telegram_username,
-        avatar_url=getattr(user, 'avatar_url', None),
+        avatar_url=getattr(user, "avatar_url", None),
         tier=user.tier.value if user.tier else "new",
         reputation_score=user.reputation_score,
         is_premium=user.is_premium,
@@ -71,7 +73,7 @@ async def update_profile_settings(
 
     if updates.avatar_url is not None:
         # Check if User model has avatar_url field
-        if hasattr(user, 'avatar_url'):
+        if hasattr(user, "avatar_url"):
             user.avatar_url = updates.avatar_url
 
     session.add(user)
@@ -85,7 +87,7 @@ async def update_profile_settings(
         google_id=user.google_id,
         telegram_id=user.telegram_id,
         telegram_username=user.telegram_username,
-        avatar_url=getattr(user, 'avatar_url', None),
+        avatar_url=getattr(user, "avatar_url", None),
         tier=user.tier.value if user.tier else "new",
         reputation_score=user.reputation_score,
         is_premium=user.is_premium,

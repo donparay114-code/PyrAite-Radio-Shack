@@ -90,9 +90,17 @@ async def list_providers():
     """List available music generation providers."""
     return {
         "providers": [
-            {"id": "udio", "name": "Udio", "description": "Free AI music via udio-wrapper"},
+            {
+                "id": "udio",
+                "name": "Udio",
+                "description": "Free AI music via udio-wrapper",
+            },
             {"id": "suno", "name": "Suno", "description": "Suno AI music generation"},
-            {"id": "mock", "name": "Mock", "description": "Test provider (no actual generation)"},
+            {
+                "id": "mock",
+                "name": "Mock",
+                "description": "Test provider (no actual generation)",
+            },
         ],
         "default": "udio",
     }
