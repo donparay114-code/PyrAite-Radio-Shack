@@ -1,16 +1,16 @@
 
-from fastapi import APIRouter, HTTPException, Depends, Body
+import os
+
+from fastapi import APIRouter, Depends, HTTPException
+from google.auth.transport import requests
+from google.oauth2 import id_token
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from google.oauth2 import id_token
-from google.auth.transport import requests
-import os
 
 from src.models import User, get_async_session
-from src.utils.config import settings
-
 from src.utils.security import create_access_token, get_current_user
+
 
 # Helper for response
 class AuthResponse(BaseModel):
@@ -38,25 +38,25 @@ async def google_login(
     try:
         # Verify token
         id_info = id_token.verify_oauth2_token(request.id_token, requests.Request(), GOOGLE_CLIENT_ID)
-        
+
         email = id_info.get("email")
         google_id = id_info.get("sub")
         name = id_info.get("name", "")
-        picture = id_info.get("picture")
-        
+        # picture = id_info.get("picture")  # Available for future use
+
         if not email:
             raise HTTPException(status_code=400, detail="Email not found in token")
 
         # Find or create user
         result = await session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
-        
+
         is_new = False
         if not user:
             # Check by google_id
             result = await session.execute(select(User).where(User.google_id == google_id))
             user = result.scalar_one_or_none()
-            
+
         if not user:
             is_new = True
             user = User(
@@ -70,13 +70,13 @@ async def google_login(
             # unexpected: found by email but not google_id? Update google_id
             if not user.google_id:
                 user.google_id = google_id
-            
+
         await session.commit()
         await session.refresh(user)
-        
+
         # Generate JWT token
         access_token = create_access_token(data={"sub": str(user.id)})
-        
+
         return AuthResponse(
             user_id=user.id,
             display_name=user.display_name,
@@ -105,11 +105,11 @@ async def link_telegram(
     """
     # Simply update the current user
     # Note: As mentioned, real verification would require extra steps.
-    
+
     user.telegram_username = request.telegram_username.replace("@", "")
     session.add(user) # Ensure it's in session
     await session.commit()
-    
+
 @router.get("/me", response_model=AuthResponse)
 async def get_me(
     user: User = Depends(get_current_user)

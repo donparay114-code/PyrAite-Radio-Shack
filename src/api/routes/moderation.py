@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from pydantic import BaseModel
+
 from src.api.socket_manager import emit_moderation_settings_changed
 
 router = APIRouter()

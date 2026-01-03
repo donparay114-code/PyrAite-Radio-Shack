@@ -7,10 +7,23 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation, generate, profile
+from src.api.routes import (
+    auth,
+    auth_google,
+    chat,
+    generate,
+    health,
+    moderation,
+    profile,
+    queue,
+    songs,
+    users,
+    votes,
+    webhooks,
+)
+from src.api.socket_manager import sio_app
 from src.utils.config import settings
 from src.utils.logging import setup_logging
-from src.api.socket_manager import sio_app
 
 # API version
 API_VERSION = "1.0.0"

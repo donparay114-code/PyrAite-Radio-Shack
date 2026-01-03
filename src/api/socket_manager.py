@@ -1,5 +1,7 @@
-import socketio
 import logging
+
+import socketio
+
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ sio = socketio.AsyncServer(
 sio_app = socketio.ASGIApp(sio)
 
 from urllib.parse import parse_qs
+
 
 @sio.event
 async def connect(sid, environ):

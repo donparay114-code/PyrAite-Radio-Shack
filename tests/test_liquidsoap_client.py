@@ -1,6 +1,9 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
+
 from src.services.liquidsoap_client import LiquidsoapClient
+
 
 @pytest.mark.asyncio
 async def test_get_queue_length():

@@ -4,21 +4,21 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import (
+    QueueStatus,
     RadioHistory,
     RadioQueue,
-    QueueStatus,
     Song,
     SunoStatus,
     get_async_session,
 )
-from src.services.suno_client import get_suno_client
 from src.services.liquidsoap_client import get_liquidsoap_client
+from src.services.suno_client import get_suno_client
 from src.services.telegram_bot import get_telegram_bot
 from src.services.telegram_handlers import register_handlers
 from src.utils.config import settings

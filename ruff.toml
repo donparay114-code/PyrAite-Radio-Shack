@@ -1,0 +1,23 @@
+# Ruff configuration for PYrte Radio Shack
+# https://docs.astral.sh/ruff/configuration/
+
+[lint]
+# Enable common lint rules
+select = ["E", "F"]
+
+# Ignore common style issues (handled by black) and import order issues
+ignore = [
+    "E402",  # Module level import not at top of file
+    "E501",  # Line too long (handled by black)
+    "E701",  # Multiple statements on one line
+    "E711",  # Comparison to None
+    "E712",  # Comparison to True/False
+    "W291",  # Trailing whitespace
+    "W292",  # No newline at end of file
+    "W293",  # Blank line contains whitespace
+]
+
+# Per-file ignores
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # Allow unused and star imports in __init__ files
+"tests/*" = ["F401", "F811"]      # Allow unused imports and redefinitions in tests

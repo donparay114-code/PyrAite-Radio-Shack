@@ -68,16 +68,16 @@ async def update_profile_settings(
         # Store display name in telegram_first_name field for now
         # (since that's what display_name property uses)
         user.telegram_first_name = updates.display_name
-    
+
     if updates.avatar_url is not None:
         # Check if User model has avatar_url field
         if hasattr(user, 'avatar_url'):
             user.avatar_url = updates.avatar_url
-    
+
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    
+
     return ProfileResponse(
         id=user.id,
         display_name=user.display_name,
@@ -100,13 +100,13 @@ async def unlink_telegram(
     """Unlink Telegram from the current user's account."""
     if not user.telegram_id and not user.telegram_username:
         raise HTTPException(status_code=400, detail="No Telegram account linked")
-    
+
     user.telegram_id = None
     user.telegram_username = None
     user.telegram_first_name = None
     user.telegram_last_name = None
-    
+
     session.add(user)
     await session.commit()
-    
+
     return {"message": "Telegram account unlinked successfully"}

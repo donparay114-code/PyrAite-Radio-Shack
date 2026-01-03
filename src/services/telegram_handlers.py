@@ -3,13 +3,12 @@
 import logging
 from typing import Optional
 
-from sqlalchemy import select, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from src.models import RadioQueue, QueueStatus, User, Vote, VoteType
+from src.models import QueueStatus, RadioQueue, User, Vote, VoteType
 from src.models.base import get_async_engine
-from src.services.telegram_bot import TelegramBot, CallbackAction, get_telegram_bot
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from src.services.telegram_bot import CallbackAction, TelegramBot, get_telegram_bot
 
 logger = logging.getLogger(__name__)
 

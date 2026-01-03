@@ -5,12 +5,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.models import RadioQueue, QueueStatus, get_async_session
-from src.services.icecast import get_current_listeners
 from sqlalchemy.orm import selectinload
+
+from src.models import QueueStatus, RadioQueue, get_async_session
+from src.services.icecast import get_current_listeners
 
 router = APIRouter()
 

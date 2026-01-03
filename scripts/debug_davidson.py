@@ -1,6 +1,6 @@
-import urllib.request
 import csv
 import io
+import urllib.request
 
 SOURCE_DAVIDSON = "https://raw.githubusercontent.com/t-davidson/hate-speech-and-offensive-language/master/lexicons/refined_ngram_dict.csv"
 

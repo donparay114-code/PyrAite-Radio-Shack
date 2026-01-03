@@ -1,8 +1,9 @@
 """Liquidsoap client for interacting with the radio stream."""
 
 import logging
-import httpx
 from typing import Optional
+
+import httpx
 
 from src.utils.config import settings
 

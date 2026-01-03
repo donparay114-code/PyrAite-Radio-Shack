@@ -1,9 +1,10 @@
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import select
 
-from src.models import RadioHistory, Song, RadioQueue, QueueStatus, SunoStatus
+from src.models import QueueStatus, RadioHistory, RadioQueue, Song, SunoStatus
 
 # Payload structure as seen in liquidsoap/radio.liq
 # {"event": "track_change", "title": "#{title}", "artist": "#{artist}"}
