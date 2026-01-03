@@ -1,5 +1,6 @@
 import socketio
 import logging
+from urllib.parse import parse_qs
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,6 @@ sio = socketio.AsyncServer(
 
 # Create an ASGI app
 sio_app = socketio.ASGIApp(sio)
-
-from urllib.parse import parse_qs
 
 @sio.event
 async def connect(sid, environ):

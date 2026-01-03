@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 
 from sqlalchemy import select, and_
-from sqlalchemy.orm import selectinload
 
 from src.models import RadioQueue, QueueStatus, User, Vote, VoteType
 from src.models.base import get_async_engine
