@@ -1,6 +1,7 @@
 """Telegram bot command and callback handlers."""
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -111,7 +112,23 @@ async def handle_request_command(message: dict):
                 return
 
             # Check daily limit
-            # TODO: Implement daily limit check based on created_at
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            daily_query = select(RadioQueue).where(
+                and_(
+                    RadioQueue.user_id == user.id,
+                    RadioQueue.created_at >= today_start
+                )
+            )
+            daily_result = await session.execute(daily_query)
+            daily_count = len(daily_result.scalars().all())
+
+            if daily_count >= user.max_daily_requests:
+                await bot.send_message(
+                    chat_id,
+                    f"⚠️ You have reached your daily limit of {user.max_daily_requests} requests.\n"
+                    "Please try again tomorrow or upgrade your tier."
+                )
+                return
 
             # Check for existing pending requests
             # We want to limit how many pending requests a user can have

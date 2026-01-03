@@ -41,6 +41,7 @@ class SunoWebhookPayload(BaseModel):
 
 class TelegramWebhookPayload(BaseModel):
     """Payload from Telegram bot webhook (simplified)."""
+    model_config = {"extra": "allow"}
 
     update_id: int
     message: Optional[dict] = None
@@ -169,7 +170,7 @@ async def suno_status_webhook(
 
 @router.post("/telegram/update")
 async def telegram_webhook(
-    request: Request,
+    payload: TelegramWebhookPayload,
     x_telegram_bot_api_secret_token: Optional[str] = Header(None),
 ):
     """
@@ -180,8 +181,6 @@ async def telegram_webhook(
     # Verify the request is from Telegram
     # In production, compare x_telegram_bot_api_secret_token with configured secret
 
-    payload = await request.json()
-
     bot = get_telegram_bot()
 
     # Ensure handlers are registered
@@ -189,11 +188,11 @@ async def telegram_webhook(
         register_handlers(bot)
 
     # Process update
-    await bot._process_update(payload)
+    await bot._process_update(payload.model_dump(exclude_unset=True))
 
     return {
         "ok": True,
-        "update_id": payload.get("update_id"),
+        "update_id": payload.update_id,
     }
 
 
