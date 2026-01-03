@@ -16,7 +16,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from src.services.mubert_constants import MUBERT_TAGS
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,6 @@ class ProviderType(str, Enum):
     SUNO = "suno"
     STABLE_AUDIO = "stable_audio"
     UDIO = "udio"
-    MUBERT = "mubert"
     MOCK = "mock"  # For testing
 
 
@@ -466,197 +464,6 @@ class UdioProvider(MusicProvider):
         self._wrapper = None
 
 
-class MubertProvider(MusicProvider):
-    """
-    Mubert API provider implementation.
-
-    Uses Mubert's RecordTrackTTM endpoint to generate tracks based on tags.
-    """
-
-    provider_type = ProviderType.MUBERT
-
-    def __init__(self, api_key: Optional[str] = None):
-        import httpx
-
-        self.api_key = api_key or settings.mubert_api_key
-        self.api_url = "https://api-b2b.mubert.com/v2"
-        self._client: Optional[httpx.AsyncClient] = None
-
-    async def _get_client(self):
-        import httpx
-
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=60.0)
-        return self._client
-
-    def _extract_tags(self, prompt: str) -> list[str]:
-        """Extract valid Mubert tags from the prompt."""
-        prompt_lower = prompt.lower()
-        found_tags = []
-        for tag in MUBERT_TAGS:
-            if tag in prompt_lower:
-                found_tags.append(tag)
-
-        # If no tags found, default to a generic one or use the prompt words if they happen to be tags
-        # But Mubert requires specific tags. If empty, maybe default to "lo-fi" or "ambient"?
-        if not found_tags:
-            return ["lo-fi"]  # Fallback
-
-        return found_tags
-
-    async def generate(self, request: GenerationRequest) -> GenerationResult:
-        client = await self._get_client()
-        try:
-            if not self.api_key:
-                raise ValueError("Mubert API key is not configured")
-
-            tags = self._extract_tags(request.prompt)
-            duration = request.duration_seconds or 180
-
-            payload = {
-                "method": "RecordTrackTTM",
-                "params": {
-                    "pat": self.api_key,
-                    "duration": duration,
-                    "tags": tags,
-                    "mode": "track"
-                }
-            }
-
-            response = await client.post(f"{self.api_url}/RecordTrackTTM", json=payload)
-            response.raise_for_status()
-            data = response.json()
-
-            # Mubert API structure:
-            # {
-            #   "status": 1,
-            #   "data": {
-            #     "tasks": [...],
-            #     "tasks_left": ...
-            #   }
-            # }
-            # Wait, the snippet showed: rdata['status'] == 1, trackurl = ...
-            # Actually, standard Mubert API often returns the URL directly in 'data' or similar.
-            # Let's assume the snippet is correct but simplistic.
-            # If `RecordTrackTTM` is used, it usually returns a task or a direct link.
-            # The snippet `trackurl = ...` implies it gets a URL.
-            # Let's check `data` content.
-
-            # Based on common Mubert API:
-            # { "status": 1, "data": { "tasks": [ { "task_id": "...", "download_link": "..." } ] } }
-            # Or sometimes: { "data": "https://..." }
-
-            # However, the memory says: "the download_link returned by the RecordTrackTTM endpoint serves as the internal job_id"
-
-            if data.get("status") != 1 and data.get("status") != 2:
-                # Status 1 is success/queued, 2 might be something else?
-                # Actually usually status 1 means OK.
-                error_text = data.get("error", {}).get("text") or "Unknown error"
-                raise Exception(f"Mubert API error: {error_text}")
-
-            # The response format for RecordTrackTTM usually contains `data` which has `tasks`
-            # But the snippet showed direct access. Let's be safe.
-            # If I look at the snippet again: `rdata = json.loads(r.text); trackurl = rdata['data']['tasks'][0]['download_link']`
-            # So let's try to extract that.
-
-            result_data = data.get("data")
-            if not result_data:
-                raise Exception("No data in Mubert response")
-
-            tasks = result_data.get("tasks", [])
-            if not tasks:
-                 # sometimes maybe it returns just the link?
-                 # if not tasks, maybe look for other fields.
-                 raise Exception("No tasks returned from Mubert")
-
-            task = tasks[0]
-            download_link = task.get("download_link")
-
-            if not download_link:
-                raise Exception("No download link in Mubert task")
-
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=download_link,  # Use URL as job_id as per instructions
-                status=GenerationStatus.PENDING, # Polling the URL will determine final status
-                title=request.title,
-                audio_url=download_link,
-                created_at=datetime.utcnow(),
-                raw_response=data,
-            )
-
-        except Exception as e:
-            logger.error(f"Mubert generation failed: {e}")
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id="",
-                status=GenerationStatus.ERROR,
-                error_message=str(e),
-            )
-
-    async def get_status(self, job_id: str) -> GenerationResult:
-        # job_id is the download_link
-        # We check if the link is accessible (200 OK)
-        client = await self._get_client()
-        try:
-            # Mubert links return 200 when ready, and maybe something else when not?
-            # Actually, usually they might return 404 or a pending page if not ready.
-            # But commonly with signed URLs, they might just work or not.
-            # However, Mubert generation is often synchronous-ish or very fast.
-            # If it was returned by RecordTrackTTM, it might be generating in background.
-            # The memory says: "status checks are performed by polling this URL."
-
-            response = await client.head(job_id)
-
-            status = GenerationStatus.PENDING
-            if response.status_code == 200:
-                # Check content type if possible, or assume it's done
-                if response.headers.get("content-type", "").startswith("audio/"):
-                    status = GenerationStatus.COMPLETE
-            elif response.status_code == 404:
-                # Maybe still generating?
-                status = GenerationStatus.PROCESSING
-            else:
-                 # Some other error?
-                 pass
-
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=job_id,
-                status=status,
-                audio_url=job_id,
-            )
-
-        except Exception as e:
-            # If network error, maybe keep pending
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=job_id,
-                status=GenerationStatus.ERROR,
-                error_message=str(e),
-            )
-
-    async def download_audio(self, audio_url: str, output_path: Path) -> bool:
-        import httpx
-
-        try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
-                async with client.stream("GET", audio_url) as response:
-                    response.raise_for_status()
-                    output_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(output_path, "wb") as f:
-                        async for chunk in response.aiter_bytes(8192):
-                            f.write(chunk)
-            return True
-        except Exception as e:
-            logger.error(f"Download failed: {e}")
-            return False
-
-    async def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
-
-
 class MockProvider(MusicProvider):
     """Mock provider for testing."""
 
@@ -711,8 +518,6 @@ def get_provider(provider_type: Optional[ProviderType] = None) -> MusicProvider:
             _providers[provider_type] = StableAudioProvider()
         elif provider_type == ProviderType.UDIO:
             _providers[provider_type] = UdioProvider()
-        elif provider_type == ProviderType.MUBERT:
-            _providers[provider_type] = MubertProvider()
         elif provider_type == ProviderType.MOCK:
             _providers[provider_type] = MockProvider()
         else:
