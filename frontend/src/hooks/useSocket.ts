@@ -1,8 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { NowPlaying, SongRequest } from '@/types';
+
+// Event payload types
+export interface VoteUpdatePayload {
+  queue_id: number;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+}
+
+export interface GenerationProgressPayload {
+  queue_id: number;
+  status: string;
+  progress_msg: string;
+  eta: string | null;
+}
+
+export interface QueueUpdatePayload {
+  items: SongRequest[];
+}
 
 interface UseSocketReturn {
   socket: Socket | null;
@@ -10,6 +29,10 @@ interface UseSocketReturn {
   queue: SongRequest[];
   listenerCount: number;
   isConnected: boolean;
+  // Callbacks for new events
+  onVoteUpdate: (callback: (data: VoteUpdatePayload) => void) => () => void;
+  onGenerationProgress: (callback: (data: GenerationProgressPayload) => void) => () => void;
+  onQueueUpdate: (callback: (data: QueueUpdatePayload) => void) => () => void;
 }
 
 export function useSocket(channelId: string): UseSocketReturn {
@@ -72,5 +95,35 @@ export function useSocket(channelId: string): UseSocketReturn {
     };
   }, [channelId]);
 
-  return { socket, nowPlaying, queue, listenerCount, isConnected };
+  // Callback factory for vote updates
+  const onVoteUpdate = useCallback((callback: (data: VoteUpdatePayload) => void) => {
+    if (!socket) return () => {};
+    socket.on('vote_updated', callback);
+    return () => socket.off('vote_updated', callback);
+  }, [socket]);
+
+  // Callback factory for generation progress
+  const onGenerationProgress = useCallback((callback: (data: GenerationProgressPayload) => void) => {
+    if (!socket) return () => {};
+    socket.on('generation_progress', callback);
+    return () => socket.off('generation_progress', callback);
+  }, [socket]);
+
+  // Callback factory for queue updates
+  const onQueueUpdate = useCallback((callback: (data: QueueUpdatePayload) => void) => {
+    if (!socket) return () => {};
+    socket.on('queue_updated', callback);
+    return () => socket.off('queue_updated', callback);
+  }, [socket]);
+
+  return {
+    socket,
+    nowPlaying,
+    queue,
+    listenerCount,
+    isConnected,
+    onVoteUpdate,
+    onGenerationProgress,
+    onQueueUpdate,
+  };
 }

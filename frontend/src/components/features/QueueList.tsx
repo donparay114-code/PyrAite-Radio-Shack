@@ -5,8 +5,6 @@ import { useState } from "react";
 import {
   Clock,
   Music,
-  ThumbsUp,
-  ThumbsDown,
   Sparkles,
   Radio,
   AlertCircle,
@@ -15,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { GlassCard, Badge, StatusBadge, Avatar, GlowButton } from "@/components/ui";
+import { CompactVoteControl } from "@/components/features/VoteControl";
 import { cn, formatTimeAgo, truncate } from "@/lib/utils";
 import type { QueueItem, QueueStatus, STATUS_COLORS, STATUS_LABELS } from "@/types";
 
@@ -233,38 +232,13 @@ function QueueItemCard({ item, index, isPlaying, onVote, onCancel }: QueueItemCa
             label={statusLabels[item.status]}
           />
 
-          {/* Vote buttons */}
-          <div className="flex items-center gap-1.5">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onVote(item.id, "up")}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1.5 rounded-lg",
-                "bg-green-500/10 border border-green-500/20",
-                "text-green-400 text-xs font-medium",
-                "hover:bg-green-500/20 transition-colors"
-              )}
-            >
-              <ThumbsUp className="w-3.5 h-3.5" />
-              <span>{item.upvotes}</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => onVote(item.id, "down")}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1.5 rounded-lg",
-                "bg-red-500/10 border border-red-500/20",
-                "text-red-400 text-xs font-medium",
-                "hover:bg-red-500/20 transition-colors"
-              )}
-            >
-              <ThumbsDown className="w-3.5 h-3.5" />
-              <span>{item.downvotes}</span>
-            </motion.button>
-          </div>
+          {/* Vote buttons - using VoteControl for real-time updates */}
+          <CompactVoteControl
+            queueItemId={item.id}
+            upvotes={item.upvotes}
+            downvotes={item.downvotes}
+            onVote={onVote}
+          />
 
           {/* Priority score */}
           <div className="hidden sm:flex flex-col items-end">

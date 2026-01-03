@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models import QueueStatus, RadioQueue, get_async_session
 from src.services.icecast import get_current_listeners
+from src.services.live_status import LiveStatusService
 
 router = APIRouter()
 
@@ -378,3 +379,30 @@ async def cancel_queue_item(
 
     item.status = QueueStatus.CANCELLED.value
     return {"message": "Queue item cancelled", "id": queue_id}
+
+
+@router.get("/live-status")
+async def get_live_status(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get comprehensive live station status.
+
+    Returns current song, queue summary, generating items, and more.
+    Used by the dashboard and GenerationFeed component.
+    """
+    service = LiveStatusService(session)
+    return await service.get_station_status()
+
+
+@router.get("/generating")
+async def get_generating_items(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get list of items currently being generated.
+
+    Returns items with status: pending, queued, or generating.
+    """
+    service = LiveStatusService(session)
+    return await service.get_generating_items()

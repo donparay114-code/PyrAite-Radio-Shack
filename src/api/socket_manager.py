@@ -55,3 +55,41 @@ async def join_channel(sid, channel_id):
 async def emit_moderation_settings_changed(channel_id: str, data: dict):
     """Broadcast moderation settings change to a channel."""
     await sio.emit("moderation-settings-changed", data, room=channel_id)
+
+
+async def emit_vote_updated(queue_id: int, upvotes: int, downvotes: int, score: int):
+    """Broadcast vote update to all connected clients."""
+    data = {
+        "queue_id": queue_id,
+        "upvotes": upvotes,
+        "downvotes": downvotes,
+        "score": score,
+    }
+    logger.debug(f"Emitting vote_updated: {data}")
+    await sio.emit("vote_updated", data)
+
+
+async def emit_queue_updated(queue_data: dict):
+    """Broadcast queue list update to all connected clients."""
+    logger.debug(f"Emitting queue_updated for {len(queue_data.get('items', []))} items")
+    await sio.emit("queue_updated", queue_data)
+
+
+async def emit_generation_progress(
+    queue_id: int, status: str, progress_msg: str, eta: str | None = None
+):
+    """Broadcast generation progress update."""
+    data = {
+        "queue_id": queue_id,
+        "status": status,
+        "progress_msg": progress_msg,
+        "eta": eta,
+    }
+    logger.debug(f"Emitting generation_progress: {data}")
+    await sio.emit("generation_progress", data)
+
+
+async def emit_now_playing(song_data: dict):
+    """Broadcast now playing update to all clients."""
+    logger.debug(f"Emitting now_playing: {song_data.get('title', 'Unknown')}")
+    await sio.emit("now_playing", song_data)

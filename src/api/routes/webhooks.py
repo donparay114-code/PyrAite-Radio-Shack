@@ -17,6 +17,7 @@ from src.models import (
     SunoStatus,
     get_async_session,
 )
+from src.api.socket_manager import emit_generation_progress, emit_now_playing
 from src.services.liquidsoap_client import get_liquidsoap_client
 from src.services.suno_client import get_suno_client
 from src.services.telegram_bot import get_telegram_bot
@@ -158,6 +159,15 @@ async def suno_status_webhook(
 
     # Commit changes
     await session.commit()
+
+    # Emit real-time generation progress update
+    progress_msg = "Generation complete" if status_lower in ["complete", "completed", "success"] else "Generation failed"
+    await emit_generation_progress(
+        queue_id=queue_item.id,
+        status=queue_item.status,
+        progress_msg=progress_msg,
+        eta=None,
+    )
 
     return {
         "received": True,
