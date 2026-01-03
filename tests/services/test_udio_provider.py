@@ -1,14 +1,11 @@
 """Tests for UdioProvider music generation."""
 
-from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.services.music_provider import (
     GenerationRequest,
-    GenerationResult,
     GenerationStatus,
     ProviderType,
     UdioProvider,
@@ -160,7 +157,7 @@ class TestUdioProvider:
             mock_client.stream.return_value.__aenter__.return_value = mock_response
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
-            result = await provider.download_audio(audio_url, output_path)
+            await provider.download_audio(audio_url, output_path)
 
             # Note: This test may need adjustment based on actual async context manager behavior
             # The important thing is testing the error handling path

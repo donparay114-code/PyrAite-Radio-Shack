@@ -1,9 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock
-from fastapi.testclient import TestClient
+from unittest.mock import patch
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioHistory, Song, RadioQueue, QueueStatus, SunoStatus
 
