@@ -170,6 +170,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={onClose}
+                    aria-label="Close modal"
                     className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-text-muted hover:text-white hover:bg-white/10 transition-colors"
                   >
                     <X className="w-4 h-4" />

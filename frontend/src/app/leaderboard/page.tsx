@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { Leaderboard } from "@/components/features";
 import { useLeaderboard } from "@/hooks";
-import { GlassCard } from "@/components/ui";
-import { Trophy, Loader2 } from "lucide-react";
-import type { User, UserTier } from "@/types";
+import { GlassCard, GlowButton } from "@/components/ui";
+import { Trophy, Loader2, RefreshCw } from "lucide-react";
 
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all_time">("weekly");
-  const { data: leaderboard, isLoading, error } = useLeaderboard(period);
+  const { data: leaderboard, isLoading, error, refetch } = useLeaderboard(period);
 
   // Transform API response to match component expectations
   const users = leaderboard?.users?.map((entry) => ({
@@ -39,6 +38,14 @@ export default function LeaderboardPage() {
             <Trophy className="w-12 h-12 text-text-muted opacity-50" />
             <p className="text-text-muted">Failed to load leaderboard</p>
             <p className="text-sm text-red-400">{error.message}</p>
+            <GlowButton
+              variant="secondary"
+              size="sm"
+              onClick={() => refetch()}
+              leftIcon={<RefreshCw className="w-4 h-4" />}
+            >
+              Try Again
+            </GlowButton>
           </div>
         </GlassCard>
       </div>

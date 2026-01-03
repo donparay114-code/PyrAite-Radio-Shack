@@ -306,6 +306,7 @@ export function NowPlaying({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => onVote("up")}
+                    aria-label={`Upvote song, ${queueItem?.upvotes || 0} upvotes`}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-xl",
                       "bg-green-500/20 border border-green-500/30",
@@ -321,6 +322,7 @@ export function NowPlaying({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => onVote("down")}
+                    aria-label={`Downvote song, ${queueItem?.downvotes || 0} downvotes`}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-xl",
                       "bg-red-500/20 border border-red-500/30",
@@ -338,12 +340,14 @@ export function NowPlaying({
                   <IconButton
                     icon={isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     onClick={() => setIsMuted(!isMuted)}
+                    aria-label={isMuted ? "Unmute" : "Mute"}
                   />
 
                   <motion.button
                     onClick={onPlayPause}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
+                    aria-label={isPlaying ? "Pause" : "Play"}
                     className="w-14 h-14 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: glowColor }}
                   >
@@ -366,6 +370,7 @@ export function NowPlaying({
 
                   <IconButton
                     icon={<SkipForward className="w-5 h-5" />}
+                    aria-label="Skip to next song"
                   />
                 </div>
 
@@ -378,9 +383,10 @@ export function NowPlaying({
                       />
                     }
                     onClick={() => setIsLiked(!isLiked)}
+                    aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
                   />
-                  <IconButton icon={<Share2 className="w-5 h-5" />} />
-                  <IconButton icon={<Maximize2 className="w-5 h-5" />} />
+                  <IconButton icon={<Share2 className="w-5 h-5" />} aria-label="Share song" />
+                  <IconButton icon={<Maximize2 className="w-5 h-5" />} aria-label="Fullscreen" />
                 </div>
               </div>
             </div>

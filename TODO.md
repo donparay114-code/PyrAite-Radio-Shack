@@ -60,17 +60,33 @@
 
 ---
 
-## In Progress
+## Completed (Jan 2026 - Session 2)
 
 ### Frontend - Code Quality
-- [ ] Remove console.log statements for production
-  - [ ] useSocket.ts (4 statements)
-  - [ ] useApi.ts (1 statement)
-  - [ ] useChat.ts (2 statements)
-  - [ ] page.tsx (1 statement)
-  - [ ] GoogleLoginBtn.tsx (1 statement)
-  - [ ] AuthProvider.tsx (4 statements)
-  - [ ] AudioPlayer.tsx (3 statements)
+- [x] Remove console.log statements for production
+  - [x] useSocket.ts, useApi.ts, useChat.ts, page.tsx
+  - [x] GoogleLoginBtn.tsx, AuthProvider.tsx, useAudioPlayer.ts
+  - [x] supabase.ts
+
+### Environment Variable Validation
+- [x] Add validation utility (lib/env.ts)
+  - [x] Type-safe access to all environment variables
+  - [x] Feature flags (googleAuth, supabaseRealtime)
+  - [x] Development vs production mode helpers
+
+### Error Handling
+- [x] Add error state to Admin Dashboard
+- [x] Add connection status warning to Chat page
+- [x] Add toast error notification to GoogleLoginBtn
+- [x] Add retry button to Leaderboard error state
+- [x] Add error state to Profile page with retry
+
+### Accessibility (a11y)
+- [x] Add aria-labels to Header (menu, notifications, chat, settings, search)
+- [x] Add aria-labels to Queue page icon buttons (refresh, filter, sort)
+- [x] Document aria-label prop in IconButton component
+- [x] Add aria-label to RequestModal close button
+- [x] Add aria-labels to NowPlaying buttons (vote, play/pause, mute, skip, heart, share, fullscreen)
 
 ---
 
@@ -78,31 +94,16 @@
 
 ### High Priority
 
-#### Environment Variable Validation
-- [ ] Add validation for NEXT_PUBLIC_GOOGLE_CLIENT_ID (currently shows placeholder)
-- [ ] Add warning/error when API_URL not set
-- [ ] Validate Supabase configuration on startup
-
-#### Error Handling
-- [ ] Add user-facing error display in RequestModal
-- [ ] Add error state in GoogleLoginBtn
-- [ ] Propagate socket errors to UI
-- [ ] Add retry mechanism to Leaderboard error state
+#### Error Handling (Remaining)
 - [ ] Add error boundaries for critical components
 
 #### Loading States
-- [ ] Add error state to Profile page
 - [ ] Add skeleton loaders for Queue list
 - [ ] Add loading indicator for NowPlaying song changes
-- [ ] Improve Chat loading state visibility
 
 ### Medium Priority
 
-#### Accessibility (a11y)
-- [ ] Add aria-labels to NowPlaying buttons (Heart, Share, Maximize)
-- [ ] Add aria-label to RequestModal close button
-- [ ] Add aria-labels to vote buttons on home page
-- [ ] Add aria-labels to Sidebar "Upgrade Now" button
+#### Accessibility (a11y) (Remaining)
 - [ ] Add aria-label to Chat textarea
 - [ ] Add aria-busy to loading spinners
 
