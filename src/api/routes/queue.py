@@ -5,12 +5,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.models import RadioQueue, QueueStatus, get_async_session
-from src.services.icecast import get_current_listeners
 from sqlalchemy.orm import selectinload
+
+from src.models import QueueStatus, RadioQueue, get_async_session
+from src.services.icecast import get_current_listeners
 
 router = APIRouter()
 
@@ -218,7 +218,9 @@ async def get_queue_stats(
             total_wait_seconds += (comp_at - req_at).total_seconds()
             count += 1
 
-    average_wait_minutes = round((total_wait_seconds / count / 60) if count > 0 else 0.0, 1)
+    average_wait_minutes = round(
+        (total_wait_seconds / count / 60) if count > 0 else 0.0, 1
+    )
 
     return QueueStatsResponse(
         total_items=total_items,

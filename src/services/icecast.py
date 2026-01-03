@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Optional
 
 import httpx
 
@@ -78,7 +77,7 @@ async def get_current_listeners() -> int:
 
             # Fallback: if not found but only one source exists, assume it's the one
             if not found and len(sources) == 1:
-                 listeners = int(sources[0].get("listeners", 0))
+                listeners = int(sources[0].get("listeners", 0))
 
             _last_listeners = listeners
             _last_fetch_time = current_time

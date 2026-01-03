@@ -6,11 +6,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.services.music_provider import (
-    GenerationRequest,
     GenerationStatus,
     ProviderType,
     generate_music,
-    get_provider,
 )
 
 router = APIRouter()
@@ -92,9 +90,17 @@ async def list_providers():
     """List available music generation providers."""
     return {
         "providers": [
-            {"id": "udio", "name": "Udio", "description": "Free AI music via udio-wrapper"},
+            {
+                "id": "udio",
+                "name": "Udio",
+                "description": "Free AI music via udio-wrapper",
+            },
             {"id": "suno", "name": "Suno", "description": "Suno AI music generation"},
-            {"id": "mock", "name": "Mock", "description": "Test provider (no actual generation)"},
+            {
+                "id": "mock",
+                "name": "Mock",
+                "description": "Test provider (no actual generation)",
+            },
         ],
         "default": "udio",
     }

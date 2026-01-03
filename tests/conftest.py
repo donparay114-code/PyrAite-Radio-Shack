@@ -1,23 +1,21 @@
 """Pytest configuration and fixtures for PYrte Radio Shack tests."""
 
 import asyncio
+import os
 from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.api.main import app
+from src.models import QueueStatus, RadioQueue, Song, SunoStatus, User
 from src.models.base import Base
-from src.models import User, Song, RadioQueue, QueueStatus, SunoStatus
-
-
-import os
 
 # Database URLs (using environment variables if present, fallback to SQLite)
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -120,7 +118,7 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
 def client(sync_engine) -> Generator[TestClient, None, None]:
     """Create FastAPI test client."""
     # Override both sync and async database dependencies
-    from src.models import get_session, get_async_session
+    from src.models import get_async_session, get_session
 
     TestSessionLocal = sessionmaker(bind=sync_engine, autoflush=False, autocommit=False)
 

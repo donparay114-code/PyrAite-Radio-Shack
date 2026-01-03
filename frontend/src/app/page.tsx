@@ -240,7 +240,7 @@ export default function HomePage() {
             whileTap={{ scale: 0.98 }}
           >
             <GlowButton
-              onClick={() => setIsRequestModal(true)}
+              onClick={() => setIsRequestModalOpen(true)}
               className="w-full"
               size="lg"
               leftIcon={<Sparkles className="w-5 h-5" />}

@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta
 
 import pytest
-from datetime import datetime, timedelta
-from src.models import RadioQueue, QueueStatus
+
+from src.models import QueueStatus, RadioQueue
+
 
 @pytest.mark.asyncio
 async def test_get_queue_stats_average_wait(async_client, async_session):

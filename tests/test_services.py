@@ -2,15 +2,15 @@
 
 import pytest
 
-from src.services.moderation import (
-    ContentModerator,
-    ModerationCategory,
-    get_moderator,
-)
 from src.services.cost_tracker import (
     CostTracker,
     ServiceType,
     get_cost_tracker,
+)
+from src.services.moderation import (
+    ContentModerator,
+    ModerationCategory,
+    get_moderator,
 )
 
 

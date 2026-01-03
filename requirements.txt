@@ -26,7 +26,7 @@ aiohttp>=3.9.0
 # Audio Processing
 pydub>=0.25.0
 mutagen>=1.47.0
-udio-wrapper>=0.2.0
+# udio-wrapper>=0.2.0  # Optional: Install manually if using Udio provider
 
 # Validation
 pydantic>=2.5.0

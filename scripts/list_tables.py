@@ -1,6 +1,7 @@
-import sys
-import os
 import logging
+import os
+import sys
+
 from sqlalchemy import create_engine, text
 
 # Disable all logging

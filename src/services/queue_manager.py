@@ -10,9 +10,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import RadioQueue, QueueStatus, Song, SunoStatus, User
-from src.services.suno_client import SunoClient, SunoJobStatus, get_suno_client
+from src.models import QueueStatus, RadioQueue, Song, SunoStatus, User
 from src.services.audio_processor import AudioProcessor, get_audio_processor
+from src.services.suno_client import SunoClient, SunoJobStatus, get_suno_client
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)

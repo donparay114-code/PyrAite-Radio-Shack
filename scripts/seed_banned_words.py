@@ -1,10 +1,12 @@
-import logging
-import json
 import csv
-import urllib.request
 import io
-from typing import List, Dict
+import json
+import logging
+import urllib.request
+from typing import Dict, List
+
 from sqlalchemy import create_engine, text
+
 from src.utils.config import settings
 
 # Configure logging

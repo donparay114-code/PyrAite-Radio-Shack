@@ -1,7 +1,8 @@
-import sys
 import os
-from alembic.config import Config
+import sys
+
 from alembic import command
+from alembic.config import Config
 
 # Add src to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

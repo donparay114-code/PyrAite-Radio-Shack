@@ -4,14 +4,14 @@ import os
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
-from sqlalchemy import create_engine, MetaData, Engine
+from sqlalchemy import Engine, MetaData, create_engine
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
-    AsyncEngine,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 # Naming convention for constraints (helps with migrations)
 convention = {

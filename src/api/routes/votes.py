@@ -4,10 +4,10 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Vote, VoteType, RadioQueue, User, get_async_session
+from src.models import RadioQueue, User, Vote, VoteType, get_async_session
 
 router = APIRouter()
 

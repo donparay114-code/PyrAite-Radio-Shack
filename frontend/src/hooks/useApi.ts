@@ -176,7 +176,7 @@ export function useLinkTelegram() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { telegramUsername: string; userId: number }) =>
-      fetchApi(`/api/auth/link-telegram?user_id=${data.userId}`, {
+      fetchApi(`/api/auth/google/link-telegram`, {
         method: "POST",
         body: JSON.stringify({ telegram_username: data.telegramUsername })
       }),
