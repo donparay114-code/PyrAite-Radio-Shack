@@ -7,10 +7,25 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import queue, health, webhooks, users, songs, votes, auth, chat, auth_google, moderation, generate
+from src.api.routes import (
+    admin,
+    auth,
+    auth_email,
+    auth_google,
+    chat,
+    generate,
+    health,
+    moderation,
+    profile,
+    queue,
+    songs,
+    users,
+    votes,
+    webhooks,
+)
+from src.api.socket_manager import sio_app
 from src.utils.config import settings
 from src.utils.logging import setup_logging
-from src.api.socket_manager import sio_app
 
 # API version
 API_VERSION = "1.0.0"
@@ -75,6 +90,10 @@ TAGS_METADATA = [
     {
         "name": "Chat",
         "description": "Real-time community chat with WebSocket support",
+    },
+    {
+        "name": "Admin",
+        "description": "Admin dashboard statistics and management endpoints",
     },
 ]
 
@@ -156,6 +175,7 @@ async def root():
 
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(auth_email.router, prefix="/api/auth/email", tags=["Auth"])
 app.include_router(auth_google.router, prefix="/api/auth/google", tags=["Auth"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
@@ -165,6 +185,14 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(moderation.router, prefix="/api/moderation", tags=["Moderation"])
 app.include_router(generate.router, prefix="/api/generate", tags=["Generate"])
+app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+
+# Debug: Print all registered routes
+print("\n--- REGISTERED ROUTES ---")
+for route in app.routes:
+    print(f"Path: {route.path} | Name: {route.name}")
+print("--- END REGISTERED ROUTES ---\n")
 
 
 if __name__ == "__main__":
@@ -173,6 +201,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "src.api.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=settings.debug,
     )

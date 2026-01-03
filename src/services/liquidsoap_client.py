@@ -1,12 +1,14 @@
 """Liquidsoap client for interacting with the radio stream."""
 
 import logging
-import httpx
 from typing import Optional
+
+import httpx
 
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class LiquidsoapClient:
     """Client for Liquidsoap HTTP API."""
@@ -46,7 +48,9 @@ class LiquidsoapClient:
             logger.error(f"Failed to skip song: {e}")
             return False
 
+
 _liquidsoap_client: Optional[LiquidsoapClient] = None
+
 
 def get_liquidsoap_client() -> LiquidsoapClient:
     """Get Liquidsoap client singleton."""

@@ -3,8 +3,8 @@
 
 import asyncio
 import os
-import sys
 import re
+import sys
 from pathlib import Path
 
 # Add src to path

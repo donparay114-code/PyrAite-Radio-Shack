@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Radio, Menu, Bell, Settings, User, MessageCircle, LogIn } from "lucide-react";
@@ -42,28 +43,30 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
         />
 
         {/* Logo */}
-        <motion.div
-          className="flex items-center gap-3"
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
-              <Radio className="w-5 h-5 text-white" />
-            </div>
-            {isLive && (
-              <motion.div
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-background"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
+        <Link href="/" className="block">
+          <motion.div
+            className="flex items-center gap-3"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="relative h-10 sm:h-12 w-auto">
+              <Image
+                src="/logo.png"
+                alt="PyrAite Radio"
+                width={160}
+                height={48}
+                className="h-full w-auto object-contain"
+                priority
               />
-            )}
-          </div>
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-white">
-              PYrte <span className="text-gradient">Radio</span>
-            </h1>
-          </div>
-        </motion.div>
+              {isLive && (
+                <motion.div
+                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-background"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+              )}
+            </div>
+          </motion.div>
+        </Link>
 
         {/* Live indicator */}
         {isLive && (

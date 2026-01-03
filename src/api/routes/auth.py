@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import parse_qs, unquote
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 

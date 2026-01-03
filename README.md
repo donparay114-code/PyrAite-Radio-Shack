@@ -132,10 +132,10 @@ docker-compose up -d --build
 
 | Service | URL | Credentials (Default) |
 | :--- | :--- | :--- |
-| **Frontend** | [http://localhost:3000](http://localhost:3000) | N/A |
-| **API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | N/A |
+| **Frontend** | [http://localhost:3005](http://localhost:3005) | N/A |
+| **API Docs** | [http://localhost:8001/docs](http://localhost:8001/docs) | N/A |
 | **n8n** | [http://localhost:5678](http://localhost:5678) | `admin` / `admin` |
-| **Stream** | `http://localhost:8000/stream` | N/A |
+| **Stream** | `http://localhost:8001/stream` | N/A |
 
 1. Import n8n workflows from `n8n_workflows/` directory
 
@@ -238,7 +238,7 @@ API documentation available at `/docs` when running the server.
 ### Authentication
 
 - `POST /api/auth/telegram` - Authenticate via Telegram WebApp
-- `POST /api/auth/google` - Authenticate via Google OAuth
+- `POST /api/auth/google/login` - Authenticate via Google OAuth
 - `GET /api/auth/me` - Get current user from JWT token
 
 ### Queue & Requests

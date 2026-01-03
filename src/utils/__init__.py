@@ -3,12 +3,12 @@
 
 from src.utils.config import Settings, get_settings, settings
 from src.utils.logging import (
-    setup_logging,
-    get_logger,
-    JSONFormatter,
     ColoredFormatter,
+    JSONFormatter,
     LogContext,
     RequestIDMiddleware,
+    get_logger,
+    setup_logging,
 )
 
 __all__ = [

@@ -1,6 +1,6 @@
-import urllib.request
 import csv
 import io
+import urllib.request
 
 SOURCE_IMANE = "https://raw.githubusercontent.com/imanebelhaj/profanity_datasets_offensive_speach/master/bad_words_langs.csv"
 

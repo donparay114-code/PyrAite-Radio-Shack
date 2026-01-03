@@ -4,21 +4,21 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import (
+    QueueStatus,
     RadioHistory,
     RadioQueue,
-    QueueStatus,
     Song,
     SunoStatus,
     get_async_session,
 )
-from src.services.suno_client import get_suno_client
 from src.services.liquidsoap_client import get_liquidsoap_client
+from src.services.suno_client import get_suno_client
 from src.services.telegram_bot import get_telegram_bot
 from src.services.telegram_handlers import register_handlers
 from src.utils.config import settings
@@ -302,9 +302,11 @@ async def broadcast_status_webhook(
             select(RadioQueue)
             .join(Song, RadioQueue.song_id == Song.id)
             .where(
-                RadioQueue.status.in_([QueueStatus.GENERATED.value, QueueStatus.BROADCASTING.value]),
+                RadioQueue.status.in_(
+                    [QueueStatus.GENERATED.value, QueueStatus.BROADCASTING.value]
+                ),
                 Song.title == payload.title,
-                Song.artist == payload.artist
+                Song.artist == payload.artist,
             )
             .order_by(
                 RadioQueue.broadcast_started_at.desc().nulls_last(),
@@ -355,7 +357,9 @@ async def broadcast_status_webhook(
             session.add(new_history)
             logger.info(f"Started playing: {song.title} (ID: {song.id})")
         else:
-            logger.warning(f"Could not find song for broadcast: {payload.artist} - {payload.title}")
+            logger.warning(
+                f"Could not find song for broadcast: {payload.artist} - {payload.title}"
+            )
             # We can't log to history without a song_id (non-nullable foreign key)
             # Future improvement: Create a "Unknown" placeholder song?
 
@@ -374,7 +378,7 @@ async def broadcast_status_webhook(
                 .where(RadioQueue.status == QueueStatus.GENERATED.value)
                 .order_by(
                     RadioQueue.priority_score.desc(),  # Priority first
-                    RadioQueue.queued_at.asc()         # Then oldest
+                    RadioQueue.queued_at.asc(),  # Then oldest
                 )
                 .limit(1)
             )
@@ -394,10 +398,14 @@ async def broadcast_status_webhook(
                     success = await liquidsoap.push_song(next_song.local_file_path)
 
                     if success:
-                        logger.info(f"Pushed next song to Liquidsoap: {next_song.title}")
+                        logger.info(
+                            f"Pushed next song to Liquidsoap: {next_song.title}"
+                        )
                         # We don't change status to BROADCASTING yet, that happens when it starts playing
                     else:
-                        logger.error(f"Failed to push song to Liquidsoap: {next_song.title}")
+                        logger.error(
+                            f"Failed to push song to Liquidsoap: {next_song.title}"
+                        )
     except Exception as e:
         logger.error(f"Error in trigger next song logic: {e}")
 

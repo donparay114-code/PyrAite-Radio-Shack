@@ -114,7 +114,9 @@ class TestUdioProvider:
     async def test_generate_import_error(self, provider, sample_request):
         """Test generation when udio-wrapper is not installed."""
         with patch.object(
-            provider, "_get_wrapper", side_effect=ImportError("No module named 'udio_wrapper'")
+            provider,
+            "_get_wrapper",
+            side_effect=ImportError("No module named 'udio_wrapper'"),
         ):
             result = await provider.generate(sample_request)
 

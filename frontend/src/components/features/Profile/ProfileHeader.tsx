@@ -86,6 +86,16 @@ export function ProfileHeader({ user, isOwnProfile }: ProfileHeaderProps) {
                         <div className="text-xs text-zinc-500 uppercase tracking-widest">Requests</div>
                     </div>
                 </div>
+
+                {/* Edit Profile Button */}
+                {isOwnProfile && (
+                    <a
+                        href="/profile/settings"
+                        className="px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-400 text-sm hover:bg-violet-500/30 transition-colors"
+                    >
+                        Edit Profile
+                    </a>
+                )}
             </div>
         </div>
     );

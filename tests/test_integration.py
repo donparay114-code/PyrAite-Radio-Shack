@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from src.models import Song, RadioQueue, Vote, QueueStatus, VoteType
+from src.models import QueueStatus, RadioQueue, Song, Vote, VoteType
 
 
 class TestUserQueueIntegration:
