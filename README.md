@@ -7,12 +7,9 @@ An AI-powered community radio station platform with comprehensive Claude Code in
 PYrte Radio Shack is a Python-based AI radio station system that integrates:
 
 - **n8n Workflow Automation** - 4 integrated workflows for music generation and broadcasting
-- **Suno AI Music Generation** - Automated music creation from user prompts
-- **Telegram Bot** - User interface for song requests
-- **Reputation System** - Community-driven content prioritization
-- **Liquidsoap Broadcasting** - Professional audio streaming
-
-## Features
+- **Database** - PostgreSQL
+- **Frontend** - Next.js 14 + Tailwind CSS
+- **Backend API** - FastAPI + SQLAlchemy
 
 - User song requests via Telegram bot
 - AI-powered music generation with Suno
@@ -54,8 +51,8 @@ User Request (Telegram)
 | Component | Technology |
 |-----------|------------|
 | Workflow Automation | n8n |
-| Music Generation | Suno API |
-| Database | PostgreSQL |
+| Music Generation | Suno API, Udio (via udio-wrapper) |
+| Database | PostgreSQL 16+ |
 | Frontend | Next.js 14 + Tailwind CSS |
 | Backend API | FastAPI + SQLAlchemy |
 | Authentication | Google OAuth, Telegram WebApp, JWT |
@@ -140,28 +137,6 @@ docker-compose up -d --build
 | **n8n** | [http://localhost:5678](http://localhost:5678) | `admin` / `admin` |
 | **Stream** | `http://localhost:8000/stream` | N/A |
 
-### Manual Installation (Legacy)
-
-1. Create virtual environment:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-1. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-1. Initialize database:
-
-```bash
-# Ensure you have a running Postgres instance first
-python -c "from src.db.session import init_db; init_db()"
-```
-
 1. Import n8n workflows from `n8n_workflows/` directory
 
 ### Configuration
@@ -169,18 +144,21 @@ python -c "from src.db.session import init_db; init_db()"
 Required environment variables:
 
 ```bash
-# Database
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=radio_user
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=radio_station
+# Database (PostgreSQL)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=radio_user
+POSTGRES_PASSWORD=your_password
+POSTGRES_DATABASE=radio_station
 
 # APIs
 SUNO_API_URL=https://your-suno-api.example.com
 OPENAI_API_KEY=sk-...
 TELEGRAM_BOT_TOKEN=123456:ABC...
-TELEGRAM_CHAT_ID=-1001234567890
+
+# Udio (alternative to Suno - get token from browser cookies)
+# See: https://github.com/flowese/UdioWrapper
+UDIO_AUTH_TOKEN=your-sb-api-auth-token
 
 # Icecast (optional)
 ICECAST_HOST=localhost

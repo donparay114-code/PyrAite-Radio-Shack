@@ -2,7 +2,7 @@
 Music Generation Provider Interface - Adapter Pattern for swappable providers.
 
 This module implements the Interface Adapter Pattern to allow switching between
-different music generation providers (Suno, Stable Audio, Mubert) without
+different music generation providers (Suno, Stable Audio, Udio) without
 changing the rest of the codebase.
 
 Critical: Build provider-switching logic BEFORE writing any other feature.
@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Optional
 
 from src.utils.config import settings
-from src.services.mubert_constants import MUBERT_TAGS
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class ProviderType(str, Enum):
 
     SUNO = "suno"
     STABLE_AUDIO = "stable_audio"
-    MUBERT = "mubert"
+    UDIO = "udio"
     MOCK = "mock"  # For testing
 
 
@@ -71,14 +70,12 @@ class GenerationRequest:
             "style": self.style,
         }
 
-    def to_mubert_format(self) -> dict:
-        """Convert to Mubert API format."""
+    def to_udio_format(self) -> dict:
+        """Convert to Udio API format."""
         return {
             "prompt": self.prompt,
-            "duration": self.duration_seconds or 30,
-            "bpm": self.bpm,
-            "key": self.key,
-            "mode": "track",
+            "seed": -1,  # Random seed
+            "custom_lyrics": None,  # Instrumental by default
         }
 
 
@@ -322,133 +319,109 @@ class StableAudioProvider(MusicProvider):
         pass
 
 
-class MubertProvider(MusicProvider):
+class UdioProvider(MusicProvider):
     """
-    Mubert API provider implementation.
+    Udio music generation provider using udio-wrapper.
 
-    Uses the Mubert API to generate music from text prompts (tags) or parameters.
-    Since Mubert requires specific tags, this provider attempts to map the prompt
-    to known Mubert tags or passes it directly if supported.
+    Uses the unofficial udio-wrapper package to generate music from text prompts.
+    Requires an sb-api-auth-token from Udio cookies for authentication.
     """
 
-    provider_type = ProviderType.MUBERT
-    API_URL = "https://api-b2b.mubert.com/v2/"
+    provider_type = ProviderType.UDIO
 
-    def __init__(self, api_key: Optional[str] = None):
-        import httpx
-        self.api_key = api_key or settings.mubert_api_key
-        self._client: Optional[httpx.AsyncClient] = None
+    def __init__(self, auth_token: Optional[str] = None):
+        self.auth_token = auth_token or settings.udio_auth_token
+        self._wrapper = None
 
-    async def _get_client(self):
-        import httpx
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                base_url=self.API_URL,
-                timeout=60.0
-            )
-        return self._client
-
-    def _extract_tags(self, prompt: str) -> list[str]:
-        """
-        Extract valid Mubert tags from the prompt.
-        Simple keyword matching against known Mubert tags.
-        """
-        if not prompt:
-            return []
-
-        prompt_lower = prompt.lower()
-        found_tags = []
-
-        # Check for exact matches of multi-word tags first
-        for tag in MUBERT_TAGS:
-            if tag in prompt_lower:
-                found_tags.append(tag)
-
-        # If no tags found, try to split prompt and match words (fallback)
-        if not found_tags:
-            words = prompt_lower.replace(",", " ").split()
-            for word in words:
-                if word in MUBERT_TAGS:
-                    found_tags.append(word)
-
-        return found_tags
+    def _get_wrapper(self):
+        """Lazy initialization of UdioWrapper."""
+        if self._wrapper is None:
+            try:
+                from udio_wrapper import UdioWrapper
+                self._wrapper = UdioWrapper(self.auth_token)
+            except ImportError:
+                raise ImportError(
+                    "udio-wrapper is not installed. Run: pip install udio-wrapper"
+                )
+        return self._wrapper
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         """
-        Generate music using Mubert API (RecordTrackTTM).
+        Generate music using Udio API.
 
-        Note: Mubert API typically requires tags. We attempt to extract tags
-        from the prompt. If no known tags are found, we pass the prompt
-        as a single tag hoping for best effort or new API capabilities.
+        Uses the udio-wrapper's create_song method which handles the full
+        generation workflow synchronously.
         """
-        client = await self._get_client()
-
-        tags = self._extract_tags(request.prompt)
-        if not tags:
-            # Fallback: Use the prompt itself as a tag if it's short, or default
-            # Since we can't do semantic search without heavy deps, we try this.
-            logger.warning(f"No known Mubert tags found in prompt: '{request.prompt}'. Using prompt as tag.")
-            tags = [request.prompt]
-
-        payload = {
-            "method": "RecordTrackTTM",
-            "params": {
-                "pat": self.api_key,
-                "tags": tags,
-                "duration": request.duration_seconds or 30,
-                "mode": "track"
-            }
-        }
+        import asyncio
 
         try:
-            # Note: The endpoint is likely just /RecordTrackTTM relative to base URL if handled by client
-            # But the client base_url is https://api-b2b.mubert.com/v2
-            # So we post to "RecordTrackTTM" (no slash) or "/RecordTrackTTM"
-            response = await client.post("RecordTrackTTM", json=payload)
-            response.raise_for_status()
-            data = response.json()
+            wrapper = self._get_wrapper()
 
-            # Check for API error
-            if data.get("status") != 1:
-                error_text = data.get("error", {}).get("text", "Unknown error")
-                return GenerationResult(
-                    provider=ProviderType.MUBERT,
-                    job_id="",
-                    status=GenerationStatus.ERROR,
-                    error_message=f"Mubert API Error: {error_text}",
-                    raw_response=data
+            # Run synchronous Udio API call in thread pool
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: wrapper.create_song(
+                    prompt=request.prompt,
+                    seed=-1,  # Random generation
+                    custom_lyrics=None if request.is_instrumental else request.prompt,
                 )
-
-            # Mubert returns a task with a download link immediately
-            tasks = data.get("data", {}).get("tasks", [])
-            if not tasks:
-                return GenerationResult(
-                    provider=ProviderType.MUBERT,
-                    job_id="",
-                    status=GenerationStatus.ERROR,
-                    error_message="No tasks returned from Mubert",
-                    raw_response=data
-                )
-
-            task = tasks[0]
-            download_link = task.get("download_link")
-
-            # We use the download link as the job_id since we need to poll it
-            # Using the link directly as ID is simplest for stateless polling
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=download_link,
-                status=GenerationStatus.PROCESSING,  # We assume processing until we can download
-                title=request.title,
-                audio_url=download_link,
-                created_at=datetime.utcnow(),
-                raw_response=data
             )
 
-        except Exception as e:
-            logger.error(f"Mubert generation failed: {e}")
+            # Parse the result - udio-wrapper returns song data
+            if result:
+                # Result typically contains song info with audio URL
+                audio_url = None
+                song_id = None
+
+                if isinstance(result, dict):
+                    audio_url = result.get("audio_url") or result.get("song_path")
+                    song_id = result.get("id") or result.get("song_id") or str(hash(str(result)))
+                elif isinstance(result, str):
+                    # If result is just a URL or path
+                    audio_url = result
+                    song_id = str(hash(result))
+                else:
+                    # Handle list response
+                    if isinstance(result, list) and len(result) > 0:
+                        first_item = result[0]
+                        if isinstance(first_item, dict):
+                            audio_url = first_item.get("audio_url") or first_item.get("song_path")
+                            song_id = first_item.get("id") or str(hash(str(first_item)))
+                        else:
+                            audio_url = str(first_item)
+                            song_id = str(hash(str(first_item)))
+
+                return GenerationResult(
+                    provider=ProviderType.UDIO,
+                    job_id=song_id or "udio-job",
+                    status=GenerationStatus.COMPLETE,  # Udio completes synchronously
+                    title=request.title,
+                    audio_url=audio_url,
+                    created_at=datetime.utcnow(),
+                    completed_at=datetime.utcnow(),
+                    raw_response=result if isinstance(result, dict) else {"result": result},
+                )
+            else:
+                return GenerationResult(
+                    provider=ProviderType.UDIO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message="No result returned from Udio",
+                )
+
+        except ImportError as e:
+            logger.error(f"Udio import error: {e}")
             return GenerationResult(
-                provider=ProviderType.MUBERT,
+                provider=ProviderType.UDIO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+        except Exception as e:
+            logger.error(f"Udio generation failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.UDIO,
                 job_id="",
                 status=GenerationStatus.ERROR,
                 error_message=str(e),
@@ -456,59 +429,21 @@ class MubertProvider(MusicProvider):
 
     async def get_status(self, job_id: str) -> GenerationResult:
         """
-        Check status of Mubert generation.
+        Get status of Udio generation.
 
-        For Mubert, the 'job_id' is the download link. We check if it returns 200 OK.
+        Udio generation is synchronous via the wrapper, so if we have a job_id,
+        it means the generation completed successfully.
         """
-        import httpx
-
-        # job_id is the download URL
-        url = job_id
-        if not url:
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=job_id,
-                status=GenerationStatus.ERROR,
-                error_message="Invalid job ID (missing URL)",
-            )
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.head(url)
-
-                if response.status_code == 200:
-                    # Content-Length check to ensure it's not a small error page/json
-                    # content_length = int(response.headers.get("content-length", 0))
-                    # if content_length > 1000:
-                    return GenerationResult(
-                        provider=ProviderType.MUBERT,
-                        job_id=job_id,
-                        status=GenerationStatus.COMPLETE,
-                        audio_url=url,
-                    )
-
-                # If 404 or other, it might still be processing (Mubert returns 404 or non-200 while generating?)
-                # Actually, typically it returns 200 but might be incomplete?
-                # The notebook loops with GET until 200.
-
-                return GenerationResult(
-                    provider=ProviderType.MUBERT,
-                    job_id=job_id,
-                    status=GenerationStatus.PROCESSING,
-                    audio_url=url,
-                )
-
-        except Exception as e:
-            # If connection fails, we assume it's still processing or temp error
-            return GenerationResult(
-                provider=ProviderType.MUBERT,
-                job_id=job_id,
-                status=GenerationStatus.PROCESSING,  # Assume processing on network error
-                audio_url=url,
-                error_message=str(e),  # Keep track of error
-            )
+        # Udio wrapper works synchronously, so status is always complete
+        # if we have a valid job_id
+        return GenerationResult(
+            provider=ProviderType.UDIO,
+            job_id=job_id,
+            status=GenerationStatus.COMPLETE,
+        )
 
     async def download_audio(self, audio_url: str, output_path: Path) -> bool:
+        """Download generated audio to local path."""
         import httpx
 
         try:
@@ -525,8 +460,8 @@ class MubertProvider(MusicProvider):
             return False
 
     async def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
+        """Clean up resources."""
+        self._wrapper = None
 
 
 class MockProvider(MusicProvider):
@@ -581,8 +516,8 @@ def get_provider(provider_type: Optional[ProviderType] = None) -> MusicProvider:
             _providers[provider_type] = SunoProvider()
         elif provider_type == ProviderType.STABLE_AUDIO:
             _providers[provider_type] = StableAudioProvider()
-        elif provider_type == ProviderType.MUBERT:
-            _providers[provider_type] = MubertProvider()
+        elif provider_type == ProviderType.UDIO:
+            _providers[provider_type] = UdioProvider()
         elif provider_type == ProviderType.MOCK:
             _providers[provider_type] = MockProvider()
         else:

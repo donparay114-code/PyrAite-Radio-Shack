@@ -143,9 +143,35 @@ export default function HomePage() {
       </div>
 
       {/* Main grid layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Main content - takes 3/4 on xl screens */}
-        <div className="xl:col-span-3 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        {/* Sidebar - visible on xl screens - LEFT SIDE */}
+        <motion.div
+          className="hidden lg:flex flex-col gap-6 h-[calc(100vh-6rem)] sticky top-24"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: easings.smooth }}
+        >
+          {/* Profile Quick Access */}
+          <ProfileWidget user={user} isAuthenticated={isAuthenticated} />
+
+          {/* Chat Preview - Fills remaining height */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <ChatPreview
+              messages={recentMessages}
+              isLoading={chatLoading}
+              onSendMessage={(content) => {
+                if (user?.id) {
+                  sendMessage(content);
+                }
+              }}
+              isSending={isSending}
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
+        </motion.div>
+
+        {/* Main content - takes 3/4 on xl screens - RIGHT SIDE */}
+        <div className="lg:col-span-3 space-y-8">
           {/* Stats bar with staggered animation */}
           <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4" staggerDelay={0.1}>
             <StaggerItem>
@@ -186,7 +212,7 @@ export default function HomePage() {
             </StaggerItem>
           </StaggerContainer>
 
-          {/* Now Playing section with sleek skeleton loader */}
+          {/* Now Playing section - Full Width */}
           {nowPlayingLoading ? (
             <NowPlayingSkeleton />
           ) : (
@@ -214,7 +240,7 @@ export default function HomePage() {
             whileTap={{ scale: 0.98 }}
           >
             <GlowButton
-              onClick={() => setIsRequestModalOpen(true)}
+              onClick={() => setIsRequestModal(true)}
               className="w-full"
               size="lg"
               leftIcon={<Sparkles className="w-5 h-5" />}
@@ -241,35 +267,11 @@ export default function HomePage() {
             </motion.div>
           )}
         </div>
-
-        {/* Sidebar - visible on xl screens */}
-        <motion.div
-          className="hidden xl:flex flex-col gap-6"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3, ease: easings.smooth }}
-        >
-          {/* Profile Quick Access */}
-          <ProfileWidget user={user} isAuthenticated={isAuthenticated} />
-
-          {/* Chat Preview */}
-          <ChatPreview
-            messages={recentMessages}
-            isLoading={chatLoading}
-            onSendMessage={(content) => {
-              if (user?.id) {
-                sendMessage(content);
-              }
-            }}
-            isSending={isSending}
-            isAuthenticated={isAuthenticated}
-          />
-        </motion.div>
       </div>
 
       {/* Mobile Chat & Profile Links */}
       <motion.div
-        className="xl:hidden mt-8 grid grid-cols-2 gap-4"
+        className="lg:hidden mt-8 grid grid-cols-2 gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4, ease: easings.smooth }}
@@ -531,7 +533,7 @@ function ChatPreview({ messages, isLoading, onSendMessage, isSending, isAuthenti
   };
 
   return (
-    <GlassCard className="flex flex-col">
+    <GlassCard className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
@@ -550,7 +552,7 @@ function ChatPreview({ messages, isLoading, onSendMessage, isSending, isAuthenti
       </div>
 
       {/* Messages */}
-      <div className="flex-1 p-3 space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 min-h-[300px]">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <motion.div

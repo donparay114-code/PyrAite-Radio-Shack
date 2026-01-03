@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db';
+import { emitEvent } from '@/lib/socket-emitter';
 
 // PATCH /api/channels/[id]/moderation - Update moderation settings
 export async function PATCH(
@@ -103,13 +104,13 @@ export async function PATCH(
       aiModerationEnabled !== undefined &&
       aiModerationEnabled !== oldModerationEnabled
     ) {
-      // TODO: Send Socket.io event to channel members
-      // io.to(channelId).emit('moderation-settings-changed', {
-      //   type: 'moderation_settings_changed',
-      //   message: aiModerationEnabled
-      //     ? 'AI moderation has been enabled on this channel'
-      //     : '⚠️ AI moderation has been disabled on this channel'
-      // });
+      // Send Socket.io event to channel members
+      emitEvent(`channel:${channelId}`, 'moderation-settings-changed', {
+        type: 'moderation_settings_changed',
+        message: aiModerationEnabled
+          ? 'AI moderation has been enabled on this channel'
+          : '⚠️ AI moderation has been disabled on this channel'
+      });
     }
 
     return NextResponse.json({

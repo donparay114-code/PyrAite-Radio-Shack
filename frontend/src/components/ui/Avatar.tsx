@@ -109,13 +109,20 @@ export function Avatar({
       {/* Tier badge for xl avatars */}
       {tier && size === "xl" && (
         <div
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-white"
-          style={{ backgroundColor: tierColor }}
+          className={cn(
+            "absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-white",
+            tier === "new" && "bg-zinc-500",
+            tier === "regular" && "bg-green-500",
+            tier === "trusted" && "bg-blue-500",
+            tier === "vip" && "bg-violet-500",
+            tier === "elite" && "bg-amber-500"
+          )}
         >
           {tier}
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
 

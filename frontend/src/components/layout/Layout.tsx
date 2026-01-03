@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,7 +30,7 @@ export function Layout({ children }: LayoutProps) {
       <main
         className={cn(
           "pt-16 min-h-screen",
-          "lg:pl-[280px]",
+          pathname !== "/" && "lg:pl-[280px]",
           "transition-all duration-300"
         )}
       >

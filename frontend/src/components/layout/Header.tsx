@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Radio, Menu, Bell, Settings, User, MessageCircle, LogIn } from "lucide-react";
 import { GlowButton, IconButton, Avatar, Badge, LiveBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderProps) {
+  const pathname = usePathname();
   const [hasNotifications] = useState(true);
   const { user, isAuthenticated, isLoading } = useAuth();
 
@@ -36,7 +38,7 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
         <IconButton
           icon={<Menu className="w-5 h-5" />}
           onClick={onMenuClick}
-          className="lg:hidden"
+          className={cn("lg:hidden", pathname === "/" && "lg:flex")}
         />
 
         {/* Logo */}

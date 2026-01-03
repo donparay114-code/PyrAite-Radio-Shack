@@ -134,6 +134,7 @@ export function Chat({
       </div>
 
       {/* Messages container */}
+      {/* eslint-disable-next-line react-dom/no-unsafe-inline-style */}
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
@@ -231,9 +232,9 @@ export function Chat({
                   "text-white placeholder:text-text-muted",
                   "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "transition-all duration-200"
+                  "transition-all duration-200",
+                  "min-h-[48px] max-h-[120px]"
                 )}
-                style={{ minHeight: "48px", maxHeight: "120px" }}
               />
               <motion.button
                 type="submit"

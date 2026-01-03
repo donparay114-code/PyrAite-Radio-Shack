@@ -4,6 +4,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { GoogleLoginBtn } from "@/components/auth/GoogleLoginBtn";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
+import { X } from "lucide-react";
 
 function LoginContent() {
     const { isAuthenticated } = useAuth();
@@ -18,7 +19,14 @@ function LoginContent() {
     }, [isAuthenticated, router, redirect]);
 
     return (
-        <div className="max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 text-center backdrop-blur-xl shadow-2xl shadow-violet-500/10">
+        <div className="relative max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 text-center backdrop-blur-xl shadow-2xl shadow-violet-500/10">
+            <button
+                onClick={() => router.push("/")}
+                className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                aria-label="Close"
+            >
+                <X size={20} />
+            </button>
             <div className="mb-8">
                 <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-xl mx-auto flex items-center justify-center text-3xl mb-4 shadow-lg shadow-violet-500/20">
                     🏴‍☠️

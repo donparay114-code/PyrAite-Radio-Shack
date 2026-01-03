@@ -84,6 +84,7 @@ export function Skeleton({
   };
 
   return (
+    // eslint-disable-next-line
     <div
       className={cn(
         "relative overflow-hidden bg-white/5",
@@ -96,10 +97,7 @@ export function Skeleton({
       {/* Shimmer effect */}
       {animate && (
         <div
-          className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent"
-          style={{
-            backgroundSize: "200% 100%",
-          }}
+          className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent bg-[length:200%_100%]"
         />
       )}
     </div>

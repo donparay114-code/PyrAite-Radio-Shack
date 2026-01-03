@@ -48,6 +48,7 @@ const STYLE_TAGS = [
 ];
 
 export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
+  const [provider, setProvider] = useState("udio");
   const [prompt, setPrompt] = useState("");
   const [genre, setGenre] = useState<string | null>(null);
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -65,7 +66,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
     );
   };
 
-  const handleSubmit = async () => {
+  const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError("Please enter a song description");
       return;
@@ -75,20 +76,53 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
     setError(null);
 
     try {
-      await onSubmit({
-        prompt: prompt.trim(),
-        genre,
-        isInstrumental,
-        styleTags: selectedTags,
+      // If we passed an onSubmit prop that handles everything, keep using it?
+      // But user wants direct generation from modal. We'll use the API directly here.
+
+      const fullPrompt = [
+        prompt,
+        genre && `Genre: ${genre}`,
+        selectedTags.length > 0 && `Style: ${selectedTags.join(", ")}`
+      ].filter(Boolean).join(". ");
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const response = await fetch(`${apiUrl}/api/generate/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          provider,
+          is_instrumental: isInstrumental,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Generation failed");
+      }
+
       onClose();
       // Reset form
       setPrompt("");
       setGenre(null);
       setIsInstrumental(false);
       setSelectedTags([]);
+
+      // Notify parent? (Optional but good practice)
+      if (onSubmit) {
+        // We can still call onSubmit to maybe refresh the list or show a toast
+        // But the actual generation happens here now.
+        await onSubmit({
+          prompt: fullPrompt,
+          genre,
+          isInstrumental,
+          styleTags: selectedTags
+        });
+      }
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit request");
+      setError(err instanceof Error ? err.message : "Failed to generate song");
     } finally {
       setIsLoading(false);
     }
@@ -217,8 +251,8 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                               ? "bg-cyan-500/30 border border-cyan-500/50 text-cyan-300"
                               : "bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10",
                             selectedTags.length >= 3 &&
-                              !selectedTags.includes(tag) &&
-                              "opacity-50 cursor-not-allowed"
+                            !selectedTags.includes(tag) &&
+                            "opacity-50 cursor-not-allowed"
                           )}
                         >
                           {tag}
@@ -274,16 +308,41 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                     </motion.div>
                   )}
 
+                  {/* Provider selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Generation Provider
+                    </label>
+                    <div className="flex gap-2">
+                      {["udio", "suno", "mock"].map((p) => (
+                        <motion.button
+                          key={p}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setProvider(p)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex-1",
+                            provider === p
+                              ? "bg-violet-500/30 border border-violet-500/50 text-violet-300"
+                              : "bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Submit button */}
                   <GlowButton
-                    onClick={handleSubmit}
+                    onClick={handleGenerate}
                     disabled={!prompt.trim() || isLoading}
                     isLoading={isLoading}
                     className="w-full"
                     size="lg"
                     leftIcon={<Sparkles className="w-5 h-5" />}
                   >
-                    {isLoading ? "Submitting..." : "Submit Request"}
+                    {isLoading ? "Generating..." : "Generate & Add to Queue"}
                   </GlowButton>
 
                   {/* Info */}

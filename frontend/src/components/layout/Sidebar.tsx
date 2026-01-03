@@ -104,13 +104,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           "bg-background/95 backdrop-blur-xl",
           "border-r border-white/[0.06]",
           "flex flex-col",
-          "lg:translate-x-0 lg:z-30"
+          pathname !== "/" && "lg:translate-x-0 lg:z-30"
         )}
       >
         {/* Close button (mobile) */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 lg:hidden"
+          aria-label="Close sidebar"
         >
           <X className="w-5 h-5 text-text-muted" />
         </button>

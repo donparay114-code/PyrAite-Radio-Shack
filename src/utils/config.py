@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # API Keys
     suno_api_url: str = ""
     suno_api_key: str = ""
-    mubert_api_key: str = ""
+    udio_auth_token: str = ""  # Udio sb-api-auth-token from cookies
     openai_api_key: str = ""
 
     # Telegram
