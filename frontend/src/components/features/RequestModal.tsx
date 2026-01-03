@@ -19,6 +19,23 @@ interface RequestData {
   styleTags: string[];
 }
 
+/** Music generation provider options */
+export enum MusicProvider {
+  UDIO = "udio",
+  SUNO = "suno",
+  MOCK = "mock",
+}
+
+/** Provider display labels and descriptions */
+const PROVIDER_INFO: Record<MusicProvider, { label: string; description: string }> = {
+  [MusicProvider.UDIO]: { label: "Udio", description: "High-quality generation" },
+  [MusicProvider.SUNO]: { label: "Suno", description: "Fast and creative" },
+  [MusicProvider.MOCK]: { label: "Mock", description: "Testing only" },
+};
+
+const PROMPT_MAX_LENGTH = 500;
+const PROMPT_WARNING_THRESHOLD = 400;
+
 const GENRES = [
   "Pop",
   "Rock",
@@ -48,7 +65,7 @@ const STYLE_TAGS = [
 ];
 
 export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
-  const [provider, setProvider] = useState("udio");
+  const [provider, setProvider] = useState<MusicProvider>(MusicProvider.UDIO);
   const [prompt, setPrompt] = useState("");
   const [genre, setGenre] = useState<string | null>(null);
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -196,14 +213,26 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                         "focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50",
                         "resize-none transition-all"
                       )}
-                      maxLength={500}
+                      maxLength={PROMPT_MAX_LENGTH}
                     />
                     <div className="flex justify-between mt-1.5">
                       <span className="text-xs text-text-muted">
                         Be specific for better results
                       </span>
-                      <span className="text-xs text-text-muted">
-                        {prompt.length}/500
+                      <span
+                        className={cn(
+                          "text-xs transition-colors",
+                          prompt.length >= PROMPT_MAX_LENGTH
+                            ? "text-red-400 font-medium"
+                            : prompt.length >= PROMPT_WARNING_THRESHOLD
+                              ? "text-yellow-400"
+                              : "text-text-muted"
+                        )}
+                      >
+                        {prompt.length}/{PROMPT_MAX_LENGTH}
+                        {prompt.length >= PROMPT_WARNING_THRESHOLD && prompt.length < PROMPT_MAX_LENGTH && (
+                          <span className="ml-1">({PROMPT_MAX_LENGTH - prompt.length} left)</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -315,7 +344,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                       Generation Provider
                     </label>
                     <div className="flex gap-2">
-                      {["udio", "suno", "mock"].map((p) => (
+                      {Object.values(MusicProvider).map((p) => (
                         <motion.button
                           key={p}
                           whileHover={{ scale: 1.05 }}
@@ -327,8 +356,9 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                               ? "bg-violet-500/30 border border-violet-500/50 text-violet-300"
                               : "bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10"
                           )}
+                          title={PROVIDER_INFO[p].description}
                         >
-                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                          {PROVIDER_INFO[p].label}
                         </motion.button>
                       ))}
                     </div>

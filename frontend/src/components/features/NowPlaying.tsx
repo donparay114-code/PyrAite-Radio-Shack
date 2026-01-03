@@ -25,9 +25,12 @@ interface NowPlayingProps {
   queueItem: QueueItem | null;
   isPlaying: boolean;
   currentTime: number;
+  isLoading?: boolean;
   onPlayPause: () => void;
   onVote: (type: "up" | "down") => void;
   onSeek: (time: number) => void;
+  onSkip?: () => void;
+  onShare?: () => void;
 }
 
 export function NowPlaying({
@@ -35,13 +38,57 @@ export function NowPlaying({
   queueItem,
   isPlaying,
   currentTime,
+  isLoading = false,
   onPlayPause,
   onVote,
   onSeek,
+  onSkip,
+  onShare,
 }: NowPlayingProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [audioData, setAudioData] = useState<number[]>(new Array(32).fill(0));
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const prevSongIdRef = useRef<number | null>(null);
+
+  // Detect song changes and trigger transition animation
+  useEffect(() => {
+    if (song?.id && song.id !== prevSongIdRef.current) {
+      if (prevSongIdRef.current !== null) {
+        setIsTransitioning(true);
+        const timer = setTimeout(() => setIsTransitioning(false), 500);
+        return () => clearTimeout(timer);
+      }
+      prevSongIdRef.current = song.id;
+    }
+  }, [song?.id]);
+
+  // Handle share functionality
+  const handleShare = useCallback(async () => {
+    if (onShare) {
+      onShare();
+      return;
+    }
+
+    // Default share behavior using Web Share API or clipboard
+    const shareData = {
+      title: song?.title || "Now Playing",
+      text: `🎵 Listening to "${song?.title}" by ${song?.artist || "AI Generated"} on PYrte Radio!`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        // Would show toast here if we had access to it
+      }
+    } catch (err) {
+      // User cancelled or error occurred
+    }
+  }, [song, onShare]);
 
   // Audio player ref for real playback
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -90,18 +137,21 @@ export function NowPlaying({
     }
   }, [onSeek]);
 
+  // Generate visualizer data - memoized to avoid recreating on each render
+  const generateVisualizerData = useCallback(() => {
+    return Array.from({ length: 32 }, () => Math.random() * 0.8 + 0.2);
+  }, []);
+
   // Simulate audio visualizer data
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
-      setAudioData(
-        Array.from({ length: 32 }, () => Math.random() * 0.8 + 0.2)
-      );
+      setAudioData(generateVisualizerData());
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, generateVisualizerData]);
 
   // Dynamic glow color based on cover image (simplified)
   const glowColor = useMemo(() => {
@@ -161,6 +211,27 @@ export function NowPlaying({
           onEnded={onPlayPause}
           preload="metadata"
         />
+
+        {/* Loading/Transition overlay */}
+        <AnimatePresence>
+          {(isLoading || isTransitioning) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-2xl"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading next song"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-12 h-12 border-3 border-violet-500/30 border-t-violet-500 rounded-full"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="p-6 lg:p-8">
           {/* Header with live badge */}
@@ -370,6 +441,8 @@ export function NowPlaying({
 
                   <IconButton
                     icon={<SkipForward className="w-5 h-5" />}
+                    onClick={onSkip}
+                    disabled={!onSkip}
                     aria-label="Skip to next song"
                   />
                 </div>
@@ -385,7 +458,7 @@ export function NowPlaying({
                     onClick={() => setIsLiked(!isLiked)}
                     aria-label={isLiked ? "Remove from favorites" : "Add to favorites"}
                   />
-                  <IconButton icon={<Share2 className="w-5 h-5" />} aria-label="Share song" />
+                  <IconButton icon={<Share2 className="w-5 h-5" />} onClick={handleShare} aria-label="Share song" />
                   <IconButton icon={<Maximize2 className="w-5 h-5" />} aria-label="Fullscreen" />
                 </div>
               </div>

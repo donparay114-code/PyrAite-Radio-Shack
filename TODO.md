@@ -111,35 +111,51 @@
 
 ---
 
+## Completed (Jan 2026 - Session 4)
+
+### Loading States
+- [x] Add loading indicator for NowPlaying song changes
+  - [x] Add isLoading and isTransitioning state
+  - [x] Show loading overlay during song transitions
+
+### Feature Completion
+- [x] Implement Skip button in NowPlaying (with onSkip callback)
+- [x] Implement Share button functionality (Web Share API with clipboard fallback)
+
+### Type Safety
+- [x] Create MusicProvider enum for provider selection in RequestModal
+  - [x] Add PROVIDER_INFO with labels and descriptions
+
+### Performance
+- [x] Optimize NowPlaying visualizer with useCallback for random values
+
+### UI/UX Polish
+- [x] Add character limit feedback during typing in RequestModal
+  - [x] Color-coded counter (red at limit, yellow at 400+)
+  - [x] Shows remaining characters when approaching limit
+
+---
+
 ## Pending
 
-### High Priority
+### Medium Priority
 
-#### Loading States
-- [ ] Add loading indicator for NowPlaying song changes
-
-#### Feature Completion
-- [ ] Implement Skip button in NowPlaying
+#### Feature Completion (Remaining)
 - [ ] Implement Skip back button in AudioPlayer
-- [ ] Implement Share button functionality
-- [ ] Clarify/document provider selection (udio/suno/mock)
 
-#### Type Safety
-- [ ] Create enum for provider selection in RequestModal
+#### Type Safety (Remaining)
 - [ ] Validate socket event data types
 - [ ] Fix unsafe type assertions in AuthProvider
 
 ### Low Priority
 
 #### Performance
-- [ ] Optimize NowPlaying visualizer (use useCallback for random values)
 - [ ] Add virtualization for long chat message lists
 - [ ] Optimize form state for large tag lists in RequestModal
 - [ ] Share status colors/labels via shared types (avoid duplication)
 
 #### UI/UX Polish
 - [ ] Improve error messages to be more user-friendly
-- [ ] Add character limit feedback during typing in RequestModal
 - [ ] Standardize spinner styles across components
 - [ ] Add confirmation dialogs for destructive actions
 
