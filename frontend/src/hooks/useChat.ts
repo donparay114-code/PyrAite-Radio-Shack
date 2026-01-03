@@ -26,7 +26,7 @@ export function useChat(userId?: number) {
   // Subscribe to Realtime changes
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      console.warn("Supabase not configured, skipping realtime subscription");
+      // Supabase not configured - realtime features disabled
       setIsConnecting(false);
       return;
     }
@@ -85,8 +85,8 @@ export function useChat(userId?: number) {
         if (status === "SUBSCRIBED") {
           setIsConnecting(false);
         } else if (status === "CHANNEL_ERROR") {
-          console.error("Supabase Realtime channel error");
-          setIsConnecting(false); // Stop showing "Connecting..."
+          // Realtime channel error - connection will retry automatically
+          setIsConnecting(false);
         }
       });
 

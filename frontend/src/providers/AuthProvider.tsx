@@ -122,8 +122,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         tier: data.tier as UserTier,
         reputation_score: data.reputation_score,
       };
-    } catch (error) {
-      console.error("Backend validation failed:", error);
+    } catch {
+      // Backend validation failed - will fallback to client-side data
       return null;
     }
   }, []);
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error: null,
       });
     } catch (error) {
-      console.error("Google login error:", error);
+      // Google login error - update state with error message
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -246,8 +246,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                  // Token invalid/expired
                  localStorage.removeItem("auth_token");
               }
-           } catch (e) {
-              console.error("Token verification failed", e);
+           } catch {
+              // Token verification failed - clear invalid token
               localStorage.removeItem("auth_token");
            }
         }
@@ -310,8 +310,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                           }
                       }));
                   }
-              } catch (e) {
-                  console.error("Failed to refresh user", e);
+              } catch {
+                  // Failed to refresh user - state unchanged
               }
            }
         }

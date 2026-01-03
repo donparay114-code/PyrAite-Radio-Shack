@@ -47,8 +47,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Request failed" }));
 
-    // Log detailed error for debugging
-    console.error(`API Error [${res.status}] ${endpoint}:`, error);
+    // Error details available in ApiError for handling upstream
 
     // Handle specific error codes
     if (res.status === 401) {

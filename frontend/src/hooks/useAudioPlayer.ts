@@ -202,7 +202,9 @@ export function useRadioStream(streamUrl: string) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play().catch(console.error);
+        audioRef.current.play().catch(() => {
+          // Playback failed - browser may require user interaction first
+        });
       }
     }
   }, [isPlaying]);

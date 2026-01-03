@@ -14,7 +14,7 @@ export function GoogleLoginBtn() {
                     }
                 }}
                 onError={() => {
-                    console.log('Login Failed');
+                    // Login error handled by Google OAuth component
                 }}
                 theme="filled_black"
                 shape="pill"

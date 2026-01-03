@@ -19,12 +19,8 @@ if (hasValidConfig) {
     },
   });
 } else {
-  // In development or build without env vars, warn and create a placeholder
-  if (typeof window !== "undefined") {
-    console.warn(
-      "Supabase environment variables not set. Realtime features will be disabled."
-    );
-  }
+  // In development or build without env vars, create a placeholder
+  // Realtime features will be disabled without valid configuration
 
   // Create a dummy client with placeholder URL to avoid build errors
   // This client won't actually work but prevents build-time crashes

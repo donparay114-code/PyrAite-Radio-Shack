@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MessageCircle, Users, Radio } from "lucide-react";
+import { MessageCircle, Users, Radio, AlertCircle } from "lucide-react";
 import { Chat } from "@/components/features";
 import { GlassCard, Badge, PulseGlow, easings } from "@/components/ui";
 import { useChat } from "@/hooks/useChat";
@@ -10,8 +10,11 @@ import { useNowPlaying } from "@/hooks/useApi";
 
 export default function ChatPage() {
   const { user, isAuthenticated } = useAuth();
-  const { data: nowPlaying } = useNowPlaying();
+  const { data: nowPlaying, error: nowPlayingError } = useNowPlaying();
   const chatHook = useChat();
+
+  // Show connection status
+  const showConnectionError = chatHook.isConnecting && !chatHook.isLoading;
 
   return (
     <div className="relative space-y-6">
@@ -43,6 +46,21 @@ export default function ChatPage() {
           </Badge>
         </div>
       </motion.div>
+
+      {/* Connection status warning */}
+      {showConnectionError && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <GlassCard className="p-3 border-yellow-500/20 bg-yellow-500/5">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 text-yellow-400" />
+              <p className="text-sm text-yellow-300">Connecting to chat server...</p>
+            </div>
+          </GlassCard>
+        </motion.div>
+      )}
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

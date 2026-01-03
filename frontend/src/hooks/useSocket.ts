@@ -44,23 +44,19 @@ export function useSocket(channelId: string): UseSocketReturn {
     });
 
     s.on('connect', () => {
-      console.log('Socket connected');
       setIsConnected(true);
       s.emit('join-channel', channelId);
     });
 
     s.on('disconnect', () => {
-      console.log('Socket disconnected');
       setIsConnected(false);
     });
 
     s.on('now-playing', (data: NowPlaying) => {
-      console.log('Now playing update:', data);
       setNowPlaying(data);
     });
 
     s.on('queue-update', (data: SongRequest[]) => {
-      console.log('Queue update:', data.length, 'tracks');
       setQueue(data);
     });
 
@@ -68,12 +64,12 @@ export function useSocket(channelId: string): UseSocketReturn {
       setListenerCount(count);
     });
 
-    s.on('moderation-settings-changed', (data: ModerationSettings) => {
-      console.log('Moderation settings changed:', data);
+    s.on('moderation-settings-changed', (_data: ModerationSettings) => {
+      // Moderation settings updated - could trigger UI refresh if needed
     });
 
-    s.on('error', (error: SocketError) => {
-      console.error('Socket error:', error.message);
+    s.on('error', (_error: SocketError) => {
+      // Socket error handled silently - connection will attempt to reconnect
     });
 
     setSocket(s);

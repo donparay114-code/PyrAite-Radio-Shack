@@ -22,12 +22,13 @@ import { useAdminStats, useSystemHealth, useRecentActivity, useTodayStats } from
 import type { SystemHealth, RecentActivity } from "@/hooks";
 
 export default function AdminDashboard() {
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: systemHealth, isLoading: healthLoading } = useSystemHealth();
-  const { data: recentActivity, isLoading: activityLoading } = useRecentActivity(5);
-  const { data: todayStats, isLoading: todayLoading } = useTodayStats();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useAdminStats();
+  const { data: systemHealth, isLoading: healthLoading, error: healthError } = useSystemHealth();
+  const { data: recentActivity, isLoading: activityLoading, error: activityError } = useRecentActivity(5);
+  const { data: todayStats, isLoading: todayLoading, error: todayError } = useTodayStats();
 
   const isLoading = statsLoading || healthLoading;
+  const hasError = statsError || healthError;
 
   // Fallback values while loading
   const displayStats = stats || {
@@ -70,6 +71,21 @@ export default function AdminDashboard() {
           <p className="text-sm text-text-muted">System overview and management</p>
         </div>
       </div>
+
+      {/* Error state */}
+      {hasError && (
+        <GlassCard className="p-4 border-red-500/20 bg-red-500/5">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <div className="flex-1">
+              <p className="text-sm text-red-300">Failed to load some dashboard data</p>
+              <p className="text-xs text-red-400/70 mt-1">
+                {statsError?.message || healthError?.message || "Please try refreshing the page"}
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Key metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

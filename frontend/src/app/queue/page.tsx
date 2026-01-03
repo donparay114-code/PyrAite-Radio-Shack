@@ -35,7 +35,7 @@ export default function QueuePage() {
 
   const handleVote = (itemId: number, type: "up" | "down") => {
     if (!user) {
-      console.warn("User not authenticated for voting");
+      // User not authenticated - voting disabled
       return;
     }
     voteMutation.mutate({
@@ -112,9 +112,10 @@ export default function QueuePage() {
           <IconButton
             icon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
             onClick={() => refetch()}
+            aria-label="Refresh queue"
           />
-          <IconButton icon={<Filter className="w-4 h-4" />} />
-          <IconButton icon={<SortAsc className="w-4 h-4" />} />
+          <IconButton icon={<Filter className="w-4 h-4" />} aria-label="Filter queue" />
+          <IconButton icon={<SortAsc className="w-4 h-4" />} aria-label="Sort queue" />
           <GlowButton
             onClick={() => setIsRequestModalOpen(true)}
             disabled={!isAuthenticated}

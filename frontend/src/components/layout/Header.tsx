@@ -115,6 +115,7 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
         <IconButton
           icon={<Menu className="w-5 h-5" />}
           onClick={onMenuClick}
+          aria-label="Open menu"
           className={cn("lg:hidden", pathname === "/" && "lg:flex")}
         />
 
@@ -181,6 +182,7 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           {searchQuery && (
             <button
               onClick={clearSearch}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
@@ -304,9 +306,10 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           <IconButton
             icon={<Bell className="w-5 h-5" />}
             variant="ghost"
+            aria-label="Notifications"
           />
           {hasNotifications && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" aria-label="New notifications" />
           )}
         </div>
 
@@ -315,6 +318,7 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           <IconButton
             icon={<MessageCircle className="w-5 h-5" />}
             variant="ghost"
+            aria-label="Open chat"
             className="hidden sm:flex"
           />
         </Link>
@@ -323,6 +327,7 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
         <IconButton
           icon={<Settings className="w-5 h-5" />}
           variant="ghost"
+          aria-label="Settings"
           className="hidden sm:flex"
         />
 

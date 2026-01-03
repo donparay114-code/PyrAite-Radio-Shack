@@ -132,6 +132,8 @@ interface IconButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   icon: ReactNode;
   size?: "sm" | "md" | "lg";
   variant?: "default" | "ghost";
+  /** Accessible label for screen readers (required for icon-only buttons) */
+  "aria-label"?: string;
 }
 
 export function IconButton({

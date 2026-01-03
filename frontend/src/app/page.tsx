@@ -98,9 +98,7 @@ export default function HomePage() {
   const handleVote = (itemId: number, type: "up" | "down") => {
     // Use authenticated user ID, fallback to 1 for unauthenticated users
     const userId = user?.id ?? 1;
-    if (!isAuthenticated) {
-      console.warn("User not authenticated, using guest mode for voting");
-    }
+    // Guest mode - voting with default user ID when not authenticated
     voteMutation.mutate({
       queueItemId: itemId,
       voteType: type === "up" ? "upvote" : "downvote",
