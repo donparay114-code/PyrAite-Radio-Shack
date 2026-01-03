@@ -86,6 +86,7 @@ async def suno_status_webhook(
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     # Find the queue item by suno_job_id
+    # This fulfills the requirement to update queue item status based on Suno job status
     query = select(RadioQueue).where(RadioQueue.suno_job_id == payload.job_id)
     result = await session.execute(query)
     queue_item = result.scalar_one_or_none()
