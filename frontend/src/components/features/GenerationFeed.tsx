@@ -40,19 +40,7 @@ interface GenerationFeedProps {
   onItemComplete?: (item: GenerationFeedItem) => void;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "#71717a",
-  moderation: "#f59e0b",
-  queued: "#3b82f6",
-  generating: "#8b5cf6",
-  generated: "#22c55e",
-  ready: "#22c55e",
-  broadcasting: "#ef4444",
-  completed: "#22c55e",
-  failed: "#ef4444",
-  rejected: "#ef4444",
-  cancelled: "#71717a",
-};
+
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -324,6 +312,13 @@ function GenerationItemCard({ item, index }: GenerationItemCardProps) {
     moderation: AlertCircle,
     queued: Music,
     generating: Sparkles,
+    generated: Sparkles,
+    ready: Sparkles,
+    broadcasting: Radio,
+    completed: Sparkles,
+    failed: AlertCircle,
+    rejected: AlertCircle,
+    cancelled: AlertCircle,
   }[item.status] || Clock;
 
   return (
@@ -424,7 +419,6 @@ function GenerationItemCard({ item, index }: GenerationItemCardProps) {
                 {/* Status badge */}
                 <StatusBadge
                   status={item.status}
-                  color={STATUS_COLORS[item.status]}
                   label={STATUS_LABELS[item.status]}
                 />
               </div>

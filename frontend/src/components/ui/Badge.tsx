@@ -11,7 +11,6 @@ interface BadgeProps {
   pulse?: boolean;
   icon?: ReactNode;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 export function Badge({
@@ -21,7 +20,6 @@ export function Badge({
   pulse = false,
   icon,
   className,
-  style,
 }: BadgeProps) {
   const variants = {
     default: "bg-white/10 text-white/80 border-white/10",
@@ -45,7 +43,6 @@ export function Badge({
         sizes[size],
         className
       )}
-      style={style}
     >
       {pulse && (
         <span className="relative flex h-2 w-2">
@@ -101,31 +98,53 @@ export function LiveBadge() {
 // Status badge for queue items
 interface StatusBadgeProps {
   status: string;
-  color: string;
+  className?: string; // Replaced color with internal mapping
   label: string;
 }
 
-export function StatusBadge({ status, color, label }: StatusBadgeProps) {
+export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const isLive = status === "broadcasting";
+
+  // Status to color mapping
+  const statusStyles: Record<string, string> = {
+    pending: "bg-gray-500/20 border-gray-500/30 text-gray-400",
+    queued: "bg-blue-500/20 border-blue-500/30 text-blue-400",
+    generating: "bg-violet-500/20 border-violet-500/30 text-violet-400",
+    generated: "bg-cyan-500/20 border-cyan-500/30 text-cyan-400",
+    broadcasting: "bg-red-500/20 border-red-500/30 text-red-400",
+    completed: "bg-green-500/20 border-green-500/30 text-green-400",
+    failed: "bg-red-500/20 border-red-500/30 text-red-400",
+    cancelled: "bg-gray-500/20 border-gray-500/30 text-gray-400",
+    moderated: "bg-amber-500/20 border-amber-500/30 text-amber-400",
+  };
+
+  const currentStyle = statusStyles[status.toLowerCase()] || statusStyles.pending;
+
+  // Color for the pulse dot
+  const dotColorClass = {
+    broadcasting: "bg-red-500",
+    generating: "bg-violet-500",
+    queued: "bg-blue-500",
+  }[status.toLowerCase()] || "bg-gray-500";
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
-      style={{
-        backgroundColor: `${color}20`,
-        borderColor: `${color}40`,
-        color: color,
-      }}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+        currentStyle,
+        className
+      )}
     >
       {isLive && (
         <span className="relative flex h-1.5 w-1.5">
           <span
-            className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-            style={{ backgroundColor: color }}
+            className={cn(
+              "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+              dotColorClass.replace("bg-", "bg-opacity-75 bg-") // slight hack or just use base
+            )}
           />
           <span
-            className="relative inline-flex rounded-full h-1.5 w-1.5"
-            style={{ backgroundColor: color }}
+            className={cn("relative inline-flex rounded-full h-1.5 w-1.5", dotColorClass)}
           />
         </span>
       )}

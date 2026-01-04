@@ -83,8 +83,12 @@ export function Skeleton({
     rounded: "rounded-xl",
   };
 
+  const dynamicStyle = {
+    width,
+    height,
+  };
+
   return (
-    // eslint-disable-next-line
     <div
       className={cn(
         "relative overflow-hidden bg-white/5",
@@ -92,7 +96,7 @@ export function Skeleton({
         animate && "animate-pulse",
         className
       )}
-      style={{ width, height }}
+      style={dynamicStyle}
     >
       {/* Shimmer effect */}
       {animate && (

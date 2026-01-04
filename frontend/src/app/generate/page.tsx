@@ -120,6 +120,7 @@ export default function GeneratePage() {
                         <button
                             onClick={() => setIsInstrumental(!isInstrumental)}
                             disabled={isLoading}
+                            aria-label="Toggle Instrumental"
                             className={`w-12 h-6 rounded-full transition-colors ${isInstrumental ? "bg-violet-500" : "bg-white/20"
                                 }`}
                         >
@@ -160,8 +161,8 @@ export default function GeneratePage() {
                 >
                     <GlassCard
                         className={`p-6 ${result?.success
-                                ? "border-green-500/30"
-                                : "border-red-500/30"
+                            ? "border-green-500/30"
+                            : "border-red-500/30"
                             }`}
                     >
                         {/* Status Header */}

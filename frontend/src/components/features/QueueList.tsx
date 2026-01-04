@@ -107,19 +107,7 @@ interface QueueItemCardProps {
 }
 
 function QueueItemCard({ item, index, isPlaying, onVote, onCancel }: QueueItemCardProps) {
-  const statusColors: Record<string, string> = {
-    pending: "#71717a",
-    moderation: "#f59e0b",
-    queued: "#3b82f6",
-    generating: "#8b5cf6",
-    generated: "#22c55e",
-    ready: "#22c55e",
-    broadcasting: "#ef4444",
-    completed: "#22c55e",
-    failed: "#ef4444",
-    rejected: "#ef4444",
-    cancelled: "#71717a",
-  };
+
 
   const statusLabels: Record<string, string> = {
     pending: "Pending",
@@ -228,7 +216,6 @@ function QueueItemCard({ item, index, isPlaying, onVote, onCancel }: QueueItemCa
           {/* Status badge */}
           <StatusBadge
             status={item.status}
-            color={statusColors[item.status]}
             label={statusLabels[item.status]}
           />
 
