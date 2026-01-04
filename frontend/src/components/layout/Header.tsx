@@ -59,6 +59,7 @@ export function Header({ onMenuClick, onRequestClick, isLive = false, listeners 
         {/* Mobile menu button */}
         <IconButton
           icon={<Menu className="w-5 h-5" />}
+          label="Toggle menu"
           onClick={onMenuClick}
           className={cn("lg:hidden", pathname === "/" && "lg:flex")}
         />
@@ -156,6 +157,7 @@ export function Header({ onMenuClick, onRequestClick, isLive = false, listeners 
         <div className="relative">
           <IconButton
             icon={<Bell className="w-5 h-5" />}
+            label="Notifications"
             variant="ghost"
           />
           {hasNotifications && (
@@ -166,6 +168,7 @@ export function Header({ onMenuClick, onRequestClick, isLive = false, listeners 
         {/* Settings */}
         <IconButton
           icon={<Settings className="w-5 h-5" />}
+          label="Settings"
           variant="ghost"
           className="hidden sm:flex"
         />
