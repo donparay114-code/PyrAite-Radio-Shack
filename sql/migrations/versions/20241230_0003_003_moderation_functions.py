@@ -24,6 +24,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create PostgreSQL functions for moderation."""
+    bind = op.get_bind()
+    if bind.engine.name == "sqlite":
+        # Skip Postgres-specific functions for SQLite
+        return
 
     # Function to check rate limit and increment counter if allowed
     op.execute(

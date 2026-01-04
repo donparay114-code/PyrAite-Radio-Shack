@@ -21,42 +21,38 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add email column for Google OAuth
-    op.add_column(
-        "users",
-        sa.Column("email", sa.String(255), nullable=True),
-    )
-    op.create_index("ix_users_email", "users", ["email"], unique=True)
+    # Use batch_alter_table for SQLite compatibility
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        # Add email column for Google OAuth
+        batch_op.add_column(sa.Column("email", sa.String(255), nullable=True))
+        batch_op.create_index("ix_users_email", ["email"], unique=True)
 
-    # Add google_id column for Google OAuth
-    op.add_column(
-        "users",
-        sa.Column("google_id", sa.String(255), nullable=True),
-    )
-    op.create_index("ix_users_google_id", "users", ["google_id"], unique=True)
+        # Add google_id column for Google OAuth
+        batch_op.add_column(sa.Column("google_id", sa.String(255), nullable=True))
+        batch_op.create_index("ix_users_google_id", ["google_id"], unique=True)
 
-    # Make telegram_id nullable for Google-only users
-    op.alter_column(
-        "users",
-        "telegram_id",
-        existing_type=sa.BigInteger(),
-        nullable=True,
-    )
+        # Make telegram_id nullable for Google-only users
+        batch_op.alter_column(
+            "telegram_id",
+            existing_type=sa.BigInteger(),
+            nullable=True,
+        )
 
 
 def downgrade() -> None:
-    # Drop indexes first
-    op.drop_index("ix_users_google_id", table_name="users")
-    op.drop_index("ix_users_email", table_name="users")
+    # Revert changes using batch_op
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        # Restore telegram_id as NOT NULL
+        batch_op.alter_column(
+            "telegram_id",
+            existing_type=sa.BigInteger(),
+            nullable=False,
+        )
 
-    # Remove Google OAuth columns
-    op.drop_column("users", "google_id")
-    op.drop_column("users", "email")
+        # Drop google_id column and index
+        batch_op.drop_index("ix_users_google_id")
+        batch_op.drop_column("google_id")
 
-    # Restore telegram_id as NOT NULL (only if all rows have telegram_id)
-    op.alter_column(
-        "users",
-        "telegram_id",
-        existing_type=sa.BigInteger(),
-        nullable=False,
-    )
+        # Drop email column and index
+        batch_op.drop_index("ix_users_email")
+        batch_op.drop_column("email")

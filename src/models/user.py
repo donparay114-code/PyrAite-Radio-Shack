@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, TimestampMixin
@@ -12,6 +12,7 @@ from src.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from src.models.queue import RadioQueue
     from src.models.vote import Vote
+    from src.models.social import Comment, Follow
 
 
 class UserTier(str, Enum):
@@ -76,6 +77,17 @@ class User(Base, TimestampMixin):
 
     # Profile
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    philosophy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Showcase and Social
+    # Note: SQLite doesn't strictly enforce ARRAY/JSON types like Postgres, but SQLAlchemy handles serialization if using the right dialect or Pydantic validation.
+    # For compatibility, we'll import JSON from sqlalchemy.types or use generic JSON.
+    # Actually, let's use SQLAlchemy's JSON type for widest support (stored as Text in SQLite).
+    showcase_song_ids: Mapped[Optional[list[int]]] = mapped_column(JSON, nullable=True)
+    social_links: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    badges: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
+
     username_last_changed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True
     )
@@ -94,6 +106,24 @@ class User(Base, TimestampMixin):
     )
     votes: Mapped[list["Vote"]] = relationship(
         "Vote", back_populates="user", lazy="dynamic"
+    )
+
+    # Social Graph
+    comments: Mapped[list["Comment"]] = relationship(
+        "Comment", back_populates="user", lazy="dynamic"
+    )
+
+    followers: Mapped[list["Follow"]] = relationship(
+        "Follow",
+        foreign_keys="Follow.following_id",
+        back_populates="following",
+        lazy="dynamic",
+    )
+    following: Mapped[list["Follow"]] = relationship(
+        "Follow",
+        foreign_keys="Follow.follower_id",
+        back_populates="follower",
+        lazy="dynamic",
     )
 
     @property

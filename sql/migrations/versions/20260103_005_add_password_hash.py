@@ -20,12 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add password_hash column for email/password authentication
-    op.add_column(
-        "users",
-        sa.Column("password_hash", sa.String(255), nullable=True),
-    )
+    # Use batch_alter_table for SQLite compatibility
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        # Add password_hash column for email/password authentication
+        batch_op.add_column(sa.Column("password_hash", sa.String(255), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("users", "password_hash")
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        batch_op.drop_column("password_hash")
