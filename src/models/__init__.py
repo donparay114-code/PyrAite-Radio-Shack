@@ -15,6 +15,7 @@ from src.models.queue import QueueStatus, RadioQueue
 from src.models.song import Song, SunoStatus
 from src.models.user import User, UserTier
 from src.models.vote import Vote, VoteType
+from src.models.moderation import BannedWord
 
 __all__ = [
     # Base
@@ -34,6 +35,7 @@ __all__ = [
     "RadioHistory",
     "Vote",
     "VoteType",
+    "BannedWord",
     "ChatMessage",
     "MessageType",
 ]

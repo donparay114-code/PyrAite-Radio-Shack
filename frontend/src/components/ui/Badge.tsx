@@ -38,7 +38,6 @@ export function Badge({
   };
 
   return (
-    // eslint-disable-next-line react-dom/no-unsafe-inline-style
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border font-medium",
@@ -110,7 +109,6 @@ export function StatusBadge({ status, color, label }: StatusBadgeProps) {
   const isLive = status === "broadcasting";
 
   return (
-    // eslint-disable-next-line react-dom/no-unsafe-inline-style
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
       style={{
@@ -121,12 +119,10 @@ export function StatusBadge({ status, color, label }: StatusBadgeProps) {
     >
       {isLive && (
         <span className="relative flex h-1.5 w-1.5">
-          {/* eslint-disable-next-line react-dom/no-unsafe-inline-style */}
           <span
             className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
             style={{ backgroundColor: color }}
           />
-          {/* eslint-disable-next-line react-dom/no-unsafe-inline-style */}
           <span
             className="relative inline-flex rounded-full h-1.5 w-1.5"
             style={{ backgroundColor: color }}

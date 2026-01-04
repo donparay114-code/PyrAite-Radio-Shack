@@ -38,7 +38,7 @@ export function useAudioPlayer(initialUrl?: string): UseAudioPlayerReturn {
   // Initialize audio element
   useEffect(() => {
     audioRef.current = new Audio();
-    audioRef.current.volume = state.volume;
+    audioRef.current = new Audio();
 
     const audio = audioRef.current;
 
@@ -87,10 +87,6 @@ export function useAudioPlayer(initialUrl?: string): UseAudioPlayerReturn {
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
 
-    if (initialUrl) {
-      audio.src = initialUrl;
-    }
-
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("durationchange", handleDurationChange);
@@ -104,6 +100,20 @@ export function useAudioPlayer(initialUrl?: string): UseAudioPlayerReturn {
       audio.src = "";
     };
   }, []);
+
+  // Handle initialUrl changes
+  useEffect(() => {
+    if (initialUrl && audioRef.current) {
+      audioRef.current.src = initialUrl;
+    }
+  }, [initialUrl]);
+
+  // Handle volume changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = state.volume;
+    }
+  }, [state.volume]);
 
   const play = useCallback(() => {
     audioRef.current?.play().catch(() => {
@@ -173,7 +183,6 @@ export function useRadioStream(streamUrl: string) {
 
   useEffect(() => {
     audioRef.current = new Audio(streamUrl);
-    audioRef.current.volume = volume;
 
     const audio = audioRef.current;
 
@@ -196,6 +205,13 @@ export function useRadioStream(streamUrl: string) {
       audio.src = "";
     };
   }, [streamUrl]);
+
+  // Handle volume changes for radio stream
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   const togglePlay = useCallback(() => {
     if (audioRef.current) {

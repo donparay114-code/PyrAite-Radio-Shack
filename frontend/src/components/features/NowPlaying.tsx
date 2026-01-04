@@ -106,7 +106,8 @@ export function NowPlaying({
   // Dynamic glow color based on cover image (simplified)
   const glowColor = useMemo(() => {
     const colors = ["#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#22c55e"];
-    return colors[Math.floor(Math.random() * colors.length)];
+    if (!song?.id) return colors[0];
+    return colors[song.id % colors.length];
   }, [song?.id]);
 
   if (!song) {
@@ -148,8 +149,8 @@ export function NowPlaying({
         style={
           isPlaying
             ? {
-                boxShadow: `0 0 60px ${glowColor}30, 0 0 120px ${glowColor}15`,
-              }
+              boxShadow: `0 0 60px ${glowColor}30, 0 0 120px ${glowColor}15`,
+            }
             : undefined
         }
       >

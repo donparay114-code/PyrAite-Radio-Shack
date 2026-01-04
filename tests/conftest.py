@@ -2,6 +2,9 @@
 
 import asyncio
 import os
+
+# Disable Redis for tests before imports
+os.environ["REDIS_HOST"] = ""
 from typing import AsyncGenerator, Generator
 
 import pytest

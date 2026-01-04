@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     postgres_database: str = "radio_station"
 
     # Redis
-    redis_host: str = "localhost"
+    redis_host: str | None = "localhost"
     redis_port: int = 6379
     redis_password: str = ""
 
@@ -67,6 +67,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     secret_key: str = ""
 
+    # Resend Email Settings
+    resend_api_key: str = ""
+    resend_from_email: str = "noreply@pyraite.radio"
+    resend_from_name: str = "PYrte Radio"
+
+    # Frontend URL (for password reset links)
+    frontend_url: str = "http://localhost:3006"
+
     # File Storage
     songs_dir: Path = Field(default=Path("./data/songs"))
     temp_dir: Path = Field(default=Path("./data/temp"))
@@ -95,8 +103,10 @@ class Settings(BaseSettings):
         )
 
     @property
-    def redis_url(self) -> str:
+    def redis_url(self) -> str | None:
         """Get the Redis connection URL."""
+        if not self.redis_host:
+            return None
         if self.redis_password:
             return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}"
         return f"redis://{self.redis_host}:{self.redis_port}"
