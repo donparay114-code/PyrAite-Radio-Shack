@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from src.models import QueueStatus, RadioQueue, get_async_session
 from src.services.icecast import get_current_listeners
 from src.services.live_status import LiveStatusService
+from src.api.socket_manager import emit_queue_updated
 
 router = APIRouter()
 
@@ -162,8 +163,21 @@ async def create_queue_item(
         requested_at=datetime.utcnow(),
     )
     session.add(queue_item)
-    await session.flush()
+    await session.commit()
     await session.refresh(queue_item)
+
+    # Broadcast queue update to all connected clients
+    await emit_queue_updated({
+        "action": "created",
+        "item_id": queue_item.id,
+        "items": [{
+            "id": queue_item.id,
+            "prompt": queue_item.original_prompt,
+            "status": queue_item.status,
+            "priority_score": queue_item.priority_score,
+        }],
+    })
+
     return queue_item
 
 
@@ -378,6 +392,15 @@ async def cancel_queue_item(
         )
 
     item.status = QueueStatus.CANCELLED.value
+    await session.commit()
+
+    # Broadcast queue update to all connected clients
+    await emit_queue_updated({
+        "action": "cancelled",
+        "item_id": queue_id,
+        "items": [],
+    })
+
     return {"message": "Queue item cancelled", "id": queue_id}
 
 

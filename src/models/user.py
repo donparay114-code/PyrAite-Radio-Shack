@@ -70,6 +70,9 @@ class User(Base, TimestampMixin):
     last_vote_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Profile
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     # Relationships
     requests: Mapped[list["RadioQueue"]] = relationship(
         "RadioQueue", back_populates="user", lazy="dynamic"

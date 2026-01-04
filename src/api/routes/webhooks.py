@@ -375,6 +375,19 @@ async def broadcast_status_webhook(
 
     await session.commit()
 
+    # Broadcast now_playing update if we have song data
+    if payload.event == "track_change" and song:
+        await emit_now_playing({
+            "id": song.id,
+            "title": song.title,
+            "artist": song.artist,
+            "genre": song.genre,
+            "duration_seconds": song.duration_seconds,
+            "audio_url": song.audio_url,
+            "cover_image_url": getattr(song, "cover_image_url", None),
+            "queue_id": queue_item.id if queue_item else None,
+        })
+
     # 3. Trigger next song logic (Check if queue needs filling)
     try:
         liquidsoap = get_liquidsoap_client()

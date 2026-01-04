@@ -194,7 +194,8 @@ async def cast_vote(
     # Update queue item priority
     queue_item.update_priority(user.reputation_score if queue_item.user else 0)
 
-    await session.flush()
+    # Commit changes before emitting to ensure transaction safety
+    await session.commit()
 
     # Emit real-time vote update to all connected clients
     await emit_vote_updated(

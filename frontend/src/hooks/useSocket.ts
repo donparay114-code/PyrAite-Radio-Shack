@@ -65,14 +65,14 @@ export function useSocket(channelId: string): UseSocketReturn {
       setIsConnected(false);
     });
 
-    s.on('now-playing', (data: NowPlaying) => {
+    s.on('now_playing', (data: NowPlaying) => {
       console.log('Now playing update:', data);
       setNowPlaying(data);
     });
 
-    s.on('queue-update', (data: SongRequest[]) => {
-      console.log('Queue update:', data.length, 'tracks');
-      setQueue(data);
+    s.on('queue_updated', (data: { items: SongRequest[] }) => {
+      console.log('Queue update:', data.items?.length || 0, 'tracks');
+      setQueue(data.items || []);
     });
 
     s.on('listener-count', (count: number) => {

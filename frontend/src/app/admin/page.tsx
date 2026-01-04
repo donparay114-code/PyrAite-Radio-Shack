@@ -9,29 +9,15 @@ import {
   DollarSign,
   TrendingUp,
   AlertTriangle,
-  CheckCircle2,
   Clock,
   Zap,
   Server,
   Activity,
+  Loader2,
 } from "lucide-react";
-import { GlassCard, Badge, Progress } from "@/components/ui";
+import { GlassCard, Badge } from "@/components/ui";
 import { cn, formatNumber } from "@/lib/utils";
 import { useAdminStats } from "@/hooks";
-
-// Mock admin data
-const mockStats = {
-  total_users: 2847,
-  total_songs: 1523,
-  total_requests: 4892,
-  active_queue: 12,
-  daily_requests: 89,
-  api_costs: {
-    suno: 45.20,
-    openai: 12.50,
-    total: 57.70,
-  },
-};
 
 const mockSystemHealth = {
   api: { status: "healthy", latency: 45 },
@@ -51,8 +37,24 @@ const mockRecentActivity = [
 ];
 
 export default function AdminDashboard() {
-  // In production:
-  // const { data: stats, isLoading } = useAdminStats();
+  const { data: stats, isLoading } = useAdminStats();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+      </div>
+    );
+  }
+
+  const adminStats = stats || {
+    total_users: 0,
+    total_songs: 0,
+    total_requests: 0,
+    active_queue: 0,
+    daily_requests: 0,
+    api_costs: { suno: 0, openai: 0, total: 0 },
+  };
 
   return (
     <div className="space-y-6">
@@ -72,27 +74,27 @@ export default function AdminDashboard() {
         <MetricCard
           icon={<Users className="w-5 h-5" />}
           label="Total Users"
-          value={formatNumber(mockStats.total_users)}
+          value={formatNumber(adminStats.total_users)}
           change="+12%"
           positive
         />
         <MetricCard
           icon={<Music className="w-5 h-5" />}
           label="Songs Generated"
-          value={formatNumber(mockStats.total_songs)}
+          value={formatNumber(adminStats.total_songs)}
           change="+8%"
           positive
         />
         <MetricCard
           icon={<Radio className="w-5 h-5" />}
           label="Active Queue"
-          value={mockStats.active_queue.toString()}
+          value={adminStats.active_queue.toString()}
           sublabel="requests"
         />
         <MetricCard
           icon={<DollarSign className="w-5 h-5" />}
           label="Today's Costs"
-          value={`$${mockStats.api_costs.total.toFixed(2)}`}
+          value={`$${adminStats.api_costs.total.toFixed(2)}`}
           change="-5%"
           positive
         />
@@ -124,13 +126,13 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <CostItem
               name="Suno API"
-              amount={mockStats.api_costs.suno}
+              amount={adminStats.api_costs.suno}
               budget={100}
               color="#8b5cf6"
             />
             <CostItem
               name="OpenAI"
-              amount={mockStats.api_costs.openai}
+              amount={adminStats.api_costs.openai}
               budget={50}
               color="#06b6d4"
             />
@@ -138,7 +140,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-text-muted">Total</span>
                 <span className="text-xl font-bold text-white">
-                  ${mockStats.api_costs.total.toFixed(2)}
+                  ${adminStats.api_costs.total.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-text-muted mt-1">
@@ -191,7 +193,7 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-3xl font-bold text-white">{mockStats.daily_requests}</p>
+              <p className="text-3xl font-bold text-white">{adminStats.daily_requests}</p>
               <p className="text-sm text-text-muted">Requests</p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">

@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { toast } from "sonner";
 import { User, UserTier, TIER_LABELS } from "@/types";
 import { useLinkTelegram } from "@/hooks/useApi";
 
@@ -20,7 +20,10 @@ export function ProfileHeader({ user, isOwnProfile }: ProfileHeaderProps) {
         }, {
             onSuccess: () => {
                 setTelegramUsername("");
-                alert("Telegram linked! (Mock)");
+                toast.success("Telegram linked successfully!");
+            },
+            onError: () => {
+                toast.error("Failed to link Telegram. Please try again.");
             }
         });
     };
