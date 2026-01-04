@@ -45,6 +45,19 @@ class QueueItemResponse(BaseModel):
         from_attributes = True
 
 
+class QueueUserResponse(BaseModel):
+    """User response for queue items."""
+
+    id: int
+    display_name: str
+    telegram_username: Optional[str] = None
+    reputation_score: float
+    tier: str
+
+    class Config:
+        from_attributes = True
+
+
 class QueueStatsResponse(BaseModel):
     """Queue statistics response."""
 
@@ -108,7 +121,7 @@ class NowPlayingQueueItem(BaseModel):
     generation_completed_at: Optional[datetime] = None
     broadcast_started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    user: Optional[dict] = None
+    user: Optional[QueueUserResponse] = None
 
     class Config:
         from_attributes = True
@@ -316,13 +329,15 @@ async def get_now_playing(
     # Serialize user if available
     user_data = None
     if queue_item.user:
-        user_data = {
-            "id": queue_item.user.id,
-            "display_name": queue_item.user.display_name,
-            "telegram_username": queue_item.user.telegram_username,
-            "reputation_score": queue_item.user.reputation_score,
-            "tier": queue_item.user.tier,
-        }
+        user_data = QueueUserResponse(
+            id=queue_item.user.id,
+            display_name=queue_item.user.display_name,
+            telegram_username=queue_item.user.telegram_username,
+            reputation_score=queue_item.user.reputation_score,
+            tier=queue_item.user.tier.value
+            if hasattr(queue_item.user.tier, "value")
+            else queue_item.user.tier,
+        )
 
     # Build queue item response
     queue_item_response = NowPlayingQueueItem(
