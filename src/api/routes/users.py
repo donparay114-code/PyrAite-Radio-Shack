@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User, get_async_session
 from src.models.history import RadioHistory
+from src.utils.security import get_current_user
 
 router = APIRouter()
 
@@ -454,8 +455,13 @@ async def ban_user(
     user_id: int,
     reason: str = Query(..., min_length=1),
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     """Ban a user."""
+    # Only allow premium users or those with high reputation to ban
+    if not current_user.is_premium and current_user.reputation_score < 1000:
+        raise HTTPException(status_code=403, detail="Insufficient privileges")
+
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -465,6 +471,7 @@ async def ban_user(
     user.is_banned = True
     user.ban_reason = reason
     user.banned_at = datetime.utcnow()
+    await session.commit()
 
     return {"message": f"User {user_id} banned", "reason": reason}
 
@@ -473,8 +480,13 @@ async def ban_user(
 async def unban_user(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     """Unban a user."""
+    # Only allow premium users or those with high reputation to unban
+    if not current_user.is_premium and current_user.reputation_score < 1000:
+        raise HTTPException(status_code=403, detail="Insufficient privileges")
+
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -485,5 +497,6 @@ async def unban_user(
     user.ban_reason = None
     user.banned_at = None
     user.banned_until = None
+    await session.commit()
 
     return {"message": f"User {user_id} unbanned"}
