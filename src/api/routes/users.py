@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User, get_async_session
+from src.models.history import RadioHistory
 from src.utils.security import get_current_user
 
 router = APIRouter()
@@ -73,6 +74,63 @@ class LeaderboardEntry(BaseModel):
     reputation_score: float
     tier: str
     total_requests: int
+
+
+class RecentAirplayEntry(BaseModel):
+    """Entry in recent airplay history."""
+
+    history_id: int
+    song_title: Optional[str]
+    song_artist: Optional[str]
+    song_genre: Optional[str]
+    played_at: datetime
+    duration_played_seconds: Optional[float]
+    upvotes_during_play: int
+    downvotes_during_play: int
+    listener_count: Optional[int]
+
+
+class UserProfileStats(BaseModel):
+    """User profile statistics."""
+
+    total_requests: int
+    successful_requests: int
+    failed_requests: int
+    success_rate: float
+    total_upvotes_received: int
+    total_downvotes_received: int
+    total_upvotes_given: int
+    total_downvotes_given: int
+    vote_ratio: float
+
+
+class UserProfileResponse(BaseModel):
+    """Comprehensive user profile response."""
+
+    # Basic user info
+    id: int
+    telegram_id: Optional[int]
+    telegram_username: Optional[str]
+    email: Optional[str]
+    display_name: str
+    reputation_score: float
+    tier: str
+    is_banned: bool
+    is_premium: bool
+    created_at: datetime
+    last_active_at: Optional[datetime]
+
+    # Stats
+    stats: UserProfileStats
+
+    # Rank position (1-based)
+    rank: int
+
+    # Recent airplay history
+    recent_airplay: list[RecentAirplayEntry]
+
+    class Config:
+        from_attributes = True
 
 
 @router.get("/", response_model=list[UserResponse])
@@ -272,6 +330,94 @@ async def get_user_by_telegram(
         is_banned=user.is_banned,
         is_premium=user.is_premium,
         created_at=user.created_at,
+    )
+
+
+@router.get("/{user_id}/profile", response_model=UserProfileResponse)
+async def get_user_profile(
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get comprehensive user profile with stats, rank, and recent airplay history.
+
+    Returns:
+        - Basic user info
+        - Stats: total_requests, successful_requests, votes received/given, etc.
+        - Rank position based on reputation score
+        - Recent airplay history (last 10 plays)
+    """
+    # Get user
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Calculate rank position (count users with higher reputation)
+    rank_query = await session.execute(
+        select(func.count(User.id)).where(
+            User.reputation_score > user.reputation_score,
+            User.is_banned == False,  # noqa: E712
+        )
+    )
+    users_ahead = rank_query.scalar() or 0
+    rank = users_ahead + 1  # 1-based rank
+
+    # Get recent airplay history (last 10 plays for this user)
+    airplay_query = (
+        select(RadioHistory)
+        .where(RadioHistory.requester_telegram_id == user.telegram_id)
+        .order_by(RadioHistory.played_at.desc())
+        .limit(10)
+    )
+    airplay_result = await session.execute(airplay_query)
+    airplay_entries = airplay_result.scalars().all()
+
+    # Build recent airplay list
+    recent_airplay = [
+        RecentAirplayEntry(
+            history_id=entry.id,
+            song_title=entry.song_title,
+            song_artist=entry.song_artist,
+            song_genre=entry.song_genre,
+            played_at=entry.played_at,
+            duration_played_seconds=entry.duration_played_seconds,
+            upvotes_during_play=entry.upvotes_during_play,
+            downvotes_during_play=entry.downvotes_during_play,
+            listener_count=entry.listener_count,
+        )
+        for entry in airplay_entries
+    ]
+
+    # Build stats
+    stats = UserProfileStats(
+        total_requests=user.total_requests,
+        successful_requests=user.successful_requests,
+        failed_requests=user.failed_requests,
+        success_rate=user.success_rate,
+        total_upvotes_received=user.total_upvotes_received,
+        total_downvotes_received=user.total_downvotes_received,
+        total_upvotes_given=user.total_upvotes_given,
+        total_downvotes_given=user.total_downvotes_given,
+        vote_ratio=user.vote_ratio,
+    )
+
+    return UserProfileResponse(
+        id=user.id,
+        telegram_id=user.telegram_id,
+        telegram_username=user.telegram_username,
+        email=user.email,
+        display_name=user.display_name,
+        reputation_score=user.reputation_score,
+        tier=user.tier.value,
+        is_banned=user.is_banned,
+        is_premium=user.is_premium,
+        created_at=user.created_at,
+        last_active_at=user.last_active_at,
+        stats=stats,
+        rank=rank,
+        recent_airplay=recent_airplay,
     )
 
 

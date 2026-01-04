@@ -41,9 +41,17 @@ export interface AuthState {
   error: string | null;
 }
 
+export interface AuthResult {
+  success: boolean;
+  isNewUser?: boolean;
+  error?: string;
+}
+
 export interface AuthContextType extends AuthState {
   login: () => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<AuthResult>;
+  loginWithEmail: (email: string, password: string) => Promise<AuthResult>;
+  signupWithEmail: (email: string, password: string, displayName: string) => Promise<AuthResult>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -56,7 +64,9 @@ const defaultContext: AuthContextType = {
   isTelegramApp: false,
   error: null,
   login: async () => { },
-  loginWithGoogle: async () => { },
+  loginWithGoogle: async () => ({ success: false }),
+  loginWithEmail: async () => ({ success: false }),
+  signupWithEmail: async () => ({ success: false }),
   logout: () => { },
   refreshUser: async () => { },
 };
@@ -128,7 +138,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential: string) => {
+  const loginWithGoogle = useCallback(async (credential: string): Promise<{ success: boolean; isNewUser?: boolean }> => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const response = await fetch(`${API_BASE}/api/auth/google/login`, {
@@ -167,10 +177,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error: null,
       });
 
-      // Redirect new users to profile settings to complete their profile
-      if (data.is_new_user && typeof window !== "undefined") {
-        window.location.href = "/profile/settings";
-      }
+      return { success: true, isNewUser: data.is_new_user };
     } catch (error) {
       console.error("Google login error:", error);
       setState((prev) => ({
@@ -178,6 +185,113 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading: false,
         error: error instanceof Error ? error.message : "Google login failed"
       }));
+      return { success: false, error: error instanceof Error ? error.message : "Google login failed" };
+    }
+  }, []);
+
+  // Email signup
+  const signupWithEmail = useCallback(async (email: string, password: string, displayName: string): Promise<AuthResult> => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/email/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, display_name: displayName }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Signup failed");
+      }
+
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+      }
+
+      setState({
+        user: {
+          id: data.user_id,
+          telegramId: null,
+          username: data.email,
+          firstName: data.display_name,
+          lastName: null,
+          isPremium: data.is_premium || false,
+          photoUrl: null,
+          isNewUser: true,
+          tier: data.tier as UserTier,
+          reputation_score: data.reputation_score,
+        },
+        isLoading: false,
+        isAuthenticated: true,
+        isTelegramApp: false,
+        error: null,
+      });
+
+      return { success: true, isNewUser: true };
+    } catch (error) {
+      console.error("Email signup error:", error);
+      const errorMsg = error instanceof Error ? error.message : "Signup failed";
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: errorMsg
+      }));
+      return { success: false, error: errorMsg };
+    }
+  }, []);
+
+  // Email login
+  const loginWithEmail = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/email/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Login failed");
+      }
+
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+      }
+
+      setState({
+        user: {
+          id: data.user_id,
+          telegramId: null,
+          username: data.email,
+          firstName: data.display_name,
+          lastName: null,
+          isPremium: data.is_premium || false,
+          photoUrl: null,
+          isNewUser: false,
+          tier: data.tier as UserTier,
+          reputation_score: data.reputation_score,
+        },
+        isLoading: false,
+        isAuthenticated: true,
+        isTelegramApp: false,
+        error: null,
+      });
+
+      return { success: true, isNewUser: false };
+    } catch (error) {
+      console.error("Email login error:", error);
+      const errorMsg = error instanceof Error ? error.message : "Login failed";
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: errorMsg
+      }));
+      return { success: false, error: errorMsg };
     }
   }, []);
 
@@ -300,23 +414,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const response = await fetch(`${API_BASE}/api/auth/google/me`, {
               headers: { "Authorization": `Bearer ${token}` }
             });
+
             if (response.ok) {
               const data = await response.json();
-              setState(prev => ({
+              setState((prev) => ({
                 ...prev,
                 user: {
-                  ...prev.user!, // Keep existing fields if needed, or strictly overwrite
+                  ...prev.user!,
                   id: data.user_id,
+                  telegramId: null,
                   username: data.telegram_username,
                   firstName: data.display_name,
                   tier: data.tier as UserTier,
                   reputation_score: data.reputation_score,
-                  isPremium: data.is_premium || false
+                  isPremium: data.is_premium || false,
                 }
               }));
+            } else if (response.status === 401) {
+              // Token expired
+              localStorage.removeItem("auth_token");
+              setState({
+                user: null,
+                isLoading: false,
+                isAuthenticated: false,
+                isTelegramApp: false,
+                error: "Session expired",
+              });
             }
           } catch (e) {
-            console.error("Failed to refresh user", e);
+            console.error("Failed to refresh user data", e);
           }
         }
       }
@@ -345,6 +471,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           ...state,
           login,
           loginWithGoogle,
+          loginWithEmail,
+          signupWithEmail,
           logout,
           refreshUser,
         }}

@@ -17,6 +17,7 @@ from src.models import (
     SunoStatus,
     get_async_session,
 )
+from src.api.socket_manager import emit_generation_progress, emit_now_playing
 from src.services.liquidsoap_client import get_liquidsoap_client
 from src.services.suno_client import get_suno_client
 from src.services.telegram_bot import get_telegram_bot
@@ -62,6 +63,7 @@ class BroadcastWebhookPayload(BaseModel):
     title: str
     artist: str
     filename: Optional[str] = None  # Optional, if available
+    channel_id: Optional[str] = None  # Optional, for multi-channel support
 
 
 def verify_webhook_secret(secret: Optional[str]) -> bool:
@@ -86,6 +88,7 @@ async def suno_status_webhook(
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     # Find the queue item by suno_job_id
+    # This fulfills the requirement to update queue item status based on Suno job status
     query = select(RadioQueue).where(RadioQueue.suno_job_id == payload.job_id)
     result = await session.execute(query)
     queue_item = result.scalar_one_or_none()
@@ -158,6 +161,15 @@ async def suno_status_webhook(
 
     # Commit changes
     await session.commit()
+
+    # Emit real-time generation progress update
+    progress_msg = "Generation complete" if status_lower in ["complete", "completed", "success"] else "Generation failed"
+    await emit_generation_progress(
+        queue_id=queue_item.id,
+        status=queue_item.status,
+        progress_msg=progress_msg,
+        eta=None,
+    )
 
     return {
         "received": True,
@@ -260,8 +272,12 @@ async def broadcast_status_webhook(
 
     # 1. Handle currently playing song (it just finished)
     # Find any RadioHistory entry that is currently open (ended_at is None)
-    # We assume only one song plays at a time
+    # Filter by channel if provided (stream_mount)
     query = select(RadioHistory).where(RadioHistory.ended_at.is_(None))
+
+    if payload.channel_id:
+        query = query.where(RadioHistory.stream_mount == payload.channel_id)
+
     result = await session.execute(query)
     current_histories = result.scalars().all()
 
@@ -347,6 +363,7 @@ async def broadcast_status_webhook(
                 song_title=song.title,
                 song_artist=song.artist,
                 song_genre=song.genre,
+                stream_mount=payload.channel_id,
             )
 
             # Copy requester info if available
@@ -364,6 +381,19 @@ async def broadcast_status_webhook(
             # Future improvement: Create a "Unknown" placeholder song?
 
     await session.commit()
+
+    # Broadcast now_playing update if we have song data
+    if payload.event == "track_change" and song:
+        await emit_now_playing({
+            "id": song.id,
+            "title": song.title,
+            "artist": song.artist,
+            "genre": song.genre,
+            "duration_seconds": song.duration_seconds,
+            "audio_url": song.audio_url,
+            "cover_image_url": getattr(song, "cover_image_url", None),
+            "queue_id": queue_item.id if queue_item else None,
+        })
 
     # 3. Trigger next song logic (Check if queue needs filling)
     try:
@@ -401,7 +431,10 @@ async def broadcast_status_webhook(
                         logger.info(
                             f"Pushed next song to Liquidsoap: {next_song.title}"
                         )
-                        # We don't change status to BROADCASTING yet, that happens when it starts playing
+                        # Update status to BROADCASTING so we don't pick it up again
+                        # The broadcast_started_at will be set when the song actually starts playing (track_change event)
+                        next_item.status = QueueStatus.BROADCASTING.value
+                        await session.commit()
                     else:
                         logger.error(
                             f"Failed to push song to Liquidsoap: {next_song.title}"

@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import RadioQueue, User, Vote, VoteType, get_async_session
+from src.api.socket_manager import emit_vote_updated
 
 router = APIRouter()
 
@@ -193,7 +194,16 @@ async def cast_vote(
     # Update queue item priority
     queue_item.update_priority(user.reputation_score if queue_item.user else 0)
 
-    await session.flush()
+    # Commit changes before emitting to ensure transaction safety
+    await session.commit()
+
+    # Emit real-time vote update to all connected clients
+    await emit_vote_updated(
+        queue_id=vote_data.queue_item_id,
+        upvotes=queue_item.upvotes,
+        downvotes=queue_item.downvotes,
+        score=queue_item.vote_score,
+    )
 
     return VoteResult(
         success=True,

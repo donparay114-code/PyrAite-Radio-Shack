@@ -11,6 +11,8 @@ from sqlalchemy.orm import selectinload
 
 from src.models import QueueStatus, RadioQueue, get_async_session
 from src.services.icecast import get_current_listeners
+from src.services.live_status import LiveStatusService
+from src.api.socket_manager import emit_queue_updated
 
 router = APIRouter()
 
@@ -38,6 +40,19 @@ class QueueItemResponse(BaseModel):
     downvotes: int
     requested_at: datetime
     genre_hint: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class QueueUserResponse(BaseModel):
+    """User response for queue items."""
+
+    id: int
+    display_name: str
+    telegram_username: Optional[str] = None
+    reputation_score: float
+    tier: str
 
     class Config:
         from_attributes = True
@@ -106,7 +121,7 @@ class NowPlayingQueueItem(BaseModel):
     generation_completed_at: Optional[datetime] = None
     broadcast_started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    user: Optional[dict] = None
+    user: Optional[QueueUserResponse] = None
 
     class Config:
         from_attributes = True
@@ -161,8 +176,21 @@ async def create_queue_item(
         requested_at=datetime.utcnow(),
     )
     session.add(queue_item)
-    await session.flush()
+    await session.commit()
     await session.refresh(queue_item)
+
+    # Broadcast queue update to all connected clients
+    await emit_queue_updated({
+        "action": "created",
+        "item_id": queue_item.id,
+        "items": [{
+            "id": queue_item.id,
+            "prompt": queue_item.original_prompt,
+            "status": queue_item.status,
+            "priority_score": queue_item.priority_score,
+        }],
+    })
+
     return queue_item
 
 
@@ -171,35 +199,37 @@ async def get_queue_stats(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get queue statistics."""
-    # Total items
-    total_result = await session.execute(select(func.count(RadioQueue.id)))
-    total_items = total_result.scalar() or 0
-
-    # Pending items
-    pending_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.PENDING.value
-        )
-    )
-    pending = pending_result.scalar() or 0
-
-    # Generating items
-    generating_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.GENERATING.value
-        )
-    )
-    generating = generating_result.scalar() or 0
-
-    # Completed today
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    completed_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.COMPLETED.value,
-            RadioQueue.completed_at >= today_start,
-        )
+
+    # Combine counts into a single query
+    from sqlalchemy import case, and_
+
+    query = select(
+        func.count(RadioQueue.id),
+        func.sum(case((RadioQueue.status == QueueStatus.PENDING.value, 1), else_=0)),
+        func.sum(case((RadioQueue.status == QueueStatus.GENERATING.value, 1), else_=0)),
+        func.sum(
+            case(
+                (
+                    and_(
+                        RadioQueue.status == QueueStatus.COMPLETED.value,
+                        RadioQueue.completed_at >= today_start,
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ),
     )
-    completed_today = completed_result.scalar() or 0
+
+    result = await session.execute(query)
+    total_items, pending, generating, completed_today = result.one()
+
+    # Handle None returns from sum
+    total_items = total_items or 0
+    pending = pending or 0
+    generating = generating or 0
+    completed_today = completed_today or 0
 
     # Calculate average wait time (for items completed today)
     # We fetch timestamps and calculate in Python to support both SQLite (tests) and Postgres
@@ -301,13 +331,15 @@ async def get_now_playing(
     # Serialize user if available
     user_data = None
     if queue_item.user:
-        user_data = {
-            "id": queue_item.user.id,
-            "display_name": queue_item.user.display_name,
-            "telegram_username": queue_item.user.telegram_username,
-            "reputation_score": queue_item.user.reputation_score,
-            "tier": queue_item.user.tier,
-        }
+        user_data = QueueUserResponse(
+            id=queue_item.user.id,
+            display_name=queue_item.user.display_name,
+            telegram_username=queue_item.user.telegram_username,
+            reputation_score=queue_item.user.reputation_score,
+            tier=queue_item.user.tier.value
+            if hasattr(queue_item.user.tier, "value")
+            else queue_item.user.tier,
+        )
 
     # Build queue item response
     queue_item_response = NowPlayingQueueItem(
@@ -377,4 +409,40 @@ async def cancel_queue_item(
         )
 
     item.status = QueueStatus.CANCELLED.value
+    await session.commit()
+
+    # Broadcast queue update to all connected clients
+    await emit_queue_updated({
+        "action": "cancelled",
+        "item_id": queue_id,
+        "items": [],
+    })
+
     return {"message": "Queue item cancelled", "id": queue_id}
+
+
+@router.get("/live-status")
+async def get_live_status(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get comprehensive live station status.
+
+    Returns current song, queue summary, generating items, and more.
+    Used by the dashboard and GenerationFeed component.
+    """
+    service = LiveStatusService(session)
+    return await service.get_station_status()
+
+
+@router.get("/generating")
+async def get_generating_items(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Get list of items currently being generated.
+
+    Returns items with status: pending, queued, or generating.
+    """
+    service = LiveStatusService(session)
+    return await service.get_generating_items()

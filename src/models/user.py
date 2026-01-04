@@ -31,9 +31,14 @@ class User(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Telegram info
-    telegram_id: Mapped[int] = mapped_column(
-        BigInteger, unique=True, nullable=False, index=True
+    # Authentication
+    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    google_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+
+    # Telegram info (nullable for Google-only users)
+    telegram_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, unique=True, nullable=True, index=True
     )
     telegram_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     telegram_first_name: Mapped[Optional[str]] = mapped_column(
@@ -64,6 +69,9 @@ class User(Base, TimestampMixin):
     last_request_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_vote_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Profile
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Relationships
     requests: Mapped[list["RadioQueue"]] = relationship(
@@ -120,7 +128,11 @@ class User(Base, TimestampMixin):
             if self.telegram_last_name:
                 name += f" {self.telegram_last_name}"
             return name
-        return f"User {self.telegram_id}"
+        if self.email:
+            return self.email.split("@")[0]
+        if self.telegram_id:
+            return f"User {self.telegram_id}"
+        return f"User {self.id}"
 
     @property
     def success_rate(self) -> float:

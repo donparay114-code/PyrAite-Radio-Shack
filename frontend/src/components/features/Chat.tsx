@@ -113,7 +113,7 @@ export function Chat({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">Live Chat</h2>
-            <p className="text-xs text-text-muted">
+            <p className="text-xs text-text-muted" role="status" aria-live="polite">
               {isConnected ? (
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -140,6 +140,8 @@ export function Chat({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
         style={{ maxHeight }}
+        role="log"
+        aria-label="Chat messages"
       >
         <AnimatePresence mode="popLayout" initial={false}>
           {isLoading ? (
@@ -224,6 +226,7 @@ export function Chat({
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
+                aria-label="Type a message"
                 disabled={!isConnected || isSending}
                 rows={1}
                 className={cn(
@@ -238,6 +241,7 @@ export function Chat({
               />
               <motion.button
                 type="submit"
+                aria-label="Send message"
                 disabled={!inputValue.trim() || isSending || !isConnected}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
