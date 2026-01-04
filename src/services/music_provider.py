@@ -428,9 +428,7 @@ class StableAudioProvider(MusicProvider):
             )
 
     async def download_audio(self, audio_url: str, output_path: Path) -> bool:
-        import shutil
         import aiofiles
-        import os
 
         try:
             # audio_url is a local path
