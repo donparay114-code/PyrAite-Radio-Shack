@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { initializeChannelInfrastructure } from '@/lib/streaming';
 import type { RadioChannel } from '@/types';
 
 // GET /api/channels - List all channels
@@ -134,8 +135,14 @@ export async function POST(request: NextRequest) {
       [channel.id, userId, 'owner', true]
     );
 
-    // TODO: Initialize Liquidsoap and Icecast configuration
-    // This would typically call infrastructure scripts or APIs
+    // Initialize Liquidsoap and Icecast configuration
+    try {
+      await initializeChannelInfrastructure(channel);
+    } catch (infraError) {
+      console.error('Failed to initialize channel infrastructure:', infraError);
+      // We log the error but don't fail the request as the channel is created in DB.
+      // A background job could retry infrastructure provisioning.
+    }
 
     return NextResponse.json({
       success: true,
