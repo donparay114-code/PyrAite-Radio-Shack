@@ -158,7 +158,9 @@ async def _announce_song(song: Song, requester_name: str, queue_item: RadioQueue
         message += f"Duration: {minutes}:{seconds:02d}\n"
 
     # Add vote buttons for the queue item
-    keyboard = bot.vote_keyboard(queue_item.id, queue_item.upvotes, queue_item.downvotes)
+    keyboard = bot.vote_keyboard(
+        queue_item.id, queue_item.upvotes, queue_item.downvotes
+    )
 
     try:
         await bot.broadcast_message(message, reply_markup=keyboard)

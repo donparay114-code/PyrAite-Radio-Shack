@@ -2,17 +2,8 @@
 
 from datetime import datetime
 
-from src.models import (
-    QueueStatus,
-    RadioHistory,
-    RadioQueue,
-    Song,
-    SunoStatus,
-    User,
-    UserTier,
-    Vote,
-    VoteType,
-)
+from src.models import (QueueStatus, RadioHistory, RadioQueue, Song,
+                        SunoStatus, User, UserTier, Vote, VoteType)
 
 
 class TestUserModel:
@@ -83,9 +74,10 @@ class TestUserModel:
     def test_user_max_daily_requests(self, sample_user):
         """Test max daily requests based on tier."""
         sample_user.reputation_score = 0
-        assert sample_user.max_daily_requests == 3
+        assert sample_user.max_daily_requests == 5
 
         sample_user.reputation_score = 5000
+        sample_user.is_premium = True
         assert sample_user.max_daily_requests == 50
 
     def test_user_success_rate(self, sample_user):

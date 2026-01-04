@@ -10,6 +10,7 @@ Creates PostgreSQL functions:
 - reset_daily_limits: Reset daily request counters
 - calculate_priority_score: Calculate queue priority based on reputation
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -25,7 +26,8 @@ def upgrade() -> None:
     """Create PostgreSQL functions for moderation."""
 
     # Function to check rate limit and increment counter if allowed
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION check_rate_limit(p_telegram_user_id BIGINT)
         RETURNS TABLE(
             allowed BOOLEAN,
@@ -139,10 +141,12 @@ def upgrade() -> None:
                 v_reset_at;
         END;
         $$;
-    """)
+    """
+    )
 
     # Function to handle content violations
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION handle_violation(
             p_telegram_user_id BIGINT,
             p_violation_type VARCHAR(50) DEFAULT 'blocklist',
@@ -249,10 +253,12 @@ def upgrade() -> None:
                 v_timeout_ts;
         END;
         $$;
-    """)
+    """
+    )
 
     # Function to calculate priority score
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION calculate_priority_score(
             p_user_id INTEGER,
             p_base_priority FLOAT DEFAULT 100.0
@@ -286,10 +292,12 @@ def upgrade() -> None:
             RETURN GREATEST(1.0, v_priority);
         END;
         $$;
-    """)
+    """
+    )
 
     # Function to check banned words
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION check_banned_words(p_content TEXT)
         RETURNS TABLE(
             found BOOLEAN,
@@ -325,10 +333,12 @@ def upgrade() -> None:
             END IF;
         END;
         $$;
-    """)
+    """
+    )
 
     # Function to upsert user from Telegram data
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION upsert_telegram_user(
             p_telegram_id BIGINT,
             p_username VARCHAR(255) DEFAULT NULL,
@@ -378,13 +388,18 @@ def upgrade() -> None:
             WHERE u.id = v_user_id;
         END;
         $$;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
     """Drop PostgreSQL functions."""
-    op.execute("DROP FUNCTION IF EXISTS upsert_telegram_user(BIGINT, VARCHAR, VARCHAR, VARCHAR);")
+    op.execute(
+        "DROP FUNCTION IF EXISTS upsert_telegram_user(BIGINT, VARCHAR, VARCHAR, VARCHAR);"
+    )
     op.execute("DROP FUNCTION IF EXISTS check_banned_words(TEXT);")
     op.execute("DROP FUNCTION IF EXISTS calculate_priority_score(INTEGER, FLOAT);")
-    op.execute("DROP FUNCTION IF EXISTS handle_violation(BIGINT, VARCHAR, VARCHAR, TEXT, VARCHAR);")
+    op.execute(
+        "DROP FUNCTION IF EXISTS handle_violation(BIGINT, VARCHAR, VARCHAR, TEXT, VARCHAR);"
+    )
     op.execute("DROP FUNCTION IF EXISTS check_rate_limit(BIGINT);")

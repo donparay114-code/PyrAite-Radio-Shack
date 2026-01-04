@@ -31,6 +31,7 @@ export interface AuthUser {
   isNewUser?: boolean;
   tier?: UserTier;
   reputation_score?: number;
+  email?: string | null;
 }
 
 export interface AuthState {
@@ -170,6 +171,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isNewUser: data.is_new_user,
           tier: data.tier as UserTier,
           reputation_score: data.reputation_score,
+          email: data.email,
         },
         isLoading: false,
         isAuthenticated: true,
@@ -222,6 +224,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isNewUser: true,
           tier: data.tier as UserTier,
           reputation_score: data.reputation_score,
+          email: data.email,
         },
         isLoading: false,
         isAuthenticated: true,
@@ -275,6 +278,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isNewUser: false,
           tier: data.tier as UserTier,
           reputation_score: data.reputation_score,
+          email: data.email,
         },
         isLoading: false,
         isAuthenticated: true,

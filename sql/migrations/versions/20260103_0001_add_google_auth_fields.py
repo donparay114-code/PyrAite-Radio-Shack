@@ -7,10 +7,11 @@ Create Date: 2026-01-03
 Adds email and google_id columns to support Google OAuth authentication.
 Makes telegram_id nullable to allow Google-only users.
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "004"

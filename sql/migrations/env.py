@@ -2,16 +2,14 @@
 
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
-
+# Import all models to ensure they're registered with Base.metadata
+from src.models import RadioHistory, RadioQueue, Song, User, Vote  # noqa: F401
 # Import models and settings
 from src.models.base import Base
 from src.utils.config import settings
-
-# Import all models to ensure they're registered with Base.metadata
-from src.models import User, Song, RadioQueue, RadioHistory, Vote  # noqa: F401
 
 # Alembic Config object
 config = context.config

@@ -1,25 +1,46 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Radio, Menu, Bell, Settings, User, MessageCircle, LogIn } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Radio, Menu, Bell, Settings, User, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { GlowButton, IconButton, Avatar, Badge, LiveBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  onRequestClick?: () => void;
   isLive?: boolean;
   listeners?: number;
 }
 
-export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderProps) {
+export function Header({ onMenuClick, onRequestClick, isLive = false, listeners = 0 }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [hasNotifications] = useState(true);
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setShowUserMenu(false);
+    router.push("/");
+  };
 
   return (
     <motion.header
@@ -115,6 +136,13 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
         <GlowButton
           size="sm"
           className="hidden sm:flex"
+          onClick={() => {
+            if (!isAuthenticated) {
+              router.push('/login');
+            } else {
+              onRequestClick?.();
+            }
+          }}
           leftIcon={
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -135,15 +163,6 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           )}
         </div>
 
-        {/* Chat */}
-        <Link href="/chat">
-          <IconButton
-            icon={<MessageCircle className="w-5 h-5" />}
-            variant="ghost"
-            className="hidden sm:flex"
-          />
-        </Link>
-
         {/* Settings */}
         <IconButton
           icon={<Settings className="w-5 h-5" />}
@@ -151,23 +170,101 @@ export function Header({ onMenuClick, isLive = false, listeners = 0 }: HeaderPro
           className="hidden sm:flex"
         />
 
-        {/* User section - Login button or Avatar */}
+        {/* User section - Login button or Avatar with dropdown */}
         {isLoading ? (
           <div className="ml-2 w-8 h-8 rounded-full bg-white/10 animate-pulse" />
         ) : isAuthenticated && user ? (
-          <Link href="/profile">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="ml-2 cursor-pointer"
+          <div className="relative ml-2" ref={userMenuRef}>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 cursor-pointer p-1 rounded-full hover:bg-white/5 transition-colors"
             >
               <Avatar
                 name={user.firstName || user.username || "User"}
                 src={user.photoUrl}
                 size="sm"
               />
-            </motion.div>
-          </Link>
+              <ChevronDown className={cn(
+                "w-4 h-4 text-text-muted transition-transform duration-200",
+                showUserMenu && "rotate-180"
+              )} />
+            </motion.button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showUserMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    "absolute right-0 top-full mt-2 w-48",
+                    "bg-background/95 backdrop-blur-xl",
+                    "border border-white/10 rounded-xl",
+                    "shadow-xl shadow-black/20",
+                    "overflow-hidden z-50"
+                  )}
+                >
+                  {/* User Info */}
+                  <div className="px-4 py-3 border-b border-white/[0.06]">
+                    <p className="text-sm font-medium text-white truncate">
+                      {user.firstName || user.username || "User"}
+                    </p>
+                    <p className="text-xs text-text-muted truncate">
+                      {user.email || `@${user.username}`}
+                    </p>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-1">
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2.5",
+                        "text-sm text-white hover:bg-white/5",
+                        "transition-colors"
+                      )}
+                    >
+                      <User className="w-4 h-4 text-text-muted" />
+                      Profile
+                    </Link>
+                    <Link
+                      href="/profile/settings"
+                      onClick={() => setShowUserMenu(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2.5",
+                        "text-sm text-white hover:bg-white/5",
+                        "transition-colors"
+                      )}
+                    >
+                      <Settings className="w-4 h-4 text-text-muted" />
+                      Settings
+                    </Link>
+                  </div>
+
+                  {/* Logout */}
+                  <div className="border-t border-white/[0.06] py-1">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2.5 w-full",
+                        "text-sm text-red-400 hover:bg-red-500/10",
+                        "transition-colors"
+                      )}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log out
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         ) : (
           <Link href="/login">
             <GlowButton

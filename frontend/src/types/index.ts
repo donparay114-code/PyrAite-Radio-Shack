@@ -19,6 +19,10 @@ export interface User {
   is_banned: boolean;
   is_premium: boolean;
   created_at: string;
+  // Profile fields
+  avatar_url?: string | null;
+  username_last_changed_at?: string | null;
+  password_hash?: string | null; // Used to detect Google-only accounts
 }
 
 export enum UserTier {

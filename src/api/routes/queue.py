@@ -3,18 +3,27 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.socket_manager import emit_queue_updated
 from src.models import QueueStatus, RadioQueue, get_async_session
 from src.services.icecast import get_current_listeners
 from src.services.live_status import LiveStatusService
-from src.api.socket_manager import emit_queue_updated
+from src.utils.config import settings
 
 router = APIRouter()
+
+# Rate limiter for queue endpoints
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=settings.redis_url if settings.redis_url else None,
+)
 
 
 # Request/Response models
@@ -160,11 +169,53 @@ async def list_queue(
 
 
 @router.post("/", response_model=QueueItemResponse, status_code=201)
+@limiter.limit("10/minute")  # 10 requests per minute per IP
 async def create_queue_item(
+    request: Request,
     item: QueueItemCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Add a new item to the queue."""
+    # Content moderation check
+    from src.services.moderation import moderate_content
+
+    moderation_result = await moderate_content(item.prompt, use_openai=True)
+    if not moderation_result.passed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "content_moderation_failed",
+                "category": moderation_result.category.value,
+                "reason": moderation_result.reason,
+            },
+        )
+
+    # Daily limit for anonymous users (2/day by IP)
+    if not item.user_id:
+        from datetime import datetime as dt
+
+        import redis.asyncio as redis
+
+        try:
+            if settings.redis_url:
+                redis_client = redis.from_url(settings.redis_url)
+                client_ip = request.client.host if request.client else "unknown"
+                today_date = dt.utcnow().strftime("%Y-%m-%d")
+                key = f"anon_requests:{client_ip}:{today_date}"
+
+                count = await redis_client.incr(key)
+                if count == 1:
+                    await redis_client.expire(key, 86400)  # 24 hours
+                if count > 2:
+                    await redis_client.close()
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Anonymous users are limited to 2 requests per day. Sign up for more!",
+                    )
+                await redis_client.close()
+        except redis.ConnectionError:
+            pass  # Skip limit check if Redis unavailable
+
     queue_item = RadioQueue(
         original_prompt=item.prompt,
         genre_hint=item.genre_hint,
@@ -180,16 +231,20 @@ async def create_queue_item(
     await session.refresh(queue_item)
 
     # Broadcast queue update to all connected clients
-    await emit_queue_updated({
-        "action": "created",
-        "item_id": queue_item.id,
-        "items": [{
-            "id": queue_item.id,
-            "prompt": queue_item.original_prompt,
-            "status": queue_item.status,
-            "priority_score": queue_item.priority_score,
-        }],
-    })
+    await emit_queue_updated(
+        {
+            "action": "created",
+            "item_id": queue_item.id,
+            "items": [
+                {
+                    "id": queue_item.id,
+                    "prompt": queue_item.original_prompt,
+                    "status": queue_item.status,
+                    "priority_score": queue_item.priority_score,
+                }
+            ],
+        }
+    )
 
     return queue_item
 
@@ -202,7 +257,7 @@ async def get_queue_stats(
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Combine counts into a single query
-    from sqlalchemy import case, and_
+    from sqlalchemy import and_, case
 
     query = select(
         func.count(RadioQueue.id),
@@ -336,9 +391,11 @@ async def get_now_playing(
             display_name=queue_item.user.display_name,
             telegram_username=queue_item.user.telegram_username,
             reputation_score=queue_item.user.reputation_score,
-            tier=queue_item.user.tier.value
-            if hasattr(queue_item.user.tier, "value")
-            else queue_item.user.tier,
+            tier=(
+                queue_item.user.tier.value
+                if hasattr(queue_item.user.tier, "value")
+                else queue_item.user.tier
+            ),
         )
 
     # Build queue item response
@@ -412,11 +469,13 @@ async def cancel_queue_item(
     await session.commit()
 
     # Broadcast queue update to all connected clients
-    await emit_queue_updated({
-        "action": "cancelled",
-        "item_id": queue_id,
-        "items": [],
-    })
+    await emit_queue_updated(
+        {
+            "action": "cancelled",
+            "item_id": queue_id,
+            "items": [],
+        }
+    )
 
     return {"message": "Queue item cancelled", "id": queue_id}
 

@@ -172,7 +172,9 @@ class ContentModerator:
         from src.utils.config import settings
 
         self._openai_enabled = (
-            enable_openai if enable_openai is not None else settings.openai_moderation_enabled
+            enable_openai
+            if enable_openai is not None
+            else settings.openai_moderation_enabled
         )
         self._openai_api_key = settings.openai_api_key
         self._openai_timeout = settings.openai_moderation_timeout
@@ -236,7 +238,9 @@ class ContentModerator:
                 rows = result.fetchall()
                 self._db_blocklist = {row[0].lower() for row in rows}
                 self._db_loaded = True
-                logger.info(f"Loaded {len(self._db_blocklist)} banned words from database")
+                logger.info(
+                    f"Loaded {len(self._db_blocklist)} banned words from database"
+                )
                 break  # Only need one session
         except Exception as e:
             logger.warning(f"Failed to load banned words from database: {e}")
@@ -519,8 +523,12 @@ class ContentModerator:
             }
 
             # Get highest scoring flagged category
-            highest_cat = max(flagged_cats, key=lambda c: scores.get(c.replace("/", "_"), 0))
-            our_category = category_mapping.get(highest_cat, ModerationCategory.HATE_SPEECH)
+            highest_cat = max(
+                flagged_cats, key=lambda c: scores.get(c.replace("/", "_"), 0)
+            )
+            our_category = category_mapping.get(
+                highest_cat, ModerationCategory.HATE_SPEECH
+            )
             highest_score = scores.get(highest_cat.replace("/", "_"), 0.9)
 
             return ModerationResult(
@@ -564,7 +572,9 @@ class ContentModerator:
                 )
             raise
 
-    async def check_async(self, content: str, use_openai: bool = True) -> ModerationResult:
+    async def check_async(
+        self, content: str, use_openai: bool = True
+    ) -> ModerationResult:
         """
         Async version of check() with optional OpenAI integration.
 

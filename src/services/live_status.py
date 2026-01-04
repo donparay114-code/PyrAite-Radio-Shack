@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import RadioHistory, RadioQueue, QueueStatus, Song, User
+from src.models import QueueStatus, RadioHistory, RadioQueue, Song, User
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,9 @@ class LiveStatusService:
                 "id": history.id,
                 "title": history.song_title or "Unknown",
                 "artist": history.song_artist or "Unknown",
-                "started_at": history.played_at.isoformat() if history.played_at else None,
+                "started_at": (
+                    history.played_at.isoformat() if history.played_at else None
+                ),
             }
 
         return {
@@ -102,18 +104,31 @@ class LiveStatusService:
                 if user:
                     username = user.display_name
 
-            generating_list.append({
-                "queue_id": item.id,
-                "status": item.status,
-                "genre": item.genre_hint,
-                "username": username or f"User #{item.telegram_user_id or 'Unknown'}",
-                "prompt": item.original_prompt[:100] + "..." if len(item.original_prompt) > 100 else item.original_prompt,
-                "priority_score": item.priority_score,
-                "upvotes": item.upvotes,
-                "downvotes": item.downvotes,
-                "started_at": item.generation_started_at.isoformat() if item.generation_started_at else None,
-                "requested_at": item.requested_at.isoformat() if item.requested_at else None,
-            })
+            generating_list.append(
+                {
+                    "queue_id": item.id,
+                    "status": item.status,
+                    "genre": item.genre_hint,
+                    "username": username
+                    or f"User #{item.telegram_user_id or 'Unknown'}",
+                    "prompt": (
+                        item.original_prompt[:100] + "..."
+                        if len(item.original_prompt) > 100
+                        else item.original_prompt
+                    ),
+                    "priority_score": item.priority_score,
+                    "upvotes": item.upvotes,
+                    "downvotes": item.downvotes,
+                    "started_at": (
+                        item.generation_started_at.isoformat()
+                        if item.generation_started_at
+                        else None
+                    ),
+                    "requested_at": (
+                        item.requested_at.isoformat() if item.requested_at else None
+                    ),
+                }
+            )
 
         return generating_list
 

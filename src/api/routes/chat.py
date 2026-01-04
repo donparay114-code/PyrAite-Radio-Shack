@@ -13,6 +13,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.api.socket_manager import (emit_chat_delete, emit_chat_message,
+                                    emit_chat_update)
 from src.models import ChatMessage, MessageType, User, get_async_session
 
 router = APIRouter()
@@ -138,7 +140,9 @@ async def get_chat_history(
 @router.post("/", response_model=ChatMessageResponse, status_code=201)
 async def send_message(
     message_data: ChatMessageCreate,
-    user_id: Optional[int] = Query(None, description="User ID (optional for anonymous)"),
+    user_id: Optional[int] = Query(
+        None, description="User ID (optional for anonymous)"
+    ),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -197,7 +201,11 @@ async def send_message(
     await session.flush()
     await session.refresh(message, ["user"])
 
-    return message_to_response(message)
+    # Broadcast to all connected clients via Socket.IO
+    response = message_to_response(message)
+    await emit_chat_message(response.model_dump())
+
+    return response
 
 
 @router.post("/system", response_model=ChatMessageResponse, status_code=201)
@@ -222,7 +230,11 @@ async def send_system_message(
     await session.flush()
     await session.refresh(message)
 
-    return message_to_response(message)
+    # Broadcast system message to all clients
+    response = message_to_response(message)
+    await emit_chat_message(response.model_dump())
+
+    return response
 
 
 @router.delete("/{message_id}")
@@ -250,6 +262,9 @@ async def delete_message(
         raise HTTPException(status_code=400, detail="Message already deleted")
 
     message.soft_delete(moderator_id, reason)
+
+    # Broadcast deletion to all clients
+    await emit_chat_delete(message_id)
 
     return {"message": "Message deleted", "id": message_id}
 

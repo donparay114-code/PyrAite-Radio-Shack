@@ -1,123 +1,123 @@
-"use strict";
+"use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabase, isSupabaseConfigured, type ChatMessage } from "@/lib/supabase";
+import { io, Socket } from "socket.io-client";
 import { useChatHistory, useSendMessage } from "./useApi";
 import { toast } from "sonner";
 
+// Chat message type matching backend response
+export interface ChatMessage {
+  id: number;
+  user_id: number | null;
+  user_display_name: string | null;
+  user_tier: string | null;
+  content: string;
+  message_type: string;
+  reply_to_id: number | null;
+  is_deleted: boolean;
+  created_at: string;
+}
+
 export function useChat(userId?: number) {
-  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnecting, setIsConnecting] = useState(true);
+  const socketRef = useRef<Socket | null>(null);
 
   // Fetch initial history
-  const { data: history, isError, isLoading: isHistoryLoading } = useChatHistory();
+  const { data: history, isLoading: isHistoryLoading } = useChatHistory();
   const sendMessageMutation = useSendMessage();
 
   // Initialize messages from history
   useEffect(() => {
     if (history?.messages) {
       setMessages(history.messages);
-      setIsConnecting(false);
     }
   }, [history]);
 
-  // Subscribe to Realtime changes
+  // Connect to Socket.IO for real-time updates
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      console.warn("Supabase not configured, skipping realtime subscription");
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    const socket = io(socketUrl, {
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Chat socket connected");
       setIsConnecting(false);
-      return;
-    }
+    });
 
-    const channel = supabase
-      .channel("chat_room")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-        },
-        async (payload) => {
-          const newMessage = payload.new as ChatMessage;
+    socket.on("disconnect", () => {
+      console.log("Chat socket disconnected");
+      setIsConnecting(true);
+    });
 
-          // If we have the user ID, we can optimistically update
-          // But usually we need to fetch the user details or rely on the frontend to display placeholders
-          // For now, we'll just append it. To check for user details, we might want to 
-          // invalidate the query or fetch the distinct message.
-          // However, for immediate feedback, we verify if it's already there (optimistic update case)
-
-          setMessages((prev) => {
-            // Check if we already added this message (e.g. via optimistic update)
-            if (prev.some(m => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "chat_messages",
-        },
-        (payload) => {
-          // For hard deletes (if any), remove from list
-          setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "chat_messages",
-        },
-        (payload) => {
-          const updated = payload.new as ChatMessage;
-          // Mostly for soft deletes or edits
-          setMessages((prev) => prev.map((msg) => msg.id === updated.id ? updated : msg));
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setIsConnecting(false);
-        } else if (status === "CHANNEL_ERROR") {
-          console.error("Supabase Realtime channel error");
-          setIsConnecting(false); // Stop showing "Connecting..."
-        }
+    // Handle new chat messages
+    socket.on("chat_message", (message: ChatMessage) => {
+      console.log("New chat message:", message.id);
+      setMessages((prev) => {
+        // Check if we already have this message (avoid duplicates)
+        if (prev.some((m) => m.id === message.id)) return prev;
+        return [...prev, message];
       });
+    });
+
+    // Handle message deletions
+    socket.on("chat_delete", (data: { id: number }) => {
+      console.log("Chat message deleted:", data.id);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === data.id
+            ? { ...msg, is_deleted: true, content: "[Message deleted]" }
+            : msg
+        )
+      );
+    });
+
+    // Handle message updates
+    socket.on("chat_update", (message: ChatMessage) => {
+      console.log("Chat message updated:", message.id);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === message.id ? message : msg))
+      );
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Chat socket connection error:", error);
+      setIsConnecting(false);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      socket.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!userId) {
-      toast.error("You must be logged in to chat");
-      return;
-    }
-
-    try {
-      await sendMessageMutation.mutateAsync({
-        content,
-        userId,
-      });
-      // Note: We don't manually add to 'messages' here because 
-      // Supabase Realtime will trigger the INSERT event and handle it.
-      // Or we could do optimistic updates if we want instant feedback before server ack.
-    } catch {
-      toast.error("Failed to send message");
-    }
-  }, [userId, sendMessageMutation]);
+  const sendMessage = useCallback(
+    async (content: string) => {
+      try {
+        await sendMessageMutation.mutateAsync({
+          content,
+          userId: userId || undefined,
+        });
+        // Socket.IO will broadcast the new message to all clients including us
+      } catch {
+        toast.error("Failed to send message");
+      }
+    },
+    [userId, sendMessageMutation]
+  );
 
   return {
     messages,
     isLoading: isHistoryLoading,
-    isConnecting,
+    isConnecting: isConnecting && !history,
     sendMessage,
     isSending: sendMessageMutation.isPending,
   };

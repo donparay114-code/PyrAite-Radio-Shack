@@ -1,34 +1,36 @@
 """FastAPI application entry point for PYrte Radio Shack."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
-from src.api.routes import (
-    admin,
-    auth,
-    auth_email,
-    auth_google,
-    chat,
-    generate,
-    health,
-    moderation,
-    profile,
-    queue,
-    songs,
-    users,
-    votes,
-    webhooks,
-)
+from src.api.routes import (admin, auth, auth_email, auth_google, chat,
+                            generate, health, moderation, profile, queue,
+                            songs, users, votes, webhooks)
 from src.api.socket_manager import sio_app
 from src.utils.config import settings
 from src.utils.logging import setup_logging
 
 # API version
 API_VERSION = "1.0.0"
+
+# Rate limiter using memory storage (Redis disabled for local dev)
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=None,  # Use in-memory storage
+    default_limits=["100/minute"],  # Global default
+)
 
 # API description for OpenAPI docs
 API_DESCRIPTION = """
@@ -98,14 +100,48 @@ TAGS_METADATA = [
 ]
 
 
+# Global task reference for cleanup
+_telegram_polling_task: Optional[asyncio.Task] = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
+    global _telegram_polling_task
+
     # Startup
     setup_logging()
     settings.ensure_directories()
+
+    # Start APScheduler for background tasks
+    from src.services.scheduler import (setup_scheduler, start_scheduler,
+                                        stop_scheduler)
+
+    setup_scheduler()
+    start_scheduler()
+
+    # Start Telegram bot polling
+    from src.services.telegram_bot import get_telegram_bot
+    from src.services.telegram_handlers import register_handlers
+
+    bot = get_telegram_bot()
+    register_handlers(bot)
+    _telegram_polling_task = asyncio.create_task(bot.start_polling())
+
     yield
-    # Shutdown (cleanup if needed)
+
+    # Shutdown
+    # Stop Telegram polling
+    if _telegram_polling_task:
+        bot.stop_polling()
+        _telegram_polling_task.cancel()
+        try:
+            await _telegram_polling_task
+        except asyncio.CancelledError:
+            pass
+
+    # Stop scheduler
+    stop_scheduler()
 
 
 app = FastAPI(
@@ -135,8 +171,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting middleware
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)
+
+# Mount static files for avatar uploads
+STATIC_DIR = Path("src/static")
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+(STATIC_DIR / "uploads" / "avatars").mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.exception_handler(Exception)

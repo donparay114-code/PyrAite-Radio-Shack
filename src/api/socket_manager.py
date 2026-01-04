@@ -93,3 +93,26 @@ async def emit_now_playing(song_data: dict):
     """Broadcast now playing update to all clients."""
     logger.debug(f"Emitting now_playing: {song_data.get('title', 'Unknown')}")
     await sio.emit("now_playing", song_data)
+
+
+# ============================================================================
+# Chat Events
+# ============================================================================
+
+
+async def emit_chat_message(message_data: dict):
+    """Broadcast new chat message to all connected clients."""
+    logger.debug(f"Emitting chat_message: {message_data.get('id')}")
+    await sio.emit("chat_message", message_data)
+
+
+async def emit_chat_delete(message_id: int):
+    """Broadcast chat message deletion to all connected clients."""
+    logger.debug(f"Emitting chat_delete: {message_id}")
+    await sio.emit("chat_delete", {"id": message_id})
+
+
+async def emit_chat_update(message_data: dict):
+    """Broadcast chat message update to all connected clients."""
+    logger.debug(f"Emitting chat_update: {message_data.get('id')}")
+    await sio.emit("chat_update", message_data)

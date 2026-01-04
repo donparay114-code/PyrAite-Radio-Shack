@@ -303,13 +303,12 @@ class StableAudioProvider(MusicProvider):
 
         if self._client is None or self._client.is_closed:
             headers = {"Authorization": f"Bearer {self.api_key}"}
-            self._client = httpx.AsyncClient(
-                timeout=300.0, headers=headers
-            )
+            self._client = httpx.AsyncClient(timeout=300.0, headers=headers)
         return self._client
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         import uuid
+
         import aiofiles
 
         if not self.api_key:
@@ -343,7 +342,7 @@ class StableAudioProvider(MusicProvider):
                 "seconds_total": str(data.get("duration", 30)),
             }
             if data.get("style"):
-                 multipart_data["prompt"] = f"{data['style']} {multipart_data['prompt']}"
+                multipart_data["prompt"] = f"{data['style']} {multipart_data['prompt']}"
 
             # To force multipart/form-data without files, we can use the files parameter
             # with explicit None for filename/content-type if needed, or just rely on data
@@ -362,9 +361,7 @@ class StableAudioProvider(MusicProvider):
             # Let's assume standard form data is fine, but we will add a comment.
 
             response = await client.post(
-                self.api_url,
-                data=multipart_data,
-                headers={"Accept": "audio/mpeg"}
+                self.api_url, data=multipart_data, headers={"Accept": "audio/mpeg"}
             )
 
             if response.status_code != 200:
@@ -440,7 +437,9 @@ class StableAudioProvider(MusicProvider):
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Async copy
-            async with aiofiles.open(source_path, "rb") as src, aiofiles.open(output_path, "wb") as dst:
+            async with aiofiles.open(source_path, "rb") as src, aiofiles.open(
+                output_path, "wb"
+            ) as dst:
                 while True:
                     chunk = await src.read(8192)
                     if not chunk:

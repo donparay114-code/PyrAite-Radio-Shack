@@ -1,14 +1,16 @@
 """Telegram bot command and callback handlers."""
 
 import logging
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.models import QueueStatus, RadioQueue, User, Vote, VoteType
 from src.models.base import get_async_engine
-from src.services.telegram_bot import CallbackAction, TelegramBot, get_telegram_bot
+from src.services.telegram_bot import (CallbackAction, TelegramBot,
+                                       get_telegram_bot)
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,46 @@ async def process_song_request(
                 return False
 
             # Check daily limit
-            # TODO: Implement daily limit check based on created_at
+            today_start = datetime.utcnow().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            today_requests = await session.scalar(
+                select(func.count())
+                .select_from(RadioQueue)
+                .where(
+                    and_(
+                        RadioQueue.user_id == user.id,
+                        RadioQueue.created_at >= today_start,
+                    )
+                )
+            )
+
+            daily_limit = user.max_daily_requests
+            if today_requests >= daily_limit:
+                tier_info = (
+                    f"(Premium {user.tier.value})" if user.is_premium else "(Free tier)"
+                )
+                await bot.send_message(
+                    chat_id,
+                    f"⚠️ You've reached your daily limit of {daily_limit} requests {tier_info}.\n\n"
+                    f"Your limit resets at midnight UTC.\n"
+                    f"Upgrade to premium for more requests!",
+                    reply_to_message_id=message.get("message_id"),
+                )
+                return False
+
+            # Check cooldown between requests
+            cooldown_seconds = 30 if user.is_premium else 60  # Premium: 30s, Free: 60s
+            if user.last_request_at:
+                elapsed = (datetime.utcnow() - user.last_request_at).total_seconds()
+                if elapsed < cooldown_seconds:
+                    remaining = int(cooldown_seconds - elapsed)
+                    await bot.send_message(
+                        chat_id,
+                        f"⏳ Please wait {remaining} seconds before your next request.",
+                        reply_to_message_id=message.get("message_id"),
+                    )
+                    return False
 
             # Check for existing pending requests
             # We want to limit how many pending requests a user can have
@@ -154,6 +195,9 @@ async def process_song_request(
             session.add(queue_item)
             await session.flush()
             await session.refresh(queue_item)
+
+            # Update last request timestamp for cooldown tracking
+            user.last_request_at = datetime.utcnow()
 
             await session.commit()
 
@@ -384,9 +428,218 @@ async def handle_callback_query(callback: dict):
             await bot.answer_callback_query(callback_id, "Error processing request")
 
 
+async def handle_start_command(message: dict):
+    """Handle /start command - Welcome message."""
+    bot = get_telegram_bot()
+    chat_id = message.get("chat", {}).get("id")
+    from_user = message.get("from", {})
+
+    if not chat_id:
+        return
+
+    first_name = from_user.get("first_name", "there")
+
+    welcome_message = (
+        f"👋 Welcome to <b>PYrte Radio</b>, {first_name}!\n\n"
+        f"🎵 I'm an AI-powered community radio station. Request songs and I'll generate them with Suno AI!\n\n"
+        f"<b>How to request:</b>\n"
+        f'• Just type your song idea (e.g., "chill lo-fi beats for studying")\n'
+        f"• Or use <code>/request your prompt here</code>\n\n"
+        f"<b>Commands:</b>\n"
+        f"/request - Request a song\n"
+        f"/status - View queue statistics\n"
+        f"/me - View your stats\n"
+        f"/help - Show this help message\n\n"
+        f"🎧 Start by typing your song request!"
+    )
+
+    await bot.send_message(chat_id, welcome_message)
+
+
+async def handle_help_command(message: dict):
+    """Handle /help command."""
+    bot = get_telegram_bot()
+    chat_id = message.get("chat", {}).get("id")
+
+    if not chat_id:
+        return
+
+    help_message = (
+        "📻 <b>PYrte Radio Help</b>\n\n"
+        "<b>Requesting Songs:</b>\n"
+        "• Just type your song idea directly!\n"
+        '• Example: "upbeat synthwave for working out"\n'
+        "• Or use: <code>/request [prompt]</code>\n\n"
+        "<b>Commands:</b>\n"
+        "/request [prompt] - Request a song\n"
+        "/status - View queue statistics\n"
+        "/me - View your profile and stats\n"
+        "/help - Show this message\n\n"
+        "<b>Daily Limits:</b>\n"
+        "• Free users: 5 requests/day\n"
+        "• Premium users: 10-50 requests/day\n\n"
+        "<b>Voting:</b>\n"
+        "• 👍 Upvote songs you like\n"
+        "• 👎 Downvote songs you don't\n"
+        "• Your votes affect queue priority!\n\n"
+        "🎵 Enjoy the music!"
+    )
+
+    await bot.send_message(chat_id, help_message)
+
+
+async def handle_status_command(message: dict):
+    """Handle /status command - Queue statistics."""
+    bot = get_telegram_bot()
+    chat_id = message.get("chat", {}).get("id")
+
+    if not chat_id:
+        return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        try:
+            from sqlalchemy import func as sqlfunc
+
+            # Get queue counts by status
+            pending_count = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(RadioQueue.status == QueueStatus.PENDING.value)
+            )
+            generating_count = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(RadioQueue.status == QueueStatus.GENERATING.value)
+            )
+            generated_count = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(RadioQueue.status == QueueStatus.GENERATED.value)
+            )
+
+            # Get today's completed count
+            today_start = datetime.utcnow().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            completed_today = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(
+                    and_(
+                        RadioQueue.status == QueueStatus.PLAYED.value,
+                        RadioQueue.played_at >= today_start,
+                    )
+                )
+            )
+
+            status_message = (
+                "📊 <b>Queue Status</b>\n\n"
+                f"⏳ Pending: {pending_count or 0}\n"
+                f"🔄 Generating: {generating_count or 0}\n"
+                f"✅ Ready to play: {generated_count or 0}\n"
+                f"🎵 Played today: {completed_today or 0}\n\n"
+                f"💡 <i>Songs are processed by priority based on votes and user reputation.</i>"
+            )
+
+            await bot.send_message(chat_id, status_message)
+
+        except Exception as e:
+            logger.error(f"Error fetching status: {e}")
+            await bot.send_message(
+                chat_id, "❌ Error fetching queue status. Please try again."
+            )
+
+
+async def handle_me_command(message: dict):
+    """Handle /me command - User stats."""
+    bot = get_telegram_bot()
+    chat_id = message.get("chat", {}).get("id")
+    from_user = message.get("from")
+
+    if not chat_id or not from_user:
+        return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        try:
+            user = await get_or_create_user(session, from_user)
+
+            # Count user's requests
+            from sqlalchemy import func as sqlfunc
+
+            total_requests = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(RadioQueue.user_id == user.id)
+            )
+
+            # Today's requests
+            today_start = datetime.utcnow().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            today_requests = await session.scalar(
+                select(sqlfunc.count())
+                .select_from(RadioQueue)
+                .where(
+                    and_(
+                        RadioQueue.user_id == user.id,
+                        RadioQueue.created_at >= today_start,
+                    )
+                )
+            )
+
+            daily_limit = user.max_daily_requests
+            remaining = max(0, daily_limit - (today_requests or 0))
+
+            # Format tier display
+            tier_emoji = {
+                "new": "🌱",
+                "regular": "⭐",
+                "trusted": "🌟",
+                "vip": "💫",
+                "elite": "👑",
+            }
+            tier_display = tier_emoji.get(user.tier.value, "⭐")
+
+            premium_badge = " 💎 Premium" if user.is_premium else ""
+
+            me_message = (
+                f"👤 <b>Your Profile</b>{premium_badge}\n\n"
+                f"<b>Name:</b> {user.display_name}\n"
+                f"<b>Tier:</b> {tier_display} {user.tier.value.title()}\n"
+                f"<b>Reputation:</b> {user.reputation_score:.1f}\n\n"
+                f"<b>📊 Stats</b>\n"
+                f"Total requests: {total_requests or 0}\n"
+                f"Today: {today_requests or 0}/{daily_limit}\n"
+                f"Remaining today: {remaining}\n\n"
+            )
+
+            if user.is_banned:
+                me_message += f"⚠️ <b>Status:</b> Banned\nReason: {user.ban_reason or 'Not specified'}"
+            else:
+                me_message += "✅ <b>Status:</b> Active"
+
+            await bot.send_message(chat_id, me_message)
+
+        except Exception as e:
+            logger.error(f"Error fetching user stats: {e}")
+            await bot.send_message(
+                chat_id, "❌ Error fetching your stats. Please try again."
+            )
+
+
 def register_handlers(bot: TelegramBot):
     """Register all handlers to the bot instance."""
+    # Command handlers
+    bot.on_command("start")(handle_start_command)
+    bot.on_command("help")(handle_help_command)
+    bot.on_command("status")(handle_status_command)
+    bot.on_command("me")(handle_me_command)
     bot.on_command("request")(handle_request_command)
+
+    # Message and callback handlers
     bot.on_message(handle_text_message)  # Allow plain text song requests
     bot.on_callback(handle_callback_query)
+
     logger.info("Telegram handlers registered")

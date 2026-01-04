@@ -38,18 +38,26 @@ class UserResponse(BaseModel):
     """User response model."""
 
     id: int
-    telegram_id: int
+    telegram_id: Optional[int]
     telegram_username: Optional[str]
+    email: Optional[str] = None
+    google_id: Optional[str] = None
     display_name: str
     reputation_score: float
     tier: str
     total_requests: int
     successful_requests: int
+    failed_requests: int
+    success_rate: float
     total_upvotes_received: int
     total_downvotes_received: int
+    total_upvotes_given: int
+    total_downvotes_given: int
     is_banned: bool
     is_premium: bool
     created_at: datetime
+    avatar_url: Optional[str] = None
+    username_last_changed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -168,16 +176,24 @@ async def list_users(
             id=u.id,
             telegram_id=u.telegram_id,
             telegram_username=u.telegram_username,
+            email=u.email,
+            google_id=u.google_id,
             display_name=u.display_name,
             reputation_score=u.reputation_score,
             tier=u.tier.value,
             total_requests=u.total_requests,
             successful_requests=u.successful_requests,
+            failed_requests=u.failed_requests,
+            success_rate=u.success_rate,
             total_upvotes_received=u.total_upvotes_received,
             total_downvotes_received=u.total_downvotes_received,
+            total_upvotes_given=u.total_upvotes_given,
+            total_downvotes_given=u.total_downvotes_given,
             is_banned=u.is_banned,
             is_premium=u.is_premium,
             created_at=u.created_at,
+            avatar_url=u.avatar_url,
+            username_last_changed_at=u.username_last_changed_at,
         )
         for u in users
     ]
@@ -221,16 +237,24 @@ async def create_user(
         id=user.id,
         telegram_id=user.telegram_id,
         telegram_username=user.telegram_username,
+        email=user.email,
+        google_id=user.google_id,
         display_name=user.display_name,
         reputation_score=user.reputation_score,
         tier=user.tier.value,
         total_requests=user.total_requests,
         successful_requests=user.successful_requests,
+        failed_requests=user.failed_requests,
+        success_rate=user.success_rate,
         total_upvotes_received=user.total_upvotes_received,
         total_downvotes_received=user.total_downvotes_received,
+        total_upvotes_given=user.total_upvotes_given,
+        total_downvotes_given=user.total_downvotes_given,
         is_banned=user.is_banned,
         is_premium=user.is_premium,
         created_at=user.created_at,
+        avatar_url=user.avatar_url,
+        username_last_changed_at=user.username_last_changed_at,
     )
 
 
@@ -320,16 +344,24 @@ async def get_user_by_telegram(
         id=user.id,
         telegram_id=user.telegram_id,
         telegram_username=user.telegram_username,
+        email=user.email,
+        google_id=user.google_id,
         display_name=user.display_name,
         reputation_score=user.reputation_score,
         tier=user.tier.value,
         total_requests=user.total_requests,
         successful_requests=user.successful_requests,
+        failed_requests=user.failed_requests,
+        success_rate=user.success_rate,
         total_upvotes_received=user.total_upvotes_received,
         total_downvotes_received=user.total_downvotes_received,
+        total_upvotes_given=user.total_upvotes_given,
+        total_downvotes_given=user.total_downvotes_given,
         is_banned=user.is_banned,
         is_premium=user.is_premium,
         created_at=user.created_at,
+        avatar_url=user.avatar_url,
+        username_last_changed_at=user.username_last_changed_at,
     )
 
 
@@ -437,16 +469,24 @@ async def get_user(
         id=user.id,
         telegram_id=user.telegram_id,
         telegram_username=user.telegram_username,
+        email=user.email,
+        google_id=user.google_id,
         display_name=user.display_name,
         reputation_score=user.reputation_score,
         tier=user.tier.value,
         total_requests=user.total_requests,
         successful_requests=user.successful_requests,
+        failed_requests=user.failed_requests,
+        success_rate=user.success_rate,
         total_upvotes_received=user.total_upvotes_received,
         total_downvotes_received=user.total_downvotes_received,
+        total_upvotes_given=user.total_upvotes_given,
+        total_downvotes_given=user.total_downvotes_given,
         is_banned=user.is_banned,
         is_premium=user.is_premium,
         created_at=user.created_at,
+        avatar_url=user.avatar_url,
+        username_last_changed_at=user.username_last_changed_at,
     )
 
 

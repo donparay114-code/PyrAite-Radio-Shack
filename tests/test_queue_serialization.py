@@ -1,7 +1,9 @@
+from datetime import datetime
 
 import pytest
-from datetime import datetime
-from src.models import RadioQueue, User, QueueStatus, UserTier
+
+from src.models import QueueStatus, RadioQueue, User, UserTier
+
 
 @pytest.mark.asyncio
 async def test_queue_user_serialization(client, async_session):
@@ -12,7 +14,7 @@ async def test_queue_user_serialization(client, async_session):
         telegram_first_name="Test",
         reputation_score=150.0,
         total_requests=10,
-        successful_requests=8
+        successful_requests=8,
     )
     async_session.add(user)
     await async_session.flush()
@@ -24,7 +26,7 @@ async def test_queue_user_serialization(client, async_session):
         status=QueueStatus.BROADCASTING.value,
         original_prompt="Test Prompt",
         broadcast_started_at=datetime.utcnow(),
-        requested_at=datetime.utcnow()
+        requested_at=datetime.utcnow(),
     )
     async_session.add(queue_item)
     await async_session.commit()
@@ -43,6 +45,7 @@ async def test_queue_user_serialization(client, async_session):
     assert user_data["reputation_score"] == 150.0
     assert user_data["tier"] == "regular"
 
+
 @pytest.mark.asyncio
 async def test_queue_user_serialization_no_user(client, async_session):
     # Create a queue item without a user
@@ -50,7 +53,7 @@ async def test_queue_user_serialization_no_user(client, async_session):
         status=QueueStatus.BROADCASTING.value,
         original_prompt="Anonymous Prompt",
         broadcast_started_at=datetime.utcnow(),
-        requested_at=datetime.utcnow()
+        requested_at=datetime.utcnow(),
     )
     async_session.add(queue_item)
     await async_session.commit()

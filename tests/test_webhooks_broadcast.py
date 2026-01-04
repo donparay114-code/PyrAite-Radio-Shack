@@ -36,9 +36,10 @@ async def test_broadcast_status_start_song(async_client, async_session):
     assert queue_item.status == QueueStatus.GENERATED.value
 
     payload = {"event": "track_change", "title": "My Cool Song", "artist": "AI Radio"}
-
-    # Send webhook
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    
+    # Send webhook with mock secret verification
+    with patch("src.api.routes.webhooks.verify_webhook_secret", return_value=True):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
 
     assert response.status_code == 200
     data = response.json()
@@ -104,7 +105,8 @@ async def test_broadcast_status_end_song(async_client, async_session):
     # Send webhook for Song B start
     payload = {"event": "track_change", "title": "Song B", "artist": "AI Radio"}
 
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    with patch("src.api.routes.webhooks.verify_webhook_secret", return_value=True):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
     assert response.status_code == 200
 
     # Verify Song A (Previous)
@@ -142,7 +144,8 @@ async def test_broadcast_unknown_song(async_client, async_session):
         "artist": "Unknown Artist",
     }
 
-    response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
+    with patch("src.api.routes.webhooks.verify_webhook_secret", return_value=True):
+        response = await async_client.post("/api/webhooks/broadcast/status", json=payload)
     assert response.status_code == 200
 
     # Verify no new history created (since we can't link it)

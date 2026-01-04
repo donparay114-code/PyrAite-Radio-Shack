@@ -4,7 +4,8 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import (BigInteger, Boolean, DateTime, Float, Integer, String,
+                        Text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, TimestampMixin
@@ -32,9 +33,13 @@ class User(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Authentication
-    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    email: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True, index=True
+    )
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    google_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    google_id: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True, index=True
+    )
 
     # Telegram info (nullable for Google-only users)
     telegram_id: Mapped[Optional[int]] = mapped_column(
@@ -72,6 +77,17 @@ class User(Base, TimestampMixin):
 
     # Profile
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    username_last_changed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+
+    # Password reset
+    password_reset_token: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    password_reset_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
 
     # Relationships
     requests: Mapped[list["RadioQueue"]] = relationship(
@@ -108,15 +124,25 @@ class User(Base, TimestampMixin):
 
     @property
     def max_daily_requests(self) -> int:
-        """Get maximum daily requests based on tier."""
-        limits = {
-            UserTier.NEW: 3,
-            UserTier.REGULAR: 5,
-            UserTier.TRUSTED: 10,
-            UserTier.VIP: 20,
-            UserTier.ELITE: 50,
-        }
-        return limits[self.tier]
+        """Get maximum daily requests based on premium status and tier.
+
+        - Free users: 5 requests/day
+        - Premium Tier 1 (TRUSTED): 10 requests/day
+        - Premium Tier 2 (VIP): 20 requests/day
+        - Premium Tier 3 (ELITE): 50 requests/day
+        """
+        if self.is_premium:
+            # Premium users get limits based on tier
+            premium_limits = {
+                UserTier.NEW: 10,
+                UserTier.REGULAR: 10,
+                UserTier.TRUSTED: 10,
+                UserTier.VIP: 20,
+                UserTier.ELITE: 50,
+            }
+            return premium_limits[self.tier]
+        # Free signed-up users get 5 requests/day
+        return 5
 
     @property
     def display_name(self) -> str:

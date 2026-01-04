@@ -87,8 +87,8 @@ export default function HomePage() {
   const voteMutation = useVote();
   const submitMutation = useSubmitRequest();
 
-  // Chat hook for preview
-  const { messages: chatMessages, isLoading: chatLoading, sendMessage, isSending } = useChat();
+  // Chat hook - pass user ID for authenticated users
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, isSending } = useChat(user?.id);
 
   // Extract current song and queue item from nowPlaying response
   const currentSong: Song = nowPlaying?.song ?? fallbackSong;
@@ -131,9 +131,6 @@ export default function HomePage() {
   // Show loading state
   const isLoading = nowPlayingLoading || queueLoading;
 
-  // Get recent chat messages for preview (last 5)
-  const recentMessages = chatMessages.slice(-5);
-
   return (
     <div className="relative">
       {/* Ambient background glow effects */}
@@ -142,9 +139,9 @@ export default function HomePage() {
         <PulseGlow color="#06b6d4" size="lg" className="-bottom-32 -right-32" intensity={0.15} />
       </div>
 
-      {/* Main grid layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Sidebar - visible on xl screens - LEFT SIDE */}
+      {/* Main grid layout - Chat on left (wider), Player/Queue on right */}
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr] gap-6 items-start">
+        {/* Sidebar with Chat - visible on lg screens - LEFT SIDE */}
         <motion.div
           className="hidden lg:flex flex-col gap-6 h-[calc(100vh-6rem)] sticky top-24"
           initial={{ opacity: 0, x: -20 }}
@@ -154,24 +151,23 @@ export default function HomePage() {
           {/* Profile Quick Access */}
           <ProfileWidget user={user} isAuthenticated={isAuthenticated} />
 
-          {/* Chat Preview - Fills remaining height */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <ChatPreview
-              messages={recentMessages}
+          {/* Chat - Fills remaining height */}
+          <div id="chat-section" className="flex-1 flex flex-col min-h-0">
+            <Chat
+              messages={chatMessages}
               isLoading={chatLoading}
-              onSendMessage={(content) => {
-                if (user?.id) {
-                  sendMessage(content);
-                }
-              }}
+              onSendMessage={sendMessage}
               isSending={isSending}
+              currentUser={user}
               isAuthenticated={isAuthenticated}
+              maxHeight="calc(100vh - 400px)"
+              className="h-full"
             />
           </div>
         </motion.div>
 
-        {/* Main content - takes 3/4 on xl screens - RIGHT SIDE */}
-        <div className="lg:col-span-3 space-y-8">
+        {/* Main content - fills remaining space - RIGHT SIDE */}
+        <div className="space-y-8">
           {/* Stats bar with staggered animation */}
           <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4" staggerDelay={0.1}>
             <StaggerItem>
@@ -269,28 +265,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Mobile Chat & Profile Links */}
+      {/* Mobile Profile Link */}
       <motion.div
-        className="lg:hidden mt-8 grid grid-cols-2 gap-4"
+        className="lg:hidden mt-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4, ease: easings.smooth }}
       >
-        <Link href="/chat">
-          <GlassCard className="p-4 hover:bg-white/10 transition-colors cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-violet-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">Live Chat</p>
-                <p className="text-xs text-text-muted">{chatMessages.length} messages</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-text-muted" />
-            </div>
-          </GlassCard>
-        </Link>
-
         <Link href="/profile">
           <GlassCard className="p-4 hover:bg-white/10 transition-colors cursor-pointer">
             <div className="flex items-center gap-3">
@@ -307,6 +288,24 @@ export default function HomePage() {
             </div>
           </GlassCard>
         </Link>
+      </motion.div>
+
+      {/* Mobile Chat Section */}
+      <motion.div
+        className="lg:hidden mt-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5, ease: easings.smooth }}
+      >
+        <Chat
+          messages={chatMessages}
+          isLoading={chatLoading}
+          onSendMessage={sendMessage}
+          isSending={isSending}
+          currentUser={user}
+          isAuthenticated={isAuthenticated}
+          maxHeight="400px"
+        />
       </motion.div>
 
       {/* Request modal */}
@@ -507,136 +506,3 @@ function ProfileWidget({ user, isAuthenticated }: ProfileWidgetProps) {
   );
 }
 
-// Chat Preview Widget
-interface ChatPreviewProps {
-  messages: Array<{
-    id: number;
-    content: string;
-    message_type: string;
-    created_at: string;
-    user_id: number | null;
-  }>;
-  isLoading: boolean;
-  onSendMessage: (content: string) => void;
-  isSending: boolean;
-  isAuthenticated: boolean;
-}
-
-function ChatPreview({ messages, isLoading, onSendMessage, isSending, isAuthenticated }: ChatPreviewProps) {
-  const [inputValue, setInputValue] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isSending || !isAuthenticated) return;
-    onSendMessage(inputValue.trim());
-    setInputValue("");
-  };
-
-  return (
-    <GlassCard className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 text-violet-400" />
-          </div>
-          <span className="text-sm font-medium text-white">Live Chat</span>
-        </div>
-        <Link href="/chat">
-          <Badge variant="violet" size="sm" className="cursor-pointer hover:bg-violet-500/30 transition-colors">
-            <span className="flex items-center gap-1">
-              View All <ChevronRight className="w-3 h-3" />
-            </span>
-          </Badge>
-        </Link>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 min-h-[300px]">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full"
-            />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center py-8 text-text-muted text-sm">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>No messages yet</p>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-2"
-            >
-              <Avatar name={`User ${msg.user_id || "?"}`} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium text-white">
-                    User {msg.user_id || "Anonymous"}
-                  </span>
-                  <span className="text-xs text-text-muted">
-                    {formatTimeAgo(msg.created_at)}
-                  </span>
-                </div>
-                <p className="text-xs text-text-muted line-clamp-2">{msg.content}</p>
-              </div>
-            </motion.div>
-          ))
-        )}
-      </div>
-
-      {/* Quick Input */}
-      {isAuthenticated ? (
-        <form onSubmit={handleSubmit} className="p-3 border-t border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Say something..."
-              disabled={isSending}
-              className={cn(
-                "flex-1 text-xs px-3 py-2 rounded-lg",
-                "bg-white/5 border border-white/10",
-                "text-white placeholder:text-text-muted",
-                "focus:outline-none focus:ring-1 focus:ring-violet-500/50",
-                "disabled:opacity-50"
-              )}
-            />
-            <motion.button
-              type="submit"
-              disabled={!inputValue.trim() || isSending}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center",
-                "bg-violet-500 text-white",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-              )}
-            >
-              {isSending ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </motion.button>
-          </div>
-        </form>
-      ) : (
-        <div className="p-3 border-t border-white/[0.06] text-center">
-          <p className="text-xs text-text-muted">Sign in to chat</p>
-        </div>
-      )}
-    </GlassCard>
-  );
-}

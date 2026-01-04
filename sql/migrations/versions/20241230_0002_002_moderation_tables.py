@@ -10,10 +10,11 @@ Creates moderation infrastructure:
 - user_violations: Track user violations and timeouts
 - Adds moderation fields to users table
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "002"
@@ -26,12 +27,29 @@ def upgrade() -> None:
     """Create moderation tables and add user moderation fields."""
 
     # Add moderation columns to users table
-    op.add_column("users", sa.Column("is_admin", sa.Boolean(), nullable=False, server_default="false"))
-    op.add_column("users", sa.Column("daily_request_limit", sa.Integer(), nullable=False, server_default="10"))
+    op.add_column(
+        "users",
+        sa.Column("is_admin", sa.Boolean(), nullable=False, server_default="false"),
+    )
+    op.add_column(
+        "users",
+        sa.Column(
+            "daily_request_limit", sa.Integer(), nullable=False, server_default="10"
+        ),
+    )
     op.add_column("users", sa.Column("timeout_until", sa.DateTime(), nullable=True))
-    op.add_column("users", sa.Column("moderation_flags", sa.Integer(), nullable=False, server_default="0"))
-    op.add_column("users", sa.Column("warnings_count", sa.Integer(), nullable=False, server_default="0"))
-    op.add_column("users", sa.Column("requests_today", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column(
+        "users",
+        sa.Column("moderation_flags", sa.Integer(), nullable=False, server_default="0"),
+    )
+    op.add_column(
+        "users",
+        sa.Column("warnings_count", sa.Integer(), nullable=False, server_default="0"),
+    )
+    op.add_column(
+        "users",
+        sa.Column("requests_today", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.add_column("users", sa.Column("requests_reset_at", sa.DateTime(), nullable=True))
 
     # Banned words table for local content blocklist
@@ -45,8 +63,18 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("added_by_user_id", sa.Integer(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_banned_words")),
         sa.UniqueConstraint("word", name=op.f("uq_banned_words_word")),
     )
@@ -64,7 +92,9 @@ def upgrade() -> None:
         sa.Column("content_type", sa.String(50), nullable=True),
         sa.Column("original_content", sa.Text(), nullable=True),
         sa.Column("flagged_word", sa.String(255), nullable=True),
-        sa.Column("moderation_source", sa.String(50), nullable=False, server_default="system"),
+        sa.Column(
+            "moderation_source", sa.String(50), nullable=False, server_default="system"
+        ),
         sa.Column("moderation_score", sa.Float(), nullable=True),
         sa.Column("moderation_categories", sa.JSON(), nullable=True),
         sa.Column("action_taken", sa.String(100), nullable=True),
@@ -76,15 +106,34 @@ def upgrade() -> None:
         sa.Column("is_false_positive", sa.Boolean(), nullable=True),
         sa.Column("queue_item_id", sa.Integer(), nullable=True),
         sa.Column("telegram_message_id", sa.BigInteger(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_moderation_logs")),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name=op.f("fk_moderation_logs_user_id_users")),
-        sa.ForeignKeyConstraint(["queue_item_id"], ["radio_queue.id"], name=op.f("fk_moderation_logs_queue_item_id_radio_queue")),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["users.id"], name=op.f("fk_moderation_logs_user_id_users")
+        ),
+        sa.ForeignKeyConstraint(
+            ["queue_item_id"],
+            ["radio_queue.id"],
+            name=op.f("fk_moderation_logs_queue_item_id_radio_queue"),
+        ),
     )
     op.create_index(op.f("ix_moderation_logs_user_id"), "moderation_logs", ["user_id"])
-    op.create_index(op.f("ix_moderation_logs_telegram_user_id"), "moderation_logs", ["telegram_user_id"])
-    op.create_index(op.f("ix_moderation_logs_action_type"), "moderation_logs", ["action_type"])
-    op.create_index(op.f("ix_moderation_logs_created_at"), "moderation_logs", ["created_at"])
+    op.create_index(
+        op.f("ix_moderation_logs_telegram_user_id"),
+        "moderation_logs",
+        ["telegram_user_id"],
+    )
+    op.create_index(
+        op.f("ix_moderation_logs_action_type"), "moderation_logs", ["action_type"]
+    )
+    op.create_index(
+        op.f("ix_moderation_logs_created_at"), "moderation_logs", ["created_at"]
+    )
 
     # User violations table for tracking strikes
     op.create_table(
@@ -99,7 +148,9 @@ def upgrade() -> None:
         sa.Column("original_content", sa.Text(), nullable=True),
         sa.Column("action_taken", sa.String(100), nullable=False),
         sa.Column("warning_number", sa.Integer(), nullable=False),
-        sa.Column("resulted_in_timeout", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "resulted_in_timeout", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("timeout_until", sa.DateTime(), nullable=True),
         sa.Column("reputation_penalty", sa.Integer(), nullable=True),
         sa.Column("is_appealed", sa.Boolean(), nullable=False, server_default="false"),
@@ -107,14 +158,29 @@ def upgrade() -> None:
         sa.Column("appeal_notes", sa.Text(), nullable=True),
         sa.Column("appealed_at", sa.DateTime(), nullable=True),
         sa.Column("expires_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_user_violations")),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name=op.f("fk_user_violations_user_id_users")),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["users.id"], name=op.f("fk_user_violations_user_id_users")
+        ),
     )
     op.create_index(op.f("ix_user_violations_user_id"), "user_violations", ["user_id"])
-    op.create_index(op.f("ix_user_violations_telegram_user_id"), "user_violations", ["telegram_user_id"])
-    op.create_index(op.f("ix_user_violations_violation_type"), "user_violations", ["violation_type"])
-    op.create_index(op.f("ix_user_violations_created_at"), "user_violations", ["created_at"])
+    op.create_index(
+        op.f("ix_user_violations_telegram_user_id"),
+        "user_violations",
+        ["telegram_user_id"],
+    )
+    op.create_index(
+        op.f("ix_user_violations_violation_type"), "user_violations", ["violation_type"]
+    )
+    op.create_index(
+        op.f("ix_user_violations_created_at"), "user_violations", ["created_at"]
+    )
 
     # Reputation log table for tracking reputation changes
     op.create_table(
@@ -131,16 +197,39 @@ def upgrade() -> None:
         sa.Column("related_song_id", sa.Integer(), nullable=True),
         sa.Column("related_vote_id", sa.Integer(), nullable=True),
         sa.Column("related_violation_id", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_reputation_logs")),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name=op.f("fk_reputation_logs_user_id_users")),
-        sa.ForeignKeyConstraint(["related_queue_id"], ["radio_queue.id"], name=op.f("fk_reputation_logs_related_queue_id_radio_queue")),
-        sa.ForeignKeyConstraint(["related_song_id"], ["songs.id"], name=op.f("fk_reputation_logs_related_song_id_songs")),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["users.id"], name=op.f("fk_reputation_logs_user_id_users")
+        ),
+        sa.ForeignKeyConstraint(
+            ["related_queue_id"],
+            ["radio_queue.id"],
+            name=op.f("fk_reputation_logs_related_queue_id_radio_queue"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["related_song_id"],
+            ["songs.id"],
+            name=op.f("fk_reputation_logs_related_song_id_songs"),
+        ),
     )
     op.create_index(op.f("ix_reputation_logs_user_id"), "reputation_logs", ["user_id"])
-    op.create_index(op.f("ix_reputation_logs_telegram_user_id"), "reputation_logs", ["telegram_user_id"])
-    op.create_index(op.f("ix_reputation_logs_reason_type"), "reputation_logs", ["reason_type"])
-    op.create_index(op.f("ix_reputation_logs_created_at"), "reputation_logs", ["created_at"])
+    op.create_index(
+        op.f("ix_reputation_logs_telegram_user_id"),
+        "reputation_logs",
+        ["telegram_user_id"],
+    )
+    op.create_index(
+        op.f("ix_reputation_logs_reason_type"), "reputation_logs", ["reason_type"]
+    )
+    op.create_index(
+        op.f("ix_reputation_logs_created_at"), "reputation_logs", ["created_at"]
+    )
 
 
 def downgrade() -> None:

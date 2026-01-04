@@ -239,14 +239,17 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { content: string; replyToId?: number; userId: number }) =>
-      fetchApi<ChatMessage>(`/api/chat/?user_id=${data.userId}`, {
+    mutationFn: (data: { content: string; replyToId?: number; userId?: number }) => {
+      // Build query string - omit user_id for anonymous users
+      const queryParams = data.userId ? `?user_id=${data.userId}` : "";
+      return fetchApi<ChatMessage>(`/api/chat/${queryParams}`, {
         method: "POST",
         body: JSON.stringify({
           content: data.content,
           reply_to_id: data.replyToId,
         }),
-      }),
+      });
+    },
     // optimistic updates handled in useChat
   });
 }
@@ -256,6 +259,134 @@ export function useDeleteMessage() {
     mutationFn: (data: { messageId: number; moderatorId: number; reason?: string }) =>
       fetchApi(`/api/chat/${data.messageId}?moderator_id=${data.moderatorId}&reason=${data.reason || "Moderation"}`, {
         method: "DELETE",
+      }),
+  });
+}
+
+// Profile update hooks
+export function useUpdateEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { new_email: string; password: string }) =>
+      fetchApi<{ success: boolean; message: string; email: string }>("/api/profile/email", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useUpdatePassword() {
+  return useMutation({
+    mutationFn: (data: { current_password: string; new_password: string }) =>
+      fetchApi<{ success: boolean; message: string }>("/api/profile/password", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+export function useUpdateUsername() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { new_username: string }) =>
+      fetchApi<{
+        success: boolean;
+        message: string;
+        display_name: string;
+        username_last_changed_at: string | null;
+        days_until_next_change: number;
+      }>("/api/profile/username", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE}/api/profile/avatar`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: "Upload failed" }));
+        throw new ApiError(res.status, error.detail || "Upload failed");
+      }
+
+      return res.json() as Promise<{ success: boolean; avatar_url: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useDeleteAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      fetchApi<{ success: boolean; message: string }>("/api/profile/avatar", {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useProfileSettings() {
+  return useQuery({
+    queryKey: ["profile", "settings"],
+    queryFn: () =>
+      fetchApi<{
+        id: number;
+        display_name: string;
+        email: string | null;
+        google_id: string | null;
+        telegram_id: number | null;
+        telegram_username: string | null;
+        avatar_url: string | null;
+        tier: string;
+        reputation_score: number;
+        is_premium: boolean;
+        username_last_changed_at: string | null;
+      }>("/api/profile/settings"),
+  });
+}
+
+// Password reset hooks
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      fetchApi<{ success: boolean; message: string }>("/api/auth/email/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: { token: string; new_password: string }) =>
+      fetchApi<{ success: boolean; message: string }>("/api/auth/email/reset-password", {
+        method: "POST",
+        body: JSON.stringify(data),
       }),
   });
 }

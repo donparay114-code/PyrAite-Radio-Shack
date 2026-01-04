@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import RadioQueue, User, Vote, VoteType, get_async_session
 from src.api.socket_manager import emit_vote_updated
+from src.models import RadioQueue, User, Vote, VoteType, get_async_session
 
 router = APIRouter()
 

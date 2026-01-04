@@ -10,11 +10,12 @@ Tests cover:
 - Edge cases and boundary conditions
 """
 
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from src.models.queue import RadioQueue, QueueStatus
+import pytest
+
+from src.models.queue import QueueStatus, RadioQueue
 
 
 class TestPriorityCalculation:
@@ -70,8 +71,8 @@ class TestPriorityCalculation:
     def test_multiple_upvotes_linear_increase(self, base_queue_item):
         """Test that upvotes increase priority linearly."""
         test_cases = [
-            (1, 110.0),   # 100 + 10
-            (3, 130.0),   # 100 + 30
+            (1, 110.0),  # 100 + 10
+            (3, 130.0),  # 100 + 30
             (10, 200.0),  # 100 + 100
         ]
 
@@ -91,9 +92,9 @@ class TestPriorityCalculation:
     def test_multiple_downvotes_linear_decrease(self, base_queue_item):
         """Test that downvotes decrease priority linearly."""
         test_cases = [
-            (1, 95.0),   # 100 - 5
-            (2, 90.0),   # 100 - 10
-            (5, 75.0),   # 100 - 25
+            (1, 95.0),  # 100 - 5
+            (2, 90.0),  # 100 - 10
+            (5, 75.0),  # 100 - 25
         ]
 
         for downvotes, expected in test_cases:
@@ -110,7 +111,7 @@ class TestPriorityCalculation:
     # Combined Votes Tests
     def test_upvotes_and_downvotes_combined(self, base_queue_item):
         """Test priority with both upvotes and downvotes."""
-        base_queue_item.upvotes = 5    # +50
+        base_queue_item.upvotes = 5  # +50
         base_queue_item.downvotes = 3  # -15
         priority = base_queue_item.calculate_priority(user_reputation=0)
         # Priority = 100 + 50 - 15 = 135
@@ -126,10 +127,10 @@ class TestPriorityCalculation:
     def test_various_reputation_levels(self, base_queue_item):
         """Test different reputation levels."""
         test_cases = [
-            (0, 100.0),     # 100 + 0
-            (50, 125.0),    # 100 + 25
-            (100, 150.0),   # 100 + 50
-            (200, 200.0),   # 100 + 100
+            (0, 100.0),  # 100 + 0
+            (50, 125.0),  # 100 + 25
+            (100, 150.0),  # 100 + 50
+            (200, 200.0),  # 100 + 100
         ]
 
         for reputation, expected in test_cases:
@@ -146,8 +147,8 @@ class TestPriorityCalculation:
 
     def test_priority_boost_with_all_factors(self, base_queue_item):
         """Test priority boost combined with all other factors."""
-        base_queue_item.upvotes = 5      # +50
-        base_queue_item.downvotes = 2    # -10
+        base_queue_item.upvotes = 5  # +50
+        base_queue_item.downvotes = 2  # -10
         base_queue_item.is_priority_boost = True  # +100
         priority = base_queue_item.calculate_priority(user_reputation=100)  # +50
         # Priority = 100 + 50 + 50 - 10 + 100 = 290
@@ -170,8 +171,8 @@ class TestPriorityCalculation:
     def test_decay_multiple_hours(self, base_queue_item):
         """Test priority decay over multiple hours."""
         test_cases = [
-            (timedelta(hours=3), 96.0),   # 100 - 2*2 = 96
-            (timedelta(hours=5), 92.0),   # 100 - 4*2 = 92
+            (timedelta(hours=3), 96.0),  # 100 - 2*2 = 96
+            (timedelta(hours=5), 92.0),  # 100 - 4*2 = 92
             (timedelta(hours=10), 82.0),  # 100 - 9*2 = 82
         ]
 

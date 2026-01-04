@@ -4,16 +4,8 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import (BigInteger, Boolean, DateTime, Float, ForeignKey,
+                        Integer, String, Text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, TimestampMixin
