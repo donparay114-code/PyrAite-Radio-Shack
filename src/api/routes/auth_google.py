@@ -37,9 +37,16 @@ async def google_login(
     request: GoogleLoginRequest, session: AsyncSession = Depends(get_async_session)
 ):
     try:
-        # Verify token
+        # Debug: Check if client ID is loaded
+        print(f"[Google Auth] GOOGLE_CLIENT_ID loaded: {bool(GOOGLE_CLIENT_ID)}")
+        print(f"[Google Auth] GOOGLE_CLIENT_ID value: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "[Google Auth] GOOGLE_CLIENT_ID is empty!")
+
+        # Verify token with extended clock skew tolerance (handles timing issues)
         id_info = id_token.verify_oauth2_token(
-            request.id_token, requests.Request(), GOOGLE_CLIENT_ID
+            request.id_token,
+            requests.Request(),
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=300  # Allow 5 minutes of clock skew
         )
 
         email = id_info.get("email")
@@ -93,8 +100,9 @@ async def google_login(
             is_premium=user.is_premium,
         )
 
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid Google Token")
+    except ValueError as e:
+        print(f"[Google Auth] Token verification failed: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid Google Token: {str(e)}")
 
 
 class LinkTelegramRequest(BaseModel):

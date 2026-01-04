@@ -139,20 +139,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential: string): Promise<{ success: boolean; isNewUser?: boolean }> => {
+  const loginWithGoogle = useCallback(async (credential: string): Promise<{ success: boolean; isNewUser?: boolean; error?: string }> => {
+    console.log("[Google Auth] Starting login...");
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
+      console.log("[Google Auth] Calling:", `${API_BASE}/api/auth/google/login`);
       const response = await fetch(`${API_BASE}/api/auth/google/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: credential }),
       });
 
+      console.log("[Google Auth] Response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Google authentication failed");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[Google Auth] Error response:", errorData);
+        throw new Error(errorData.detail || "Google authentication failed");
       }
 
       const data = await response.json();
+      console.log("[Google Auth] Success, user_id:", data.user_id);
 
       // Store token in localStorage
       if (data.token) {
@@ -181,13 +188,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return { success: true, isNewUser: data.is_new_user };
     } catch (error) {
-      console.error("Google login error:", error);
+      console.error("[Google Auth] Exception:", error);
+      const errorMsg = error instanceof Error ? error.message : "Google login failed";
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : "Google login failed"
+        error: errorMsg
       }));
-      return { success: false, error: error instanceof Error ? error.message : "Google login failed" };
+      return { success: false, error: errorMsg };
     }
   }, []);
 

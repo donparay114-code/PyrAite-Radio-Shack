@@ -163,8 +163,18 @@ class TestPriorityCalculation:
 
     def test_decay_after_one_hour(self, base_queue_item):
         """Test that priority decays after 1 hour (2 points per hour over 1)."""
-        base_queue_item.requested_at = datetime.utcnow() - timedelta(hours=2)
-        priority = base_queue_item.calculate_priority(user_reputation=0)
+        now = datetime.utcnow()
+        base_queue_item.requested_at = now - timedelta(hours=2)
+        
+        with patch("src.models.queue.datetime") as mock_dt:
+            mock_dt.utcnow.return_value = now
+            # We need to set side_effect to behave like real datetime for other attributes if needed,
+            # but here only utcnow is used.
+            # Ideally we should mock the whole class but return_value for methods.
+            # However, since we imported datetime, mock_dt replaces the class.
+            
+            priority = base_queue_item.calculate_priority(user_reputation=0)
+            
         # Priority = 100 - (2-1) * 2 = 100 - 2 = 98
         assert priority == 98.0
 
@@ -176,10 +186,13 @@ class TestPriorityCalculation:
             (timedelta(hours=10), 82.0),  # 100 - 9*2 = 82
         ]
 
-        for time_delta, expected in test_cases:
-            base_queue_item.requested_at = datetime.utcnow() - time_delta
-            priority = base_queue_item.calculate_priority(user_reputation=0)
-            assert priority == expected
+        now = datetime.utcnow()
+        with patch("src.models.queue.datetime") as mock_dt:
+            mock_dt.utcnow.return_value = now
+            for time_delta, expected in test_cases:
+                base_queue_item.requested_at = now - time_delta
+                priority = base_queue_item.calculate_priority(user_reputation=0)
+                assert priority == expected
 
     # Update Priority Method Tests
     def test_update_priority_method(self, base_queue_item):
@@ -218,13 +231,17 @@ class TestPriorityCalculation:
 
     def test_all_factors_combined(self, base_queue_item):
         """Test priority with all factors combined."""
+        now = datetime.utcnow()
         base_queue_item.base_priority = 100.0
         base_queue_item.upvotes = 8
         base_queue_item.downvotes = 3
         base_queue_item.is_priority_boost = True
-        base_queue_item.requested_at = datetime.utcnow() - timedelta(hours=3)
+        base_queue_item.requested_at = now - timedelta(hours=3)
 
-        priority = base_queue_item.calculate_priority(user_reputation=100)
+        with patch("src.models.queue.datetime") as mock_dt:
+            mock_dt.utcnow.return_value = now
+            priority = base_queue_item.calculate_priority(user_reputation=100)
+            
         # base=100, upvotes=80, reputation=50, downvotes=-15, boost=100, decay=-4
         # Priority = 100 + 80 + 50 - 15 + 100 - 4 = 311
         assert priority == 311.0

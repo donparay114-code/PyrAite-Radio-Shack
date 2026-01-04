@@ -114,14 +114,14 @@ function LoginContent() {
         }
     };
 
-    const inputClass = "w-full px-4 py-3 pl-11 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all";
+    const inputClass = "w-full px-4 py-2.5 pl-11 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all text-sm";
 
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="relative max-w-md w-full bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center shadow-2xl shadow-violet-500/20 my-auto max-h-[95vh] overflow-y-auto"
+            className="relative max-w-md w-full bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-center shadow-2xl shadow-violet-500/20"
         >
             {/* Gradient border glow effect */}
             <div className="absolute -inset-[1px] bg-gradient-to-r from-violet-500/30 via-fuchsia-500/30 to-cyan-500/30 rounded-2xl blur-sm -z-10" />
@@ -137,12 +137,12 @@ function LoginContent() {
             </button>
 
             {/* Header with Logo - Enhanced with beveled border and breathing animation */}
-            <div className="mb-2">
+            <div className="mb-1">
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                    className="relative mx-auto mb-2 w-48 h-28"
+                    className="relative mx-auto mb-1 w-28 h-28"
                 >
                     {/* Outer glow pulse */}
                     <motion.div
@@ -184,10 +184,10 @@ function LoginContent() {
                                 {/* Inner shadow for depth */}
                                 <div className="absolute inset-0 rounded-xl shadow-[inset_2px_2px_4px_rgba(255,255,255,0.1),inset_-2px_-2px_4px_rgba(0,0,0,0.4)]" />
 
-                                {/* Logo image - full PyrAite Radio logo */}
-                                <div className="relative w-full h-full p-2">
+                                {/* Logo image - full PyrAite Radio logo with skull and text */}
+                                <div className="relative w-full h-full p-1">
                                     <Image
-                                        src="/logo.png"
+                                        src="/logo-full.png"
                                         alt="PyrAite Radio"
                                         fill
                                         className="object-contain"
@@ -218,7 +218,7 @@ function LoginContent() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="text-2xl font-bold bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent mb-2"
+                    className="text-xl font-bold bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent mb-1"
                 >
                     {activeTab === "signin" ? "Welcome Back" : "Join the Crew"}
                 </motion.h1>
@@ -236,11 +236,11 @@ function LoginContent() {
             </div>
 
             {/* Tab Toggle */}
-            <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-6">
+            <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-4">
                 <button
                     type="button"
                     onClick={() => { setActiveTab("signin"); setError(null); }}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                         activeTab === "signin"
                             ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg"
                             : "text-zinc-400 hover:text-white"
@@ -251,7 +251,7 @@ function LoginContent() {
                 <button
                     type="button"
                     onClick={() => { setActiveTab("signup"); setError(null); }}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                         activeTab === "signup"
                             ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg"
                             : "text-zinc-400 hover:text-white"
@@ -280,7 +280,7 @@ function LoginContent() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     onSubmit={handleEmailSignIn}
-                    className="space-y-4"
+                    className="space-y-3"
                 >
                     <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -325,7 +325,7 @@ function LoginContent() {
                         disabled={isSubmitting || isLoading}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/20"
+                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/20"
                     >
                         {isSubmitting ? "Signing in..." : "Sign In"}
                     </motion.button>
@@ -340,7 +340,7 @@ function LoginContent() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     onSubmit={handleEmailSignUp}
-                    className="space-y-4"
+                    className="space-y-3"
                 >
                     <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -399,7 +399,7 @@ function LoginContent() {
                         disabled={isSubmitting || isLoading}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/20"
+                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/20"
                     >
                         {isSubmitting ? "Creating account..." : "Create Account"}
                     </motion.button>
@@ -407,7 +407,7 @@ function LoginContent() {
             )}
 
             {/* Divider */}
-            <div className="relative my-6">
+            <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-white/10"></div>
                 </div>
@@ -418,7 +418,10 @@ function LoginContent() {
 
             {/* Google Login */}
             <div className="flex justify-center">
-                <GoogleLoginBtn onLoginSuccess={handleLoginSuccess} />
+                <GoogleLoginBtn
+                    onLoginSuccess={handleLoginSuccess}
+                    onLoginError={(error) => setError(error)}
+                />
             </div>
 
             {/* Forgot Password Modal */}

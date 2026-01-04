@@ -5,9 +5,10 @@ import { useAuth } from "@/providers/AuthProvider";
 
 interface GoogleLoginBtnProps {
     onLoginSuccess?: (isNewUser?: boolean) => void;
+    onLoginError?: (error: string) => void;
 }
 
-export function GoogleLoginBtn({ onLoginSuccess }: GoogleLoginBtnProps) {
+export function GoogleLoginBtn({ onLoginSuccess, onLoginError }: GoogleLoginBtnProps) {
     const { loginWithGoogle } = useAuth();
 
     return (
@@ -16,13 +17,15 @@ export function GoogleLoginBtn({ onLoginSuccess }: GoogleLoginBtnProps) {
                 onSuccess={async (credentialResponse) => {
                     if (credentialResponse.credential) {
                         const result = await loginWithGoogle(credentialResponse.credential);
-                        if (result.success && onLoginSuccess) {
-                            onLoginSuccess(result.isNewUser);
+                        if (result.success) {
+                            onLoginSuccess?.(result.isNewUser);
+                        } else {
+                            onLoginError?.(result.error || "Google login failed");
                         }
                     }
                 }}
                 onError={() => {
-                    console.log('Login Failed');
+                    onLoginError?.("Google authentication was cancelled or failed");
                 }}
                 theme="filled_black"
                 shape="pill"

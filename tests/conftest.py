@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for PYrte Radio Shack tests."""
 
 import asyncio
+from contextlib import asynccontextmanager
 import os
 
 # Disable Redis for tests before imports
@@ -155,9 +156,19 @@ def client(sync_engine) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_async_session] = override_get_async_session
 
+    @asynccontextmanager
+    async def mock_lifespan(app):
+        yield
+
+    # Override lifespan to avoid starting scheduler and telegram bot
+    original_lifespan = app.router.lifespan_context
+    app.router.lifespan_context = mock_lifespan
+
     with TestClient(app) as c:
         yield c
 
+    # Restore original lifespan
+    app.router.lifespan_context = original_lifespan
     app.dependency_overrides.clear()
 
 
