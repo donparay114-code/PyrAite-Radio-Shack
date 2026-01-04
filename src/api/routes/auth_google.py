@@ -1,5 +1,3 @@
-import os
-
 from fastapi import APIRouter, Depends, HTTPException
 from google.auth.transport import requests
 from google.oauth2 import id_token
@@ -8,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User, get_async_session
+from src.utils.config import settings
 from src.utils.security import create_access_token, get_current_user
 
 
@@ -25,8 +24,6 @@ class AuthResponse(BaseModel):
 
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
@@ -38,15 +35,20 @@ async def google_login(
 ):
     try:
         # Debug: Check if client ID is loaded
-        print(f"[Google Auth] GOOGLE_CLIENT_ID loaded: {bool(GOOGLE_CLIENT_ID)}")
-        print(f"[Google Auth] GOOGLE_CLIENT_ID value: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "[Google Auth] GOOGLE_CLIENT_ID is empty!")
+        google_client_id = settings.google_client_id
+        print(f"[Google Auth] GOOGLE_CLIENT_ID loaded: {bool(google_client_id)}")
+        print(
+            f"[Google Auth] GOOGLE_CLIENT_ID value: {google_client_id[:20]}..."
+            if google_client_id
+            else "[Google Auth] GOOGLE_CLIENT_ID is empty!"
+        )
 
         # Verify token with extended clock skew tolerance (handles timing issues)
         id_info = id_token.verify_oauth2_token(
             request.id_token,
             requests.Request(),
-            GOOGLE_CLIENT_ID,
-            clock_skew_in_seconds=300  # Allow 5 minutes of clock skew
+            google_client_id,
+            clock_skew_in_seconds=300,  # Allow 5 minutes of clock skew
         )
 
         email = id_info.get("email")

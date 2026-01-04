@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # API Keys
     suno_api_url: str = ""
     suno_api_key: str = ""
+
+    # Google OAuth
+    google_client_id: str = ""
     stable_audio_api_url: str = "https://api.stability.ai/v2beta/stable-audio/generate"
     stable_audio_api_key: str = ""
     udio_auth_token: str = ""  # Udio sb-api-auth-token from cookies
