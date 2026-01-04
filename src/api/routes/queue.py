@@ -199,35 +199,37 @@ async def get_queue_stats(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get queue statistics."""
-    # Total items
-    total_result = await session.execute(select(func.count(RadioQueue.id)))
-    total_items = total_result.scalar() or 0
-
-    # Pending items
-    pending_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.PENDING.value
-        )
-    )
-    pending = pending_result.scalar() or 0
-
-    # Generating items
-    generating_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.GENERATING.value
-        )
-    )
-    generating = generating_result.scalar() or 0
-
-    # Completed today
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    completed_result = await session.execute(
-        select(func.count(RadioQueue.id)).where(
-            RadioQueue.status == QueueStatus.COMPLETED.value,
-            RadioQueue.completed_at >= today_start,
-        )
+
+    # Combine counts into a single query
+    from sqlalchemy import case, and_
+
+    query = select(
+        func.count(RadioQueue.id),
+        func.sum(case((RadioQueue.status == QueueStatus.PENDING.value, 1), else_=0)),
+        func.sum(case((RadioQueue.status == QueueStatus.GENERATING.value, 1), else_=0)),
+        func.sum(
+            case(
+                (
+                    and_(
+                        RadioQueue.status == QueueStatus.COMPLETED.value,
+                        RadioQueue.completed_at >= today_start,
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ),
     )
-    completed_today = completed_result.scalar() or 0
+
+    result = await session.execute(query)
+    total_items, pending, generating, completed_today = result.one()
+
+    # Handle None returns from sum
+    total_items = total_items or 0
+    pending = pending or 0
+    generating = generating or 0
+    completed_today = completed_today or 0
 
     # Calculate average wait time (for items completed today)
     # We fetch timestamps and calculate in Python to support both SQLite (tests) and Postgres
