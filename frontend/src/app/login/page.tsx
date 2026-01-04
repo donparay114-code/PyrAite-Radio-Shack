@@ -121,7 +121,7 @@ function LoginContent() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="relative max-w-md w-full bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center shadow-2xl shadow-violet-500/20"
+            className="relative max-w-md w-full bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center shadow-2xl shadow-violet-500/20 my-auto max-h-[95vh] overflow-y-auto"
         >
             {/* Gradient border glow effect */}
             <div className="absolute -inset-[1px] bg-gradient-to-r from-violet-500/30 via-fuchsia-500/30 to-cyan-500/30 rounded-2xl blur-sm -z-10" />
@@ -136,21 +136,83 @@ function LoginContent() {
                 <X size={20} />
             </button>
 
-            {/* Header with Logo */}
-            <div className="mb-6">
+            {/* Header with Logo - Enhanced with beveled border and breathing animation */}
+            <div className="mb-2">
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                    className="w-20 h-20 mx-auto mb-2 relative"
+                    className="relative mx-auto mb-2 w-48 h-28"
                 >
-                    <Image
-                        src="/logo.png"
-                        alt="PyrAite Radio"
-                        fill
-                        className="object-contain rounded-xl"
-                        priority
+                    {/* Outer glow pulse */}
+                    <motion.div
+                        animate={{
+                            boxShadow: [
+                                "0 0 20px 4px rgba(139, 92, 246, 0.3), 0 0 40px 8px rgba(139, 92, 246, 0.1)",
+                                "0 0 30px 8px rgba(139, 92, 246, 0.5), 0 0 60px 12px rgba(139, 92, 246, 0.2)",
+                                "0 0 20px 4px rgba(139, 92, 246, 0.3), 0 0 40px 8px rgba(139, 92, 246, 0.1)",
+                            ],
+                        }}
+                        transition={{
+                            duration: 4,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                        }}
+                        className="absolute inset-0 rounded-2xl"
                     />
+
+                    {/* Beveled border container with floating animation */}
+                    <motion.div
+                        animate={{
+                            y: [0, -4, 0],
+                            rotateZ: [0, 0.3, 0, -0.3, 0],
+                        }}
+                        transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                        }}
+                        className="relative w-full h-full overflow-hidden rounded-2xl"
+                    >
+                        {/* Multi-layer beveled border effect */}
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 via-transparent to-black/40" />
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-tl from-white/20 via-transparent to-black/30" />
+
+                        {/* Inner bevel highlight */}
+                        <div className="absolute inset-[2px] rounded-xl bg-gradient-to-br from-violet-500/30 via-fuchsia-600/20 to-cyan-500/30 p-[1px]">
+                            <div className="w-full h-full rounded-xl bg-zinc-900/95 backdrop-blur-sm overflow-hidden relative">
+                                {/* Inner shadow for depth */}
+                                <div className="absolute inset-0 rounded-xl shadow-[inset_2px_2px_4px_rgba(255,255,255,0.1),inset_-2px_-2px_4px_rgba(0,0,0,0.4)]" />
+
+                                {/* Logo image - full PyrAite Radio logo */}
+                                <div className="relative w-full h-full p-2">
+                                    <Image
+                                        src="/logo.png"
+                                        alt="PyrAite Radio"
+                                        fill
+                                        className="object-contain"
+                                        priority
+                                    />
+                                </div>
+
+                                {/* Shine effect - INSIDE the logo container */}
+                                <motion.div
+                                    animate={{
+                                        x: ["-150%", "150%"],
+                                    }}
+                                    transition={{
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        repeatDelay: 5,
+                                        ease: "easeInOut",
+                                    }}
+                                    className="absolute inset-0 pointer-events-none"
+                                >
+                                    <div className="absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+                                </motion.div>
+                            </div>
+                        </div>
+                    </motion.div>
                 </motion.div>
                 <motion.h1
                     initial={{ opacity: 0, y: 10 }}
@@ -517,8 +579,8 @@ export default function LoginPage() {
             {/* Blur overlay - fixed to cover entire viewport */}
             <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[5]" />
 
-            {/* Floating login card */}
-            <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+            {/* Floating login card - centered with scroll support */}
+            <div className="fixed inset-0 z-10 flex items-center justify-center p-4 overflow-y-auto">
                 <Suspense fallback={
                     <div className="animate-pulse max-w-md w-full h-[600px] bg-zinc-900/50 rounded-2xl backdrop-blur-xl" />
                 }>

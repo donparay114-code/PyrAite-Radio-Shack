@@ -2,8 +2,17 @@
 
 from datetime import datetime
 
-from src.models import (QueueStatus, RadioHistory, RadioQueue, Song,
-                        SunoStatus, User, UserTier, Vote, VoteType)
+from src.models import (
+    QueueStatus,
+    RadioHistory,
+    RadioQueue,
+    Song,
+    SunoStatus,
+    User,
+    UserTier,
+    Vote,
+    VoteType,
+)
 
 
 class TestUserModel:

@@ -5,8 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from src.services.music_provider import (GenerationStatus, ProviderType,
-                                         generate_music)
+from src.services.music_provider import GenerationStatus, ProviderType, generate_music
 
 router = APIRouter()
 

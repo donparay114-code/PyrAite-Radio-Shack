@@ -13,8 +13,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.api.socket_manager import (emit_chat_delete, emit_chat_message,
-                                    emit_chat_update)
+from src.api.socket_manager import emit_chat_delete, emit_chat_message
 from src.models import ChatMessage, MessageType, User, get_async_session
 
 router = APIRouter()

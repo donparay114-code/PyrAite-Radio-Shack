@@ -1,8 +1,6 @@
 """Profile management API routes."""
 
-import os
 import re
-import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -13,8 +11,11 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.routes.auth_email import (get_password_hash, validate_password,
-                                       verify_password)
+from src.api.routes.auth_email import (
+    get_password_hash,
+    validate_password,
+    verify_password,
+)
 from src.models import User, get_async_session
 from src.utils.security import get_current_user
 

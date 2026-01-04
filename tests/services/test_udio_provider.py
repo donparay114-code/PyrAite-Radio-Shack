@@ -4,8 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.music_provider import (GenerationRequest, GenerationStatus,
-                                         ProviderType, UdioProvider)
+from src.services.music_provider import (
+    GenerationRequest,
+    GenerationStatus,
+    ProviderType,
+    UdioProvider,
+)
 
 
 class TestUdioProvider:

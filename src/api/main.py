@@ -15,9 +15,22 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-from src.api.routes import (admin, auth, auth_email, auth_google, chat,
-                            generate, health, moderation, profile, queue,
-                            songs, users, votes, webhooks)
+from src.api.routes import (
+    admin,
+    auth,
+    auth_email,
+    auth_google,
+    chat,
+    generate,
+    health,
+    moderation,
+    profile,
+    queue,
+    songs,
+    users,
+    votes,
+    webhooks,
+)
 from src.api.socket_manager import sio_app
 from src.utils.config import settings
 from src.utils.logging import setup_logging
@@ -114,8 +127,7 @@ async def lifespan(app: FastAPI):
     settings.ensure_directories()
 
     # Start APScheduler for background tasks
-    from src.services.scheduler import (setup_scheduler, start_scheduler,
-                                        stop_scheduler)
+    from src.services.scheduler import setup_scheduler, start_scheduler, stop_scheduler
 
     setup_scheduler()
     start_scheduler()
