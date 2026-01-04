@@ -81,11 +81,11 @@ export function Chat({
     setShouldAutoScroll(isNearBottom);
   }, []);
 
-  // Handle message submission
+  // Handle message submission (allows anonymous users)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!inputValue.trim() || isSending || !isAuthenticated) return;
+    if (!inputValue.trim() || isSending) return;
 
     const messageContent = inputValue.trim();
     setInputValue("");
@@ -201,18 +201,13 @@ export function Chat({
         )}
       </AnimatePresence>
 
-      {/* Input area */}
+      {/* Input area - allows both authenticated and anonymous users */}
       <form
         onSubmit={handleSubmit}
         className="p-4 border-t border-white/[0.06]"
       >
-        {!isAuthenticated ? (
-          <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white/5 text-text-muted text-sm">
-            <Info className="w-4 h-4" />
-            Sign in with Telegram to join the chat
-          </div>
-        ) : (
-          <div className="flex items-end gap-3">
+        <div className="flex items-end gap-3">
+          {isAuthenticated ? (
             <Avatar
               name={currentUser?.firstName || currentUser?.username || "User"}
               src={currentUser?.photoUrl}
@@ -220,51 +215,61 @@ export function Chat({
               tier={currentUser?.tier}
               showTierBorder
             />
-            <div className="flex-1 relative">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                aria-label="Type a message"
-                disabled={!isConnected || isSending}
-                rows={1}
-                className={cn(
-                  "w-full resize-none rounded-xl px-4 py-3 pr-12",
-                  "bg-white/5 border border-white/10",
-                  "text-white placeholder:text-text-muted",
-                  "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "transition-all duration-200",
-                  "min-h-[48px] max-h-[120px]"
-                )}
-              />
-              <motion.button
-                type="submit"
-                aria-label="Send message"
-                disabled={!inputValue.trim() || isSending || !isConnected}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={cn(
-                  "absolute right-2 bottom-2 w-8 h-8 rounded-lg",
-                  "flex items-center justify-center",
-                  "bg-violet-500 text-white",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "transition-all duration-200"
-                )}
-              >
-                {isSending ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                  />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </motion.button>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-xs text-text-muted font-medium">?</span>
             </div>
+          )}
+          <div className="flex-1 relative">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isAuthenticated ? "Type a message..." : "Type as Anonymous..."}
+              aria-label="Type a message"
+              disabled={!isConnected || isSending}
+              rows={1}
+              className={cn(
+                "w-full resize-none rounded-xl px-4 py-3 pr-12",
+                "bg-white/5 border border-white/10",
+                "text-white placeholder:text-text-muted",
+                "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "transition-all duration-200",
+                "min-h-[48px] max-h-[120px]"
+              )}
+            />
+            <motion.button
+              type="submit"
+              aria-label="Send message"
+              disabled={!inputValue.trim() || isSending || !isConnected}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={cn(
+                "absolute right-2 bottom-2 w-8 h-8 rounded-lg",
+                "flex items-center justify-center",
+                "bg-violet-500 text-white",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "transition-all duration-200"
+              )}
+            >
+              {isSending ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </motion.button>
           </div>
+        </div>
+        {!isAuthenticated && (
+          <p className="text-xs text-text-muted mt-2 flex items-center gap-1.5">
+            <Info className="w-3 h-3" />
+            Chatting as Anonymous. Sign in to show your name.
+          </p>
         )}
       </form>
     </GlassCard>
@@ -284,6 +289,10 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
     return <SystemMessage message={message} index={index} />;
   }
 
+  // Determine if anonymous (no user_id or tier is "anon")
+  const isAnonymous = !message.user_id || message.user_tier === "anon";
+  const displayName = message.user_display_name || (isAnonymous ? "Anonymous" : `User ${message.user_id}`);
+
   return (
     <motion.div
       layout
@@ -296,11 +305,17 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
         isOwnMessage && "flex-row-reverse"
       )}
     >
-      {/* Avatar placeholder - in production would show user avatar */}
-      <Avatar
-        name={`User ${message.user_id || "Unknown"}`}
-        size="sm"
-      />
+      {/* Avatar - different for anonymous users */}
+      {isAnonymous ? (
+        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-xs text-text-muted font-medium">?</span>
+        </div>
+      ) : (
+        <Avatar
+          name={displayName}
+          size="sm"
+        />
+      )}
 
       {/* Message content */}
       <div
@@ -316,8 +331,11 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
             isOwnMessage && "flex-row-reverse"
           )}
         >
-          <span className="text-sm font-medium text-white">
-            {message.user_id ? `User ${message.user_id}` : "Anonymous"}
+          <span className={cn(
+            "text-sm font-medium",
+            isAnonymous ? "text-text-muted italic" : "text-white"
+          )}>
+            {displayName}
           </span>
           <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
             {formatTimeAgo(message.created_at)}
@@ -332,7 +350,9 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
             "px-4 py-2.5 rounded-2xl",
             isOwnMessage
               ? "bg-violet-500/20 border border-violet-500/30 rounded-tr-md"
-              : "bg-white/5 border border-white/10 rounded-tl-md"
+              : isAnonymous
+                ? "bg-white/[0.03] border border-white/5 rounded-tl-md"
+                : "bg-white/5 border border-white/10 rounded-tl-md"
           )}
         >
           <p className="text-sm text-white whitespace-pre-wrap break-words">

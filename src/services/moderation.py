@@ -164,6 +164,10 @@ class ContentModerator:
         self.strict_mode = strict_mode
         self._compile_patterns()
 
+        # Database blocklist cache (lazy loaded)
+        self._db_blocklist: set[str] = set()
+        self._db_loaded: bool = False
+
         # OpenAI moderation settings
         from src.utils.config import settings
 
@@ -206,6 +210,40 @@ class ContentModerator:
                 re.compile(p, flags) for p in self.PERSONAL_INFO_PATTERNS
             ],
         }
+
+    async def load_banned_words_from_db(self) -> set[str]:
+        """
+        Load active banned words from database into memory.
+
+        This uses lazy loading - only called on first moderation check.
+        Words are cached in self._db_blocklist for O(1) lookups.
+
+        Returns:
+            Set of banned words (lowercase)
+        """
+        if self._db_loaded:
+            return self._db_blocklist
+
+        try:
+            from sqlalchemy import text
+
+            from src.models import get_async_session
+
+            async for session in get_async_session():
+                result = await session.execute(
+                    text("SELECT word FROM banned_words WHERE is_active = TRUE")
+                )
+                rows = result.fetchall()
+                self._db_blocklist = {row[0].lower() for row in rows}
+                self._db_loaded = True
+                logger.info(f"Loaded {len(self._db_blocklist)} banned words from database")
+                break  # Only need one session
+        except Exception as e:
+            logger.warning(f"Failed to load banned words from database: {e}")
+            self._db_blocklist = set()
+            self._db_loaded = True  # Mark as loaded to avoid repeated failures
+
+        return self._db_blocklist
 
     def check(self, content: str) -> ModerationResult:
         """
@@ -287,12 +325,23 @@ class ContentModerator:
 
         This is O(1) set lookup per word, much faster than regex.
         Run this BEFORE any regex or API checks.
+
+        Checks both:
+        - LOCAL_BLOCKLIST (hardcoded terms)
+        - _db_blocklist (loaded from database, cached in memory)
         """
         content_lower = content.lower()
 
-        # Check for exact matches in blocklist
+        # Check for exact matches in both blocklists
         flagged = []
+
+        # Check hardcoded blocklist
         for term in self.LOCAL_BLOCKLIST:
+            if term in content_lower:
+                flagged.append(term)
+
+        # Check database blocklist (already cached in memory)
+        for term in self._db_blocklist:
             if term in content_lower:
                 flagged.append(term)
 
@@ -520,10 +569,11 @@ class ContentModerator:
         Async version of check() with optional OpenAI integration.
 
         Layer Order:
-        1. LOCAL_BLOCKLIST - O(1) set lookup (~0.001ms)
-        2. PROMPT_INJECTION - Regex (~5ms)
-        3. Other regex checks (~10ms)
-        4. OpenAI Moderation API (~200-500ms)
+        1. DATABASE_BLOCKLIST - Lazy load from DB, O(1) set lookup (~0.001ms after load)
+        2. LOCAL_BLOCKLIST - O(1) set lookup (~0.001ms)
+        3. PROMPT_INJECTION - Regex (~5ms)
+        4. Other regex checks (~10ms)
+        5. OpenAI Moderation API (~200-500ms)
 
         Args:
             content: Content to moderate
@@ -532,6 +582,10 @@ class ContentModerator:
         Returns:
             ModerationResult
         """
+        # Load database banned words on first check (lazy loading with caching)
+        if not self._db_loaded:
+            await self.load_banned_words_from_db()
+
         # Run fast local checks first (synchronous)
         local_result = self.check(content)
 

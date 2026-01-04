@@ -47,6 +47,8 @@ export const isSupabaseConfigured = hasValidConfig;
 export type ChatMessage = {
   id: number;
   user_id: number | null;
+  user_display_name: string | null;
+  user_tier: string | null;
   content: string;
   message_type: "text" | "system" | "now_playing" | "request_approved" | "milestone";
   reply_to_id: number | null;

@@ -69,30 +69,22 @@ async def get_or_create_user(session: AsyncSession, telegram_user: dict) -> User
     return user
 
 
-async def handle_request_command(message: dict):
-    """Handle /request command."""
+async def process_song_request(
+    chat_id: int, prompt: str, from_user: dict, message: dict
+) -> bool:
+    """
+    Shared logic for processing song requests.
+
+    Args:
+        chat_id: Telegram chat ID
+        prompt: Song prompt/description
+        from_user: Telegram user dict
+        message: Original message dict
+
+    Returns:
+        True if request was successful, False otherwise
+    """
     bot = get_telegram_bot()
-    chat_id = message.get("chat", {}).get("id")
-    text = message.get("text", "")
-    from_user = message.get("from")
-
-    if not chat_id or not from_user:
-        return
-
-    # Extract prompt
-    parts = text.split(" ", 1)
-    if len(parts) < 2:
-        await bot.send_message(
-            chat_id,
-            "Please provide a description for your song.\n\n"
-            "Example: <code>/request chill lo-fi beats for studying</code>",
-        )
-        return
-
-    prompt = parts[1].strip()
-    if not prompt:
-        await bot.send_message(chat_id, "Please provide a description for your song.")
-        return
 
     # Content moderation with OpenAI
     from src.services.moderation import moderate_content
@@ -111,7 +103,7 @@ async def handle_request_command(message: dict):
             f"Please modify your prompt and try again.",
             reply_to_message_id=message.get("message_id"),
         )
-        return
+        return False
 
     session_maker = get_session_maker()
     async with session_maker() as session:
@@ -123,7 +115,7 @@ async def handle_request_command(message: dict):
                     chat_id,
                     f"🚫 You are banned from making requests.\nReason: {user.ban_reason or 'No reason provided'}",
                 )
-                return
+                return False
 
             # Check daily limit
             # TODO: Implement daily limit check based on created_at
@@ -147,7 +139,7 @@ async def handle_request_command(message: dict):
                     chat_id,
                     "⚠️ You already have 3 pending requests. Please wait for them to complete.",
                 )
-                return
+                return False
 
             # Create queue item
             queue_item = RadioQueue(
@@ -173,14 +165,66 @@ async def handle_request_command(message: dict):
                 f"You will be notified when your song starts generating.",
                 reply_to_message_id=message.get("message_id"),
             )
+            return True
 
         except Exception as e:
-            logger.error(f"Error handling request command: {e}")
+            logger.error(f"Error processing song request: {e}")
             await session.rollback()
             await bot.send_message(
                 chat_id,
                 "❌ An error occurred while processing your request. Please try again later.",
             )
+            return False
+
+
+async def handle_request_command(message: dict):
+    """Handle /request command."""
+    bot = get_telegram_bot()
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
+    from_user = message.get("from")
+
+    if not chat_id or not from_user:
+        return
+
+    # Extract prompt from command
+    parts = text.split(" ", 1)
+    if len(parts) < 2:
+        await bot.send_message(
+            chat_id,
+            "Please provide a description for your song.\n\n"
+            "Example: <code>/request chill lo-fi beats for studying</code>",
+        )
+        return
+
+    prompt = parts[1].strip()
+    if not prompt:
+        await bot.send_message(chat_id, "Please provide a description for your song.")
+        return
+
+    await process_song_request(chat_id, prompt, from_user, message)
+
+
+async def handle_text_message(message: dict):
+    """
+    Handle plain text messages as song requests.
+
+    Users can simply type their song description without /request command.
+    """
+    text = message.get("text", "").strip()
+
+    # Skip if empty or starts with / (already handled by command handlers)
+    if not text or text.startswith("/"):
+        return
+
+    chat_id = message.get("chat", {}).get("id")
+    from_user = message.get("from")
+
+    if not chat_id or not from_user:
+        return
+
+    # Treat plain text as song request prompt
+    await process_song_request(chat_id, text, from_user, message)
 
 
 async def handle_callback_query(callback: dict):
@@ -343,5 +387,6 @@ async def handle_callback_query(callback: dict):
 def register_handlers(bot: TelegramBot):
     """Register all handlers to the bot instance."""
     bot.on_command("request")(handle_request_command)
+    bot.on_message(handle_text_message)  # Allow plain text song requests
     bot.on_callback(handle_callback_query)
     logger.info("Telegram handlers registered")

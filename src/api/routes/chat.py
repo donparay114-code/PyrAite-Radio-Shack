@@ -72,8 +72,8 @@ def message_to_response(message: ChatMessage) -> ChatMessageResponse:
     return ChatMessageResponse(
         id=message.id,
         user_id=message.user_id,
-        user_display_name=message.user.display_name if message.user else None,
-        user_tier=message.user.tier.value if message.user else None,
+        user_display_name=message.user.display_name if message.user else "Anonymous",
+        user_tier=message.user.tier.value if message.user else "anon",
         content=message.content if not message.is_deleted else "[Message deleted]",
         message_type=(
             message.message_type.value
@@ -138,7 +138,7 @@ async def get_chat_history(
 @router.post("/", response_model=ChatMessageResponse, status_code=201)
 async def send_message(
     message_data: ChatMessageCreate,
-    user_id: int = Query(..., description="User ID sending the message"),
+    user_id: Optional[int] = Query(None, description="User ID (optional for anonymous)"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -146,18 +146,23 @@ async def send_message(
 
     The message is stored in the database. Supabase Realtime will automatically
     broadcast the new row to all subscribed clients.
+
+    Anonymous users (no user_id) are allowed to chat but are still moderated.
     """
-    # Verify user exists and is not banned
-    user_result = await session.execute(select(User).where(User.id == user_id))
-    user = user_result.scalar_one_or_none()
+    user = None
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # If user_id provided, verify user exists and is not banned
+    if user_id:
+        user_result = await session.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
 
-    if user.is_banned:
-        raise HTTPException(status_code=403, detail="User is banned from chat")
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    # Content moderation with OpenAI
+        if user.is_banned:
+            raise HTTPException(status_code=403, detail="User is banned from chat")
+
+    # Content moderation with OpenAI (always moderate, including anonymous)
     from src.services.moderation import moderate_content
 
     moderation_result = await moderate_content(message_data.content, use_openai=True)
@@ -181,9 +186,9 @@ async def send_message(
                 status_code=404, detail="Reply target message not found"
             )
 
-    # Create message
+    # Create message (user_id can be None for anonymous)
     message = ChatMessage(
-        user_id=user_id,
+        user_id=user.id if user else None,
         content=message_data.content,
         message_type=MessageType.TEXT,
         reply_to_id=message_data.reply_to_id,
