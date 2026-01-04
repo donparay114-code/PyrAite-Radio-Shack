@@ -425,7 +425,10 @@ async def broadcast_status_webhook(
                         logger.info(
                             f"Pushed next song to Liquidsoap: {next_song.title}"
                         )
-                        # We don't change status to BROADCASTING yet, that happens when it starts playing
+                        # Update status to BROADCASTING so we don't pick it up again
+                        # The broadcast_started_at will be set when the song actually starts playing (track_change event)
+                        next_item.status = QueueStatus.BROADCASTING.value
+                        await session.commit()
                     else:
                         logger.error(
                             f"Failed to push song to Liquidsoap: {next_song.title}"
