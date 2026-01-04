@@ -63,6 +63,7 @@ class BroadcastWebhookPayload(BaseModel):
     title: str
     artist: str
     filename: Optional[str] = None  # Optional, if available
+    channel_id: Optional[str] = None  # Optional, for multi-channel support
 
 
 def verify_webhook_secret(secret: Optional[str]) -> bool:
@@ -271,8 +272,12 @@ async def broadcast_status_webhook(
 
     # 1. Handle currently playing song (it just finished)
     # Find any RadioHistory entry that is currently open (ended_at is None)
-    # We assume only one song plays at a time
+    # Filter by channel if provided (stream_mount)
     query = select(RadioHistory).where(RadioHistory.ended_at.is_(None))
+
+    if payload.channel_id:
+        query = query.where(RadioHistory.stream_mount == payload.channel_id)
+
     result = await session.execute(query)
     current_histories = result.scalars().all()
 
@@ -358,6 +363,7 @@ async def broadcast_status_webhook(
                 song_title=song.title,
                 song_artist=song.artist,
                 song_genre=song.genre,
+                stream_mount=payload.channel_id,
             )
 
             # Copy requester info if available
