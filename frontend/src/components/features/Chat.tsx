@@ -178,8 +178,9 @@ export function Chat({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px]"
-        style={{ maxHeight }}
+        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px] max-h-[var(--chat-max-height)]"
+        // eslint-disable-next-line react/forbid-dom-props
+        style={{ "--chat-max-height": maxHeight } as React.CSSProperties}
         role="log"
         aria-label="Chat messages"
       >
@@ -526,13 +527,13 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
             isGifUrl(message.content)
               ? ""
               : cn(
-                  "px-4 py-2.5",
-                  isOwnMessage
-                    ? "bg-violet-500/20 border border-violet-500/30 rounded-tr-md"
-                    : isAnonymous
-                      ? "bg-white/[0.03] border border-white/5 rounded-tl-md"
-                      : "bg-white/5 border border-white/10 rounded-tl-md"
-                )
+                "px-4 py-2.5",
+                isOwnMessage
+                  ? "bg-violet-500/20 border border-violet-500/30 rounded-tr-md"
+                  : isAnonymous
+                    ? "bg-white/[0.03] border border-white/5 rounded-tl-md"
+                    : "bg-white/5 border border-white/10 rounded-tl-md"
+              )
           )}
         >
           {isGifUrl(message.content) ? (

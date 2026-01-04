@@ -288,6 +288,20 @@ export function useUpdatePassword() {
   });
 }
 
+export function useSetPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { new_password: string }) =>
+      fetchApi<{ success: boolean; message: string }>("/api/profile/set-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
 export function useUpdateUsername() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -75,6 +75,12 @@ class UsernameUpdateRequest(BaseModel):
     new_username: str
 
 
+class SetPasswordRequest(BaseModel):
+    """Request to set initial password for Google-only accounts."""
+
+    new_password: str
+
+
 class UsernameUpdateResponse(BaseModel):
     """Response for username update."""
 
@@ -212,6 +218,36 @@ async def update_password(
     await session.commit()
 
     return {"success": True, "message": "Password updated successfully"}
+
+
+@router.post("/set-password")
+async def set_password(
+    request: SetPasswordRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Set initial password for Google-only accounts.
+    Only works for users who don't have a password yet.
+    """
+    # Only allow if user doesn't have a password
+    if user.password_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Password already set. Use change password instead.",
+        )
+
+    # Validate password strength
+    is_valid, error_msg = validate_password(request.new_password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # Set password
+    user.password_hash = get_password_hash(request.new_password)
+    session.add(user)
+    await session.commit()
+
+    return {"success": True, "message": "Password set successfully"}
 
 
 @router.patch("/username", response_model=UsernameUpdateResponse)

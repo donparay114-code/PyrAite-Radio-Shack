@@ -83,10 +83,10 @@ export function Skeleton({
     rounded: "rounded-xl",
   };
 
-  const dynamicStyle = {
-    width,
-    height,
-  };
+  const cssVars = {
+    "--skeleton-width": typeof width === "number" ? `${width}px` : width,
+    "--skeleton-height": typeof height === "number" ? `${height}px` : height,
+  } as React.CSSProperties;
 
   return (
     <div
@@ -94,9 +94,12 @@ export function Skeleton({
         "relative overflow-hidden bg-white/5",
         variants[variant],
         animate && "animate-pulse",
+        width && "w-[var(--skeleton-width)]",
+        height && "h-[var(--skeleton-height)]",
         className
       )}
-      style={dynamicStyle}
+      // eslint-disable-next-line react/forbid-dom-props
+      style={cssVars}
     >
       {/* Shimmer effect */}
       {animate && (
