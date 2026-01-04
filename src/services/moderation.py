@@ -4,7 +4,7 @@ Layer Order (optimized for speed):
 1. LOCAL_BLOCKLIST - SQL/in-memory blocklist (fastest, ~1ms)
 2. PROMPT_INJECTION - Regex check (~5ms)
 3. HATE_SPEECH, VIOLENCE, etc. - Regex checks (~10ms)
-4. (Future) AI Moderation - OpenAI/Claude API (slowest, ~500ms)
+4. OpenAI Moderation API - Comprehensive AI check (~200-500ms)
 
 The local blocklist should ALWAYS run first to catch known bad terms
 before paying for regex processing or API calls.
@@ -15,6 +15,8 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,13 @@ class ModerationCategory(str, Enum):
     PROMPT_INJECTION = "prompt_injection"
     COPYRIGHT = "copyright"
     PERSONAL_INFO = "personal_info"
+
+    # OpenAI Moderation API categories
+    OPENAI_HATE = "openai_hate"
+    OPENAI_HARASSMENT = "openai_harassment"
+    OPENAI_SELF_HARM = "openai_self_harm"
+    OPENAI_SEXUAL = "openai_sexual"
+    OPENAI_VIOLENCE = "openai_violence"
 
 
 @dataclass
@@ -144,15 +153,27 @@ class ContentModerator:
         r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14})\b",  # Credit cards
     ]
 
-    def __init__(self, strict_mode: bool = False):
+    def __init__(self, strict_mode: bool = False, enable_openai: bool = None):
         """
         Initialize the moderator.
 
         Args:
             strict_mode: If True, be more aggressive with filtering
+            enable_openai: Override config for OpenAI moderation (None = use config)
         """
         self.strict_mode = strict_mode
         self._compile_patterns()
+
+        # OpenAI moderation settings
+        from src.utils.config import settings
+
+        self._openai_enabled = (
+            enable_openai if enable_openai is not None else settings.openai_moderation_enabled
+        )
+        self._openai_api_key = settings.openai_api_key
+        self._openai_timeout = settings.openai_moderation_timeout
+        self._openai_fallback = settings.openai_moderation_fallback_on_error
+        self._http_client: Optional[httpx.AsyncClient] = None
 
     def _compile_patterns(self) -> None:
         """Compile regex patterns for efficiency."""
@@ -369,6 +390,163 @@ class ContentModerator:
         # Return original with failure
         return prompt, result
 
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        """Get or create async HTTP client for OpenAI API."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(
+                timeout=self._openai_timeout,
+                headers={
+                    "Authorization": f"Bearer {self._openai_api_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+        return self._http_client
+
+    async def close(self) -> None:
+        """Close HTTP client."""
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
+
+    async def check_with_openai(self, content: str) -> ModerationResult:
+        """
+        Check content using OpenAI's Moderation API.
+
+        This is Layer 4 in the moderation stack (slowest but most comprehensive).
+
+        Args:
+            content: Text to moderate
+
+        Returns:
+            ModerationResult with OpenAI category if flagged
+        """
+        if not self._openai_enabled or not self._openai_api_key:
+            logger.debug("OpenAI moderation disabled or no API key")
+            return ModerationResult(
+                passed=True,
+                category=ModerationCategory.SAFE,
+                confidence=0.0,
+                reason="OpenAI moderation not configured",
+            )
+
+        try:
+            client = await self._get_http_client()
+            response = await client.post(
+                "https://api.openai.com/v1/moderations",
+                json={"input": content},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            # Parse OpenAI response
+            result = data["results"][0]
+
+            if not result["flagged"]:
+                return ModerationResult(
+                    passed=True,
+                    category=ModerationCategory.SAFE,
+                    confidence=1.0,
+                    reason="Passed OpenAI moderation",
+                )
+
+            # Find the flagged categories
+            categories = result["categories"]
+            scores = result["category_scores"]
+
+            flagged_cats = [cat for cat, flagged in categories.items() if flagged]
+
+            # Map OpenAI category to our enum
+            category_mapping = {
+                "hate": ModerationCategory.OPENAI_HATE,
+                "hate/threatening": ModerationCategory.OPENAI_HATE,
+                "harassment": ModerationCategory.OPENAI_HARASSMENT,
+                "harassment/threatening": ModerationCategory.OPENAI_HARASSMENT,
+                "self-harm": ModerationCategory.OPENAI_SELF_HARM,
+                "self-harm/intent": ModerationCategory.OPENAI_SELF_HARM,
+                "self-harm/instructions": ModerationCategory.OPENAI_SELF_HARM,
+                "sexual": ModerationCategory.OPENAI_SEXUAL,
+                "sexual/minors": ModerationCategory.OPENAI_SEXUAL,
+                "violence": ModerationCategory.OPENAI_VIOLENCE,
+                "violence/graphic": ModerationCategory.OPENAI_VIOLENCE,
+            }
+
+            # Get highest scoring flagged category
+            highest_cat = max(flagged_cats, key=lambda c: scores.get(c.replace("/", "_"), 0))
+            our_category = category_mapping.get(highest_cat, ModerationCategory.HATE_SPEECH)
+            highest_score = scores.get(highest_cat.replace("/", "_"), 0.9)
+
+            return ModerationResult(
+                passed=False,
+                category=our_category,
+                confidence=highest_score,
+                reason=f"OpenAI flagged: {', '.join(flagged_cats)}",
+                flagged_terms=flagged_cats,
+            )
+
+        except httpx.TimeoutException:
+            logger.warning("OpenAI moderation timeout")
+            if self._openai_fallback:
+                return ModerationResult(
+                    passed=True,
+                    category=ModerationCategory.SAFE,
+                    confidence=0.0,
+                    reason="OpenAI timeout - falling back to regex",
+                )
+            raise
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"OpenAI moderation API error: {e.response.status_code}")
+            if self._openai_fallback:
+                return ModerationResult(
+                    passed=True,
+                    category=ModerationCategory.SAFE,
+                    confidence=0.0,
+                    reason=f"OpenAI API error {e.response.status_code} - falling back to regex",
+                )
+            raise
+
+        except Exception as e:
+            logger.error(f"OpenAI moderation failed: {e}")
+            if self._openai_fallback:
+                return ModerationResult(
+                    passed=True,
+                    category=ModerationCategory.SAFE,
+                    confidence=0.0,
+                    reason="OpenAI error - falling back to regex",
+                )
+            raise
+
+    async def check_async(self, content: str, use_openai: bool = True) -> ModerationResult:
+        """
+        Async version of check() with optional OpenAI integration.
+
+        Layer Order:
+        1. LOCAL_BLOCKLIST - O(1) set lookup (~0.001ms)
+        2. PROMPT_INJECTION - Regex (~5ms)
+        3. Other regex checks (~10ms)
+        4. OpenAI Moderation API (~200-500ms)
+
+        Args:
+            content: Content to moderate
+            use_openai: Whether to use OpenAI as final layer
+
+        Returns:
+            ModerationResult
+        """
+        # Run fast local checks first (synchronous)
+        local_result = self.check(content)
+
+        if not local_result.passed:
+            # Already caught by local checks - no need for API call
+            return local_result
+
+        # If enabled and configured, run OpenAI check
+        if use_openai and self._openai_enabled:
+            openai_result = await self.check_with_openai(content)
+            if not openai_result.passed:
+                return openai_result
+
+        return local_result
+
 
 # Singleton instance
 _moderator: Optional[ContentModerator] = None
@@ -384,7 +562,7 @@ def get_moderator(strict_mode: bool = False) -> ContentModerator:
 
 async def moderate_prompt(prompt: str) -> ModerationResult:
     """
-    Convenience function to moderate a prompt.
+    Convenience function to moderate a prompt (regex only, no OpenAI).
 
     Args:
         prompt: The prompt to moderate
@@ -394,3 +572,21 @@ async def moderate_prompt(prompt: str) -> ModerationResult:
     """
     moderator = get_moderator()
     return moderator.check(prompt)
+
+
+async def moderate_content(content: str, use_openai: bool = True) -> ModerationResult:
+    """
+    Moderate content with OpenAI integration.
+
+    This is the recommended function for moderating user content.
+    It runs local regex checks first, then OpenAI moderation if enabled.
+
+    Args:
+        content: The content to moderate
+        use_openai: Whether to use OpenAI as final layer (default True)
+
+    Returns:
+        ModerationResult
+    """
+    moderator = get_moderator()
+    return await moderator.check_async(content, use_openai=use_openai)

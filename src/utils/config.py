@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     udio_auth_token: str = ""  # Udio sb-api-auth-token from cookies
     openai_api_key: str = ""
 
+    # OpenAI Moderation Settings
+    openai_moderation_enabled: bool = True
+    openai_moderation_timeout: float = 5.0
+    openai_moderation_fallback_on_error: bool = True
+
     # Telegram
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""

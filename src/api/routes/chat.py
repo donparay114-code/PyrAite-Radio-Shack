@@ -157,6 +157,20 @@ async def send_message(
     if user.is_banned:
         raise HTTPException(status_code=403, detail="User is banned from chat")
 
+    # Content moderation with OpenAI
+    from src.services.moderation import moderate_content
+
+    moderation_result = await moderate_content(message_data.content, use_openai=True)
+    if not moderation_result.passed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "content_moderation_failed",
+                "category": moderation_result.category.value,
+                "reason": moderation_result.reason,
+            },
+        )
+
     # Verify reply_to message exists if provided
     if message_data.reply_to_id:
         reply_result = await session.execute(

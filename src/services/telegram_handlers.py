@@ -94,6 +94,25 @@ async def handle_request_command(message: dict):
         await bot.send_message(chat_id, "Please provide a description for your song.")
         return
 
+    # Content moderation with OpenAI
+    from src.services.moderation import moderate_content
+
+    moderation_result = await moderate_content(prompt, use_openai=True)
+    if not moderation_result.passed:
+        logger.warning(
+            f"Request blocked by moderation: user={from_user.get('id')}, "
+            f"category={moderation_result.category.value}, "
+            f"reason={moderation_result.reason}"
+        )
+        await bot.send_message(
+            chat_id,
+            f"⚠️ Your request could not be processed.\n\n"
+            f"<b>Reason:</b> {moderation_result.reason}\n\n"
+            f"Please modify your prompt and try again.",
+            reply_to_message_id=message.get("message_id"),
+        )
+        return
+
     session_maker = get_session_maker()
     async with session_maker() as session:
         try:
