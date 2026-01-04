@@ -17,7 +17,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
 # Note: auto_error=False allows optional auth, but we enforce it in dependency
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a new JWT access token."""
     to_encode = data.copy()
@@ -30,10 +29,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-
 async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_async_session)
 ) -> User:
     """
     Validate JWT token and return current user.
