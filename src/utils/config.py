@@ -1,10 +1,13 @@
 """Configuration management for PYrte Radio Shack."""
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -123,7 +126,17 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    s = Settings()
+    # Log API key status on load
+    logger.info(f"Settings loaded - OpenAI API key: {'configured' if s.openai_api_key else 'NOT SET'}")
+    logger.info(f"Settings loaded - OpenAI moderation enabled: {s.openai_moderation_enabled}")
+    return s
+
+
+def clear_settings_cache() -> None:
+    """Clear the settings cache to force reload from environment."""
+    get_settings.cache_clear()
+    logger.info("Settings cache cleared")
 
 
 # Convenience function for direct import

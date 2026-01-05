@@ -16,7 +16,7 @@ import {
   Maximize2,
   Radio,
 } from "lucide-react";
-import { GlassCard, GlowButton, IconButton, Badge, LiveBadge, Avatar, AudioProgress } from "@/components/ui";
+import { GlassCard, GlowButton, IconButton, Badge, LiveBadge, Avatar, WaveformVisualizer } from "@/components/ui";
 import { cn, formatDuration, formatNumber } from "@/lib/utils";
 import type { Song, QueueItem, User } from "@/types";
 
@@ -41,7 +41,6 @@ export function NowPlaying({
 }: NowPlayingProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [audioData, setAudioData] = useState<number[]>(new Array(32).fill(0));
 
   // Audio player ref for real playback
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -90,18 +89,6 @@ export function NowPlaying({
     }
   }, [onSeek]);
 
-  // Simulate audio visualizer data
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      setAudioData(
-        Array.from({ length: 32 }, () => Math.random() * 0.8 + 0.2)
-      );
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isPlaying]);
 
   // Dynamic glow color based on cover image (simplified)
   const glowColor = useMemo(() => {
@@ -269,31 +256,18 @@ export function NowPlaying({
                 )}
               </div>
 
-              {/* Audio visualizer */}
-              <div className="flex items-end justify-center gap-[2px] h-20 my-6">
-                {audioData.map((value, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-1.5 rounded-full"
-                    style={{ backgroundColor: glowColor }}
-                    animate={{
-                      height: isPlaying ? `${value * 100}%` : "12%",
-                      opacity: isPlaying ? 0.8 : 0.3,
-                    }}
-                    transition={{ duration: 0.1, ease: "easeOut" }}
-                  />
-                ))}
-              </div>
-
-              {/* Progress bar */}
-              <div className="space-y-2">
-                <AudioProgress
-                  currentTime={currentTime}
+              {/* Modern Waveform Visualizer with integrated progress */}
+              <div className="my-6">
+                <WaveformVisualizer
+                  progress={currentTime / (song.duration_seconds || 180)}
                   duration={song.duration_seconds || 180}
+                  currentTime={currentTime}
+                  isPlaying={isPlaying}
                   onSeek={handleSeek}
                   color={glowColor}
+                  height={80}
                 />
-                <div className="flex justify-between text-xs text-text-muted">
+                <div className="flex justify-between text-xs text-text-muted mt-2">
                   <span>{formatDuration(currentTime)}</span>
                   <span>{formatDuration(song.duration_seconds || 180)}</span>
                 </div>

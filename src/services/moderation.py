@@ -270,8 +270,9 @@ class ContentModerator:
         # Normalize content
         normalized = content.lower().strip()
 
-        # Check length
-        if len(normalized) < 3:
+        # Note: Short messages like "hi", "ok", "lol" are allowed for chat
+        # Only block truly empty or single-character spam
+        if len(normalized) < 1:
             return ModerationResult(
                 passed=False,
                 category=ModerationCategory.SPAM,
@@ -617,10 +618,15 @@ _moderator: Optional[ContentModerator] = None
 
 
 def get_moderator(strict_mode: bool = False) -> ContentModerator:
-    """Get the content moderator singleton."""
+    """Get the content moderator singleton.
+
+    Always creates a new instance to ensure fresh settings are loaded.
+    """
     global _moderator
-    if _moderator is None or _moderator.strict_mode != strict_mode:
-        _moderator = ContentModerator(strict_mode=strict_mode)
+    # Always create a new instance to get fresh settings
+    # This ensures API key changes in .env are picked up after restart
+    _moderator = ContentModerator(strict_mode=strict_mode)
+    logger.info(f"Created new moderator - OpenAI enabled: {_moderator._openai_enabled}, API key set: {bool(_moderator._openai_api_key)}")
     return _moderator
 
 

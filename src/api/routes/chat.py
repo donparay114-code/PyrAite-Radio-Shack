@@ -68,12 +68,36 @@ class SystemMessageCreate(BaseModel):
 # ============================================================================
 
 
+def generate_anon_name(identifier: str) -> str:
+    """Generate anonymous username like 'anon123456'.
+
+    Uses a hash-based approach for random-looking but consistent IDs.
+    The identifier should be the anon_session_id for consistent names.
+    """
+    import hashlib
+    hash_input = f"anon_salt_{identifier}".encode()
+    hash_digest = hashlib.md5(hash_input).hexdigest()
+    # Take first 6 digits from hex converted to int
+    anon_number = int(hash_digest[:6], 16) % 1000000
+    return f"anon{anon_number}"
+
+
 def message_to_response(message: ChatMessage) -> ChatMessageResponse:
     """Convert a ChatMessage to a response model."""
+    # Generate Reddit-style name for anonymous users
+    if message.user:
+        display_name = message.user.display_name
+    elif message.anon_session_id:
+        # Use session ID for consistent anon names
+        display_name = generate_anon_name(message.anon_session_id)
+    else:
+        # Fallback to message ID for old messages without session ID
+        display_name = generate_anon_name(str(message.id))
+
     return ChatMessageResponse(
         id=message.id,
         user_id=message.user_id,
-        user_display_name=message.user.display_name if message.user else "Anonymous",
+        user_display_name=display_name,
         user_tier=message.user.tier.value if message.user else "anon",
         content=message.content if not message.is_deleted else "[Message deleted]",
         message_type=(
@@ -142,6 +166,9 @@ async def send_message(
     user_id: Optional[int] = Query(
         None, description="User ID (optional for anonymous)"
     ),
+    anon_session_id: Optional[str] = Query(
+        None, description="Anonymous session ID for consistent anon usernames"
+    ),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -163,13 +190,47 @@ async def send_message(
             raise HTTPException(status_code=404, detail="User not found")
 
         if user.is_banned:
-            raise HTTPException(status_code=403, detail="User is banned from chat")
+            raise HTTPException(
+                status_code=403,
+                detail=user.ban_reason or "You have been banned from chat"
+            )
 
     # Content moderation with OpenAI (always moderate, including anonymous)
     from src.services.moderation import moderate_content
 
     moderation_result = await moderate_content(message_data.content, use_openai=True)
     if not moderation_result.passed:
+        # For authenticated users, use warning system (5 warnings before auto-ban)
+        if user:
+            user.warning_count += 1
+            user.last_warning_at = datetime.utcnow()
+            user.last_warning_reason = moderation_result.reason
+
+            # Auto-ban on 5th violation
+            if user.warning_count >= 5:
+                user.is_banned = True
+                user.banned_at = datetime.utcnow()
+                user.ban_reason = f"Auto-banned after 5 warnings. Last violation: {moderation_result.reason}"
+                await session.flush()
+                raise HTTPException(
+                    status_code=403,
+                    detail=user.ban_reason
+                )
+
+            # Return warning (not ban) for violations 1-4
+            await session.flush()
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "content_warning",
+                    "category": moderation_result.category.value,
+                    "reason": moderation_result.reason,
+                    "warning_count": user.warning_count,
+                    "warnings_until_ban": 5 - user.warning_count,
+                },
+            )
+
+        # Anonymous users get immediate rejection (no warning system)
         raise HTTPException(
             status_code=400,
             detail={
@@ -192,6 +253,7 @@ async def send_message(
     # Create message (user_id can be None for anonymous)
     message = ChatMessage(
         user_id=user.id if user else None,
+        anon_session_id=anon_session_id if not user else None,  # Only for anonymous
         content=message_data.content,
         message_type=MessageType.TEXT,
         reply_to_id=message_data.reply_to_id,
@@ -202,7 +264,7 @@ async def send_message(
 
     # Broadcast to all connected clients via Socket.IO
     response = message_to_response(message)
-    await emit_chat_message(response.model_dump())
+    await emit_chat_message(response.model_dump(mode="json"))
 
     return response
 
@@ -231,7 +293,7 @@ async def send_system_message(
 
     # Broadcast system message to all clients
     response = message_to_response(message)
-    await emit_chat_message(response.model_dump())
+    await emit_chat_message(response.model_dump(mode="json"))
 
     return response
 

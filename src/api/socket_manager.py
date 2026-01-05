@@ -6,16 +6,22 @@ from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Configure Redis manager if URL is available
+# Configure Redis manager if URL is available AND Redis is reachable
 client_manager = None
-if settings.redis_url:
+if settings.redis_url and settings.redis_url != "redis://localhost:6379":
+    # Only try Redis if explicitly configured (not default localhost)
     try:
+        import redis
+        # Test Redis connection first
+        r = redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        r.ping()
         client_manager = socketio.AsyncRedisManager(settings.redis_url)
         logger.info(f"Socket.IO using Redis manager at {settings.redis_url}")
     except Exception as e:
-        logger.warning(f"Failed to initialize Redis manager: {e}")
+        logger.warning(f"Redis not available, Socket.IO running without Redis: {e}")
+        client_manager = None
 
-# Create a Socket.IO server
+# Create a Socket.IO server (works without Redis in single-process mode)
 # cors_allowed_origins='*' allows connection from any origin (e.g., localhost:3000)
 sio = socketio.AsyncServer(
     async_mode="asgi", cors_allowed_origins="*", client_manager=client_manager

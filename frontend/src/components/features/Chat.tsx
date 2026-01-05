@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, MessageCircle, Info, Smile, ImageIcon, X, Search } from "lucide-react";
+import { Send, MessageCircle, Info, Smile, ImageIcon, X, Search, AlertCircle } from "lucide-react";
 import { GlassCard, Avatar, Badge } from "@/components/ui";
 import { cn, formatTimeAgo } from "@/lib/utils";
 import { UserTier, TIER_COLORS, TIER_LABELS } from "@/types";
@@ -50,6 +50,15 @@ interface ChatProps {
   messages: APIChatMessage[];
   isLoading?: boolean;
   isSending?: boolean;
+  connectionError?: string | null;
+  blockingError?: string | null;
+  lastRejection?: {
+    message: string;
+    reason: string;
+    isWarning: boolean;
+    warningsLeft?: number;
+  } | null;
+  onClearRejection?: () => void;
   onSendMessage: (content: string) => void;
   currentUser?: ChatUser | null;
   isAuthenticated?: boolean;
@@ -61,6 +70,10 @@ export function Chat({
   messages,
   isLoading = false,
   isSending = false,
+  connectionError = null,
+  blockingError = null,
+  lastRejection = null,
+  onClearRejection,
   onSendMessage,
   currentUser,
   isAuthenticated = false,
@@ -142,7 +155,7 @@ export function Chat({
   };
 
   // Check if realtime is connected (we assume connected if we have messages or not loading)
-  const isConnected = !isLoading;
+  const isConnected = !isLoading && !connectionError;
 
   return (
     <GlassCard variant="elevated" className={cn("flex flex-col relative", className)}>
@@ -155,7 +168,12 @@ export function Chat({
           <div>
             <h2 className="text-lg font-semibold text-white">Live Chat</h2>
             <p className="text-xs text-text-muted" role="status" aria-live="polite">
-              {isConnected ? (
+              {connectionError ? (
+                <span className="flex items-center gap-1.5 text-red-400">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  Offline
+                </span>
+              ) : isConnected ? (
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   Connected
@@ -174,13 +192,36 @@ export function Chat({
         </Badge>
       </div>
 
+      {/* Error Alert */}
+      {connectionError && (
+        <div className="bg-red-500/10 border-b border-red-500/20 p-2 text-center">
+          <p className="text-xs text-red-400 flex items-center justify-center gap-2">
+            <AlertCircle className="w-3 h-3" />
+            {connectionError}
+          </p>
+        </div>
+      )}
+
+      {/* Blocking Alert */}
+      {blockingError && (
+        <div className="bg-red-500/15 border-b border-red-500/30 p-3 text-center">
+          <p className="text-sm text-red-400 flex items-center justify-center gap-2 font-medium">
+            <span>🚫</span>
+            You have been blocked from chat
+          </p>
+          <p className="text-xs text-red-400/80 mt-1">
+            Reason: {blockingError}
+          </p>
+        </div>
+      )}
+
       {/* Messages container */}
-      {/* eslint-disable-next-line react/forbid-dom-props */}
+      {/* eslint-disable-next-line */}
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px] max-h-[var(--chat-max-height)]"
-        style={{ "--chat-max-height": maxHeight } as React.CSSProperties}
+        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px]"
+        style={{ maxHeight }}
         role="log"
         aria-label="Chat messages"
       >
@@ -340,6 +381,58 @@ export function Chat({
         )}
       </AnimatePresence>
 
+      {/* Rejection Message - shown when message is rejected/warned */}
+      <AnimatePresence>
+        {lastRejection && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className={cn(
+              "mx-3 mb-0 p-3 rounded-xl border",
+              lastRejection.isWarning
+                ? "bg-yellow-500/10 border-yellow-500/30"
+                : "bg-red-500/10 border-red-500/30"
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className={cn(
+                  "text-sm font-medium flex items-center gap-1.5",
+                  lastRejection.isWarning ? "text-yellow-400" : "text-red-400"
+                )}>
+                  {lastRejection.isWarning ? (
+                    <>
+                      <span>⚠️</span> Warning
+                    </>
+                  ) : (
+                    <>
+                      <span>🚫</span> Message Not Sent
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">{lastRejection.reason}</p>
+                {lastRejection.warningsLeft !== undefined && (
+                  <p className="text-xs text-yellow-400/80 mt-1">
+                    {lastRejection.warningsLeft} warning{lastRejection.warningsLeft !== 1 ? "s" : ""} until ban
+                  </p>
+                )}
+              </div>
+              {onClearRejection && (
+                <button
+                  type="button"
+                  onClick={onClearRejection}
+                  className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  aria-label="Dismiss rejection message"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input area - allows both authenticated and anonymous users */}
       <form
         onSubmit={handleSubmit}
@@ -401,9 +494,9 @@ export function Chat({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isAuthenticated ? "Type a message..." : "Type as Anonymous..."}
+              placeholder={blockingError ? "You are blocked from chat" : isAuthenticated ? "Type a message..." : "Type as Anonymous..."}
               aria-label="Type a message"
-              disabled={!isConnected || isSending}
+              disabled={!isConnected || isSending || !!blockingError}
               rows={1}
               className={cn(
                 "w-full resize-none rounded-xl pl-20 pr-12 py-3",
@@ -412,13 +505,14 @@ export function Chat({
                 "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "transition-all duration-200",
-                "min-h-[48px] max-h-[120px]"
+                "min-h-[48px] max-h-[120px]",
+                blockingError && "border-red-500/30"
               )}
             />
             <motion.button
               type="submit"
               aria-label="Send message"
-              disabled={!inputValue.trim() || isSending || !isConnected}
+              disabled={!inputValue.trim() || isSending || !isConnected || !!blockingError}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className={cn(

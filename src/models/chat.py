@@ -34,6 +34,8 @@ class ChatMessage(Base, TimestampMixin):
     user_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Anonymous session ID for consistent anon usernames
+    anon_session_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Message content
     content: Mapped[str] = mapped_column(Text, nullable=False)

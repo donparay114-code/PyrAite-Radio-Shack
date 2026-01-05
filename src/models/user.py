@@ -70,6 +70,11 @@ class User(Base, TimestampMixin):
     banned_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     banned_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Warning system (5 warnings before auto-ban)
+    warning_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_warning_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_warning_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Activity tracking
     last_request_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_vote_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

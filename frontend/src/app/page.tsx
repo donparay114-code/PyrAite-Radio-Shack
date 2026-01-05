@@ -88,7 +88,7 @@ export default function HomePage() {
   const submitMutation = useSubmitRequest();
 
   // Chat hook - pass user ID for authenticated users
-  const { messages: chatMessages, isLoading: chatLoading, sendMessage, isSending } = useChat(user?.id);
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage, isSending, connectionError, blockingError, lastRejection, clearRejection } = useChat(user?.id);
 
   // Extract current song and queue item from nowPlaying response
   const currentSong: Song = nowPlaying?.song ?? fallbackSong;
@@ -158,6 +158,10 @@ export default function HomePage() {
               isLoading={chatLoading}
               onSendMessage={sendMessage}
               isSending={isSending}
+              connectionError={connectionError}
+              blockingError={blockingError}
+              lastRejection={lastRejection}
+              onClearRejection={clearRejection}
               currentUser={user}
               isAuthenticated={isAuthenticated}
               maxHeight="calc(100vh - 400px)"
@@ -302,6 +306,10 @@ export default function HomePage() {
           isLoading={chatLoading}
           onSendMessage={sendMessage}
           isSending={isSending}
+          connectionError={connectionError}
+          blockingError={blockingError}
+          lastRejection={lastRejection}
+          onClearRejection={clearRejection}
           currentUser={user}
           isAuthenticated={isAuthenticated}
           maxHeight="400px"

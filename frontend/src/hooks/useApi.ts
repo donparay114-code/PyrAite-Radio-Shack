@@ -239,9 +239,17 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { content: string; replyToId?: number; userId?: number }) => {
-      // Build query string - omit user_id for anonymous users
-      const queryParams = data.userId ? `?user_id=${data.userId}` : "";
+    mutationFn: (data: { content: string; replyToId?: number; userId?: number; anonSessionId?: string }) => {
+      // Build query string with user_id and/or anon_session_id
+      const params = new URLSearchParams();
+      if (data.userId) {
+        params.append("user_id", data.userId.toString());
+      }
+      if (data.anonSessionId && !data.userId) {
+        // Only send anon session ID for anonymous users
+        params.append("anon_session_id", data.anonSessionId);
+      }
+      const queryParams = params.toString() ? `?${params.toString()}` : "";
       return fetchApi<ChatMessage>(`/api/chat/${queryParams}`, {
         method: "POST",
         body: JSON.stringify({

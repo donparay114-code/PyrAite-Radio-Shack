@@ -88,6 +88,7 @@ export function Skeleton({
     "--skeleton-height": typeof height === "number" ? `${height}px` : height,
   } as React.CSSProperties;
 
+  // eslint-disable-next-line
   return (
     <div
       className={cn(
@@ -98,7 +99,6 @@ export function Skeleton({
         height && "h-[var(--skeleton-height)]",
         className
       )}
-      // eslint-disable-next-line react/forbid-dom-props
       style={cssVars}
     >
       {/* Shimmer effect */}
@@ -109,7 +109,7 @@ export function Skeleton({
           />
         )
       }
-    </div >
+    </div>
   );
 }
 
