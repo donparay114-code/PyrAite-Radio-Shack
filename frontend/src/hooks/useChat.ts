@@ -144,6 +144,11 @@ export function useChat(userId?: number) {
       try {
         // Get session ID synchronously at send time (avoids race condition)
         const sessionId = !userId ? getAnonSessionId() : null;
+        console.log("[DEBUG useChat] sendMessage called:", {
+          userId,
+          sessionId,
+          localStorage: typeof window !== "undefined" ? localStorage.getItem("anon_session_id") : "SSR"
+        });
         await sendMessageMutation.mutateAsync({
           content,
           userId: userId || undefined,

@@ -179,6 +179,11 @@ async def send_message(
 
     Anonymous users (no user_id) are allowed to chat but are still moderated.
     """
+    # Debug: Log what we received
+    import logging
+    logging.warning(f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}")
+    print(f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}")
+
     user = None
 
     # If user_id provided, verify user exists and is not banned

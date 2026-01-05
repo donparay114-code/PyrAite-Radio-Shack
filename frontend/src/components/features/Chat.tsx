@@ -216,11 +216,11 @@ export function Chat({
       )}
 
       {/* Messages container */}
-      {/* eslint-disable-next-line */}
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px]"
+        // eslint-disable-next-line
         style={{ maxHeight }}
         role="log"
         aria-label="Chat messages"

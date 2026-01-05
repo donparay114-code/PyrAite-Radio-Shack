@@ -250,6 +250,11 @@ export function useSendMessage() {
         params.append("anon_session_id", data.anonSessionId);
       }
       const queryParams = params.toString() ? `?${params.toString()}` : "";
+      console.log("[DEBUG useApi] Sending chat message:", {
+        userId: data.userId,
+        anonSessionId: data.anonSessionId,
+        url: `/api/chat/${queryParams}`
+      });
       return fetchApi<ChatMessage>(`/api/chat/${queryParams}`, {
         method: "POST",
         body: JSON.stringify({

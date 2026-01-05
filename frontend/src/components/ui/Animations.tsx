@@ -88,8 +88,8 @@ export function Skeleton({
     "--skeleton-height": typeof height === "number" ? `${height}px` : height,
   } as React.CSSProperties;
 
-  // eslint-disable-next-line
   return (
+    // eslint-disable-next-line
     <div
       className={cn(
         "relative overflow-hidden bg-white/5",
