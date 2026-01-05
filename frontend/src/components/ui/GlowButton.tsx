@@ -130,12 +130,14 @@ export function GlowButton({
 // Icon button variant
 interface IconButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   icon: ReactNode;
+  label: string;
   size?: "sm" | "md" | "lg";
   variant?: "default" | "ghost";
 }
 
 export function IconButton({
   icon,
+  label,
   size = "md",
   variant = "default",
   className,
@@ -155,6 +157,8 @@ export function IconButton({
 
   return (
     <motion.button
+      aria-label={label}
+      title={label}
       {...props}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}

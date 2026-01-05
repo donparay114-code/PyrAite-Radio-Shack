@@ -338,6 +338,7 @@ export function NowPlaying({
                 <div className="flex items-center gap-4">
                   <IconButton
                     icon={isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    label={isMuted ? "Unmute" : "Mute"}
                     onClick={() => setIsMuted(!isMuted)}
                   />
 
@@ -367,6 +368,7 @@ export function NowPlaying({
 
                   <IconButton
                     icon={<SkipForward className="w-5 h-5" />}
+                    label="Skip track"
                   />
                 </div>
 
@@ -378,10 +380,11 @@ export function NowPlaying({
                         className={cn("w-5 h-5", isLiked && "fill-red-500 text-red-500")}
                       />
                     }
+                    label={isLiked ? "Unlike" : "Like"}
                     onClick={() => setIsLiked(!isLiked)}
                   />
-                  <IconButton icon={<Share2 className="w-5 h-5" />} />
-                  <IconButton icon={<Maximize2 className="w-5 h-5" />} />
+                  <IconButton icon={<Share2 className="w-5 h-5" />} label="Share" />
+                  <IconButton icon={<Maximize2 className="w-5 h-5" />} label="Maximize player" />
                 </div>
               </div>
             </div>

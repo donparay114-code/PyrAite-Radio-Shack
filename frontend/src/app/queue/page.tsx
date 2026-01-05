@@ -55,10 +55,11 @@ export default function QueuePage() {
         <div className="flex items-center gap-2">
           <IconButton
             icon={<RefreshCw className="w-4 h-4" />}
+            label="Refresh queue"
             onClick={() => refetch()}
           />
-          <IconButton icon={<Filter className="w-4 h-4" />} />
-          <IconButton icon={<SortAsc className="w-4 h-4" />} />
+          <IconButton icon={<Filter className="w-4 h-4" />} label="Filter queue" />
+          <IconButton icon={<SortAsc className="w-4 h-4" />} label="Sort queue" />
           <GlowButton
             onClick={() => setIsRequestModalOpen(true)}
             leftIcon={
