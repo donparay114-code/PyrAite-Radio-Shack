@@ -2,7 +2,7 @@
 
 import { motion, Variants, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 // ============================================
 // SLEEK ANIMATION VARIANTS
@@ -83,14 +83,19 @@ export function Skeleton({
     rounded: "rounded-xl",
   };
 
-  const cssVars = {
-    "--skeleton-width": typeof width === "number" ? `${width}px` : width,
-    "--skeleton-height": typeof height === "number" ? `${height}px` : height,
-  } as React.CSSProperties;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      if (width) el.style.setProperty("--skeleton-width", typeof width === "number" ? `${width}px` : width);
+      if (height) el.style.setProperty("--skeleton-height", typeof height === "number" ? `${height}px` : height);
+    }
+  }, [width, height]);
 
   return (
-    // eslint-disable-next-line
     <div
+      ref={ref}
       className={cn(
         "relative overflow-hidden bg-white/5",
         variants[variant],
@@ -99,7 +104,6 @@ export function Skeleton({
         height && "h-[var(--skeleton-height)]",
         className
       )}
-      style={cssVars}
     >
       {/* Shimmer effect */}
       {

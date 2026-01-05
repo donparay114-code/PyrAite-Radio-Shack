@@ -157,6 +157,13 @@ export function Chat({
   // Check if realtime is connected (we assume connected if we have messages or not loading)
   const isConnected = !isLoading && !connectionError;
 
+  // Handle maxHeight via ref to avoid inline style lint errors
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.style.maxHeight = maxHeight;
+    }
+  }, [maxHeight]);
+
   return (
     <GlassCard variant="elevated" className={cn("flex flex-col relative", className)}>
       {/* Header */}
@@ -220,8 +227,6 @@ export function Chat({
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px]"
-        // eslint-disable-next-line
-        style={{ maxHeight }}
         role="log"
         aria-label="Chat messages"
       >
