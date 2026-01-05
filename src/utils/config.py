@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     redis_password: str = ""
 
     # API Keys
-    suno_api_url: str = ""
-    suno_api_key: str = ""
+    suno_api_url: str = ""  # Deprecated - using direct SunoAI package
+    suno_api_key: str = ""  # Deprecated
+    suno_cookie: str = ""  # Browser cookie from suno.com for SunoAI package
 
     # Google OAuth
     google_client_id: str = ""

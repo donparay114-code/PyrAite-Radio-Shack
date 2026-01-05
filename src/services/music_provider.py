@@ -169,51 +169,108 @@ class MusicProvider(ABC):
 
 
 class SunoProvider(MusicProvider):
-    """Suno API provider implementation."""
+    """
+    Suno music generation provider using SunoAI package.
+
+    Uses the unofficial SunoAI package to generate music from text prompts.
+    Requires a cookie from suno.com for authentication.
+    """
 
     provider_type = ProviderType.SUNO
 
-    def __init__(self, api_url: Optional[str] = None, api_key: Optional[str] = None):
-        import httpx
+    def __init__(self, cookie: Optional[str] = None):
+        self.cookie = cookie or settings.suno_cookie
+        self._client = None
 
-        self.api_url = (api_url or settings.suno_api_url).rstrip("/")
-        self.api_key = api_key or settings.suno_api_key
-        self._client: Optional[httpx.AsyncClient] = None
-
-    async def _get_client(self):
-        import httpx
-
-        if self._client is None or self._client.is_closed:
-            headers = {"Content-Type": "application/json"}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
-            self._client = httpx.AsyncClient(
-                base_url=self.api_url, timeout=300.0, headers=headers
+    def _validate_cookie(self) -> tuple[bool, str]:
+        """Validate that cookie exists."""
+        if not self.cookie:
+            return False, (
+                "SUNO_COOKIE not configured. To get it: "
+                "Log into suno.com → DevTools (F12) → Application → Cookies → "
+                "Copy the full cookie string and set SUNO_COOKIE in .env"
             )
+        if len(self.cookie) < 50:
+            return False, "SUNO_COOKIE appears too short. Check that you copied the full cookie."
+        return True, ""
+
+    def _get_client(self):
+        """Lazy initialization of Suno client."""
+        if self._client is None:
+            try:
+                from suno import Suno
+
+                self._client = Suno(cookie=self.cookie)
+            except ImportError:
+                raise ImportError(
+                    "SunoAI is not installed. Run: pip install SunoAI"
+                )
         return self._client
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
-        client = await self._get_client()
-        try:
-            payload = request.to_suno_format()
-            payload["wait_audio"] = True
+        """Generate music using Suno API."""
+        import asyncio
 
-            response = await client.post("/api/generate", json=payload)
-            response.raise_for_status()
-            data = response.json()
-
-            # Handle list or dict response
-            job_data = data[0] if isinstance(data, list) else data
-            job_id = job_data.get("id") or job_data.get("job_id") or ""
-
+        # Validate cookie before attempting generation
+        is_valid, error_msg = self._validate_cookie()
+        if not is_valid:
+            logger.error(f"Suno cookie validation failed: {error_msg}")
             return GenerationResult(
                 provider=ProviderType.SUNO,
-                job_id=job_id,
-                status=GenerationStatus.PENDING,
-                title=job_data.get("title"),
-                audio_url=job_data.get("audio_url"),
-                created_at=datetime.utcnow(),
-                raw_response=job_data,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=error_msg,
+            )
+
+        try:
+            client = self._get_client()
+            logger.info(f"Suno: Generating song with prompt: {request.prompt[:50]}...")
+
+            # Run synchronous Suno API call in thread pool
+            loop = asyncio.get_event_loop()
+            clips = await loop.run_in_executor(
+                None,
+                lambda: client.generate(
+                    prompt=request.prompt,
+                    is_custom=False,  # Use description mode
+                    tags=request.style or "",
+                    title=request.title or "",
+                    make_instrumental=request.is_instrumental,
+                    wait_audio=True,  # Wait for audio to be ready
+                ),
+            )
+
+            logger.info(f"Suno: Generated {len(clips)} clips")
+
+            if clips and len(clips) > 0:
+                clip = clips[0]
+                return GenerationResult(
+                    provider=ProviderType.SUNO,
+                    job_id=clip.id,
+                    status=GenerationStatus.COMPLETE,
+                    title=clip.title,
+                    audio_url=clip.audio_url,
+                    duration_seconds=clip.duration if hasattr(clip, 'duration') else None,
+                    lyrics=clip.lyric if hasattr(clip, 'lyric') else None,
+                    created_at=datetime.utcnow(),
+                    completed_at=datetime.utcnow(),
+                    raw_response=clip.__dict__ if hasattr(clip, '__dict__') else {"id": clip.id},
+                )
+            else:
+                return GenerationResult(
+                    provider=ProviderType.SUNO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message="No clips returned from Suno",
+                )
+
+        except ImportError as e:
+            logger.error(f"Suno import error: {e}")
+            return GenerationResult(
+                provider=ProviderType.SUNO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
             )
         except Exception as e:
             logger.error(f"Suno generation failed: {e}")
@@ -225,38 +282,36 @@ class SunoProvider(MusicProvider):
             )
 
     async def get_status(self, job_id: str) -> GenerationResult:
-        client = await self._get_client()
+        """Get status of Suno generation."""
+        import asyncio
+
         try:
-            response = await client.get("/api/get", params={"ids": job_id})
-            response.raise_for_status()
-            data = response.json()
-
-            job_data = data[0] if isinstance(data, list) else data
-
-            status_map = {
-                "pending": GenerationStatus.PENDING,
-                "queued": GenerationStatus.QUEUED,
-                "processing": GenerationStatus.PROCESSING,
-                "complete": GenerationStatus.COMPLETE,
-                "completed": GenerationStatus.COMPLETE,
-                "success": GenerationStatus.COMPLETE,
-                "failed": GenerationStatus.FAILED,
-                "error": GenerationStatus.ERROR,
-            }
-            raw_status = job_data.get("status", "").lower()
-            status = status_map.get(raw_status, GenerationStatus.PENDING)
-
-            return GenerationResult(
-                provider=ProviderType.SUNO,
-                job_id=job_id,
-                status=status,
-                title=job_data.get("title"),
-                audio_url=job_data.get("audio_url"),
-                duration_seconds=job_data.get("duration"),
-                lyrics=job_data.get("lyric") or job_data.get("lyrics"),
-                error_message=job_data.get("error"),
-                raw_response=job_data,
+            client = self._get_client()
+            loop = asyncio.get_event_loop()
+            clip = await loop.run_in_executor(
+                None,
+                lambda: client.get_song(job_id),
             )
+
+            if clip:
+                status = GenerationStatus.COMPLETE if clip.audio_url else GenerationStatus.PROCESSING
+                return GenerationResult(
+                    provider=ProviderType.SUNO,
+                    job_id=job_id,
+                    status=status,
+                    title=clip.title,
+                    audio_url=clip.audio_url,
+                    duration_seconds=clip.duration if hasattr(clip, 'duration') else None,
+                    lyrics=clip.lyric if hasattr(clip, 'lyric') else None,
+                    raw_response=clip.__dict__ if hasattr(clip, '__dict__') else {"id": clip.id},
+                )
+            else:
+                return GenerationResult(
+                    provider=ProviderType.SUNO,
+                    job_id=job_id,
+                    status=GenerationStatus.ERROR,
+                    error_message="Song not found",
+                )
         except Exception as e:
             return GenerationResult(
                 provider=ProviderType.SUNO,
@@ -266,6 +321,7 @@ class SunoProvider(MusicProvider):
             )
 
     async def download_audio(self, audio_url: str, output_path: Path) -> bool:
+        """Download generated audio to local path."""
         import httpx
 
         try:
@@ -282,8 +338,8 @@ class SunoProvider(MusicProvider):
             return False
 
     async def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
+        """Clean up resources."""
+        self._client = None
 
 
 class StableAudioProvider(MusicProvider):
@@ -470,6 +526,20 @@ class UdioProvider(MusicProvider):
         self.auth_token = auth_token or settings.udio_auth_token
         self._wrapper = None
 
+    def _validate_auth_token(self) -> tuple[bool, str]:
+        """Validate that auth token exists and has correct format."""
+        if not self.auth_token:
+            return False, "UDIO_AUTH_TOKEN not configured. Set it in .env file."
+        if self.auth_token.startswith("sk-"):
+            return False, (
+                "Invalid UDIO_AUTH_TOKEN format. The token should be the 'sb-api-auth-token' "
+                "cookie value from udio.com, not an API key. "
+                "To get it: Log into udio.com → DevTools (F12) → Application → Cookies → Copy 'sb-api-auth-token'"
+            )
+        if len(self.auth_token) < 50:
+            return False, "UDIO_AUTH_TOKEN appears too short. Check that you copied the full token."
+        return True, ""
+
     def _get_wrapper(self):
         """Lazy initialization of UdioWrapper."""
         if self._wrapper is None:
@@ -492,8 +562,20 @@ class UdioProvider(MusicProvider):
         """
         import asyncio
 
+        # Validate auth token before attempting generation
+        is_valid, error_msg = self._validate_auth_token()
+        if not is_valid:
+            logger.error(f"Udio auth validation failed: {error_msg}")
+            return GenerationResult(
+                provider=ProviderType.UDIO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=error_msg,
+            )
+
         try:
             wrapper = self._get_wrapper()
+            logger.info(f"Udio: Generating song with prompt: {request.prompt[:50]}...")
 
             # Run synchronous Udio API call in thread pool
             loop = asyncio.get_event_loop()
@@ -505,6 +587,8 @@ class UdioProvider(MusicProvider):
                     custom_lyrics=None if request.is_instrumental else request.prompt,
                 ),
             )
+
+            logger.info(f"Udio: Raw result type={type(result)}, value={result}")
 
             # Parse the result - udio-wrapper returns song data
             if result:

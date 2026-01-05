@@ -11,6 +11,7 @@ Full-featured Telegram bot for song requests with comprehensive moderation.
 **Trigger:** Telegram Trigger (message events)
 
 **Features:**
+
 - User management (auto-create/update on first message)
 - Ban and timeout enforcement
 - Local blocklist checking
@@ -21,6 +22,7 @@ Full-featured Telegram bot for song requests with comprehensive moderation.
 - Multiple bot commands
 
 **Commands:**
+
 - `/request <prompt>` - Submit a song request
 - `/status` - View queue status
 - `/me` - View your stats (reputation, requests, etc.)
@@ -28,7 +30,8 @@ Full-featured Telegram bot for song requests with comprehensive moderation.
 - Plain text messages are also treated as song requests
 
 **Flow:**
-```
+
+```text
 Telegram Trigger
     → Parse Message
     → Upsert User
@@ -46,6 +49,7 @@ Telegram Trigger
 ```
 
 **PostgreSQL Functions Used:**
+
 - `upsert_telegram_user()` - Create or update user
 - `check_banned_words()` - Local blocklist check
 - `handle_violation()` - Process violations and apply penalties
@@ -53,6 +57,7 @@ Telegram Trigger
 - `calculate_priority_score()` - Calculate queue priority
 
 **Credentials Required:**
+
 - `Telegram Bot` - Telegram Bot API credentials
 - `PostgreSQL Radio` - PostgreSQL database connection
 - `OpenAI API` - OpenAI API key for content moderation
@@ -64,12 +69,14 @@ Processes pending song requests from the queue.
 **Trigger:** Every 30 seconds
 
 **Flow:**
+
 1. Fetch pending queue items from API
 2. Prepare Suno generation request
 3. Call Suno API for music generation
 4. Update queue status via webhook
 
 **Environment Variables:**
+
 - `API_URL` - Base URL of the radio API
 - `SUNO_API_URL` - Suno API endpoint
 
@@ -80,6 +87,7 @@ Manages the broadcast queue and announces songs.
 **Trigger:** Webhook (POST /broadcast-trigger)
 
 **Flow:**
+
 1. Get next generated song from queue
 2. Prepare DJ intro text
 3. Fetch full song details
@@ -87,6 +95,7 @@ Manages the broadcast queue and announces songs.
 5. Queue in Liquidsoap for playback
 
 **Environment Variables:**
+
 - `API_URL` - Base URL of the radio API
 - `TELEGRAM_CHAT_ID` - Chat ID for announcements
 - `LIQUIDSOAP_URL` - Liquidsoap control endpoint
@@ -98,7 +107,7 @@ Manages the broadcast queue and announces songs.
 The workflows require these PostgreSQL tables (created via Alembic migrations):
 
 | Table | Purpose |
-|-------|---------|
+| :--- | :--- |
 | `users` | User accounts with reputation and moderation fields |
 | `radio_queue` | Pending and processed song requests |
 | `songs` | Generated song metadata |
@@ -114,7 +123,7 @@ The workflows require these PostgreSQL tables (created via Alembic migrations):
 PostgreSQL functions used by the workflows:
 
 | Function | Purpose |
-|----------|---------|
+| :--- | :--- |
 | `upsert_telegram_user(telegram_id, username, first_name, last_name)` | Create or update user from Telegram data |
 | `check_banned_words(content)` | Check content against local blocklist |
 | `handle_violation(telegram_user_id, type, word, content, severity)` | Process violation and apply penalties |
@@ -123,14 +132,16 @@ PostgreSQL functions used by the workflows:
 
 ## Import Instructions
 
-### Via n8n UI:
+### Via n8n UI
+
 1. Open n8n dashboard
 2. Go to Workflows
 3. Click "Import from File"
 4. Select the JSON file
 5. Configure credentials and environment variables
 
-### Via n8n CLI:
+### Via n8n CLI
+
 ```bash
 n8n import:workflow --input=telegram_bot_handler.json
 n8n import:workflow --input=queue_processor.json
@@ -140,14 +151,17 @@ n8n import:workflow --input=broadcast_director.json
 ## Required Credentials
 
 ### 1. Telegram Bot API
+
 - Bot Token from @BotFather
 - Credential name: `Telegram Bot`
 
 ### 2. PostgreSQL Database
+
 - Host, port, database, user, password
 - Credential name: `PostgreSQL Radio`
 
 ### 3. OpenAI API
+
 - API Key from OpenAI
 - Credential name: `OpenAI API`
 
@@ -175,12 +189,14 @@ INSERT INTO banned_words (word, severity, category) VALUES
 ```
 
 Severity levels:
+
 - `warning` - Adds a strike, -10 reputation
 - `critical` - Immediate timeout consideration
 
 ### OpenAI Moderation
 
 Uses OpenAI's Moderation API to check prompts for:
+
 - Hate speech
 - Violence
 - Self-harm
@@ -204,6 +220,7 @@ Uses OpenAI's Moderation API to check prompts for:
 ## Workflow Tags
 
 All workflows are tagged with:
+
 - `radio` - Core radio functionality
 - Specific tags: `telegram`, `bot`, `moderation`, `queue`, `broadcast`, `suno`, `liquidsoap`
 
@@ -230,6 +247,7 @@ All workflows are tagged with:
 ### Logs
 
 Check n8n execution logs for detailed error messages:
+
 - Go to Executions in n8n dashboard
 - Filter by workflow name
 - Check failed executions for error details

@@ -70,7 +70,18 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
     throw new ApiError(res.status, error.detail || error.error || "Request failed");
   }
 
-  return res.json();
+  // Handle empty responses (204 No Content or empty body)
+  const contentType = res.headers.get("content-type");
+  if (res.status === 204 || !contentType?.includes("application/json")) {
+    return {} as T;
+  }
+
+  const text = await res.text();
+  if (!text) {
+    return {} as T;
+  }
+
+  return JSON.parse(text);
 }
 
 // Queue hooks
