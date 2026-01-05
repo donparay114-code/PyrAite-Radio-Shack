@@ -1,3 +1,4 @@
+/* stylelint-disable at-rule-no-unknown */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,8 +18,8 @@
   body {
     @apply bg-background text-text font-sans;
     background-image:
-      radial-gradient(ellipse at top, rgba(139,92,246,0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(6,182,212,0.06) 0%, transparent 50%);
+      radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
     min-height: 100vh;
   }
 
@@ -43,6 +44,7 @@
 }
 
 @layer components {
+
   /* Glassmorphism base class */
   .glass {
     @apply bg-white/[0.03] backdrop-blur-[16px] border border-white/[0.06];
@@ -103,12 +105,10 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1),
-      transparent
-    );
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent);
     transform: translateX(-100%);
     animation: shimmer 2s infinite;
   }
@@ -124,7 +124,7 @@
     inset-inline: 0;
     top: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   }
 
   /* Audio visualizer bars */
@@ -145,9 +145,11 @@
 }
 
 @layer utilities {
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
+    /* doiuse-disable scrollbar-width */
     scrollbar-width: none;
   }
 
@@ -167,7 +169,7 @@
     inset: 0;
     padding: 1px;
     border-radius: inherit;
-    background: linear-gradient(135deg, rgba(139,92,246,0.5), rgba(6,182,212,0.5));
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(6, 182, 212, 0.5));
     -webkit-mask:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);

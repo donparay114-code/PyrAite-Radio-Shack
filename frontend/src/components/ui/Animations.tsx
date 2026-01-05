@@ -102,12 +102,14 @@ export function Skeleton({
       style={cssVars}
     >
       {/* Shimmer effect */}
-      {animate && (
-        <div
-          className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent bg-[length:200%_100%]"
-        />
-      )}
-    </div>
+      {
+        animate && (
+          <div
+            className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent bg-[length:200%_100%]"
+          />
+        )
+      }
+    </div >
   );
 }
 

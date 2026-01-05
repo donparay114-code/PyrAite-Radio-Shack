@@ -175,11 +175,11 @@ export function Chat({
       </div>
 
       {/* Messages container */}
+      {/* eslint-disable-next-line react/forbid-dom-props */}
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent min-h-[300px] max-h-[var(--chat-max-height)]"
-        // eslint-disable-next-line react/forbid-dom-props
         style={{ "--chat-max-height": maxHeight } as React.CSSProperties}
         role="log"
         aria-label="Chat messages"
@@ -472,10 +472,28 @@ function ChatMessageItem({ message, isOwnMessage, index }: ChatMessageItemProps)
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay: Math.min(index * 0.02, 0.2), duration: 0.2 }}
+      initial={{
+        opacity: 0,
+        x: isOwnMessage ? 20 : -20,
+        scale: 0.95,
+        filter: "blur(4px)"
+      }}
+      animate={{
+        opacity: 1,
+        x: 0,
+        scale: 1,
+        filter: "blur(0px)"
+      }}
+      exit={{
+        opacity: 0,
+        scale: 0.95,
+        filter: "blur(4px)"
+      }}
+      transition={{
+        delay: Math.min(index * 0.03, 0.15),
+        duration: 0.35,
+        ease: [0.23, 1, 0.32, 1] // smooth easing
+      }}
       className={cn(
         "group flex gap-3",
         isOwnMessage && "flex-row-reverse"
