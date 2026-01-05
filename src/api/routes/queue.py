@@ -346,7 +346,7 @@ async def get_now_playing(
 
     # If still nothing, return empty response
     if not queue_item:
-        return NowPlayingResponse()
+        return NowPlayingResponse(listeners=await get_current_listeners())
 
     # Calculate progress if broadcasting
     progress_seconds = 0.0
