@@ -15,8 +15,8 @@ class GenerateRequest(BaseModel):
 
     prompt: str = Field(..., min_length=3, max_length=500, description="Music prompt")
     provider: str = Field(
-        default="udio",
-        description="Provider: 'udio', 'suno', or 'mock'",
+        default="sunoapi",
+        description="Provider: 'sunoapi', 'goapi_udio', 'suno', 'udio', or 'mock'",
     )
     is_instrumental: bool = Field(default=True, description="Generate instrumental")
     style: Optional[str] = Field(None, max_length=100, description="Style hint")
@@ -45,6 +45,9 @@ async def test_generate(request: GenerateRequest):
     provider_map = {
         "udio": ProviderType.UDIO,
         "suno": ProviderType.SUNO,
+        "sunoapi": ProviderType.SUNOAPI,  # sunoapi.org - recommended
+        "goapi_suno": ProviderType.GOAPI_SUNO,  # deprecated
+        "goapi_udio": ProviderType.GOAPI_UDIO,  # GoAPI Udio - recommended
         "mock": ProviderType.MOCK,
     }
 
@@ -52,7 +55,7 @@ async def test_generate(request: GenerateRequest):
     if not provider_type:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid provider: {request.provider}. Use 'udio', 'suno', or 'mock'",
+            detail=f"Invalid provider: {request.provider}. Use 'sunoapi', 'goapi_udio', 'udio', 'suno', or 'mock'",
         )
 
     try:
@@ -87,16 +90,42 @@ async def list_providers():
     return {
         "providers": [
             {
-                "id": "udio",
-                "name": "Udio",
-                "description": "Free AI music via udio-wrapper",
+                "id": "sunoapi",
+                "name": "SunoAPI.org",
+                "description": "Suno via sunoapi.org ($0.032/song, API key auth) - RECOMMENDED",
+                "recommended": True,
             },
-            {"id": "suno", "name": "Suno", "description": "Suno AI music generation"},
+            {
+                "id": "goapi_udio",
+                "name": "GoAPI Udio",
+                "description": "Udio via GoAPI (API key auth) - RECOMMENDED",
+                "recommended": True,
+            },
+            {
+                "id": "udio",
+                "name": "Udio (Cookie)",
+                "description": "Udio via udio-wrapper (cookie auth, less reliable)",
+                "recommended": False,
+            },
+            {
+                "id": "suno",
+                "name": "Suno (Cookie)",
+                "description": "Suno via browser cookies (unreliable)",
+                "recommended": False,
+            },
+            {
+                "id": "goapi_suno",
+                "name": "GoAPI Suno",
+                "description": "DEPRECATED - GoAPI doesn't have Suno",
+                "recommended": False,
+                "deprecated": True,
+            },
             {
                 "id": "mock",
                 "name": "Mock",
                 "description": "Test provider (no actual generation)",
+                "recommended": False,
             },
         ],
-        "default": "udio",
+        "default": "sunoapi",
     }

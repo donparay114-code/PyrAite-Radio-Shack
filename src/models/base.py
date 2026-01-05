@@ -110,8 +110,10 @@ def get_engine() -> Engine:
             _engine = create_engine(
                 sync_url,
                 pool_pre_ping=True,
-                pool_size=10,
-                max_overflow=20,
+                pool_size=20,
+                max_overflow=40,
+                pool_recycle=300,  # Recycle connections after 5 minutes
+                pool_timeout=30,  # Wait up to 30s for a connection
                 echo=settings.debug,
             )
         _SessionLocal = sessionmaker(
@@ -145,8 +147,10 @@ def get_async_engine() -> AsyncEngine:
             _async_engine = create_async_engine(
                 async_url,
                 pool_pre_ping=True,
-                pool_size=10,
-                max_overflow=20,
+                pool_size=20,
+                max_overflow=40,
+                pool_recycle=300,  # Recycle connections after 5 minutes
+                pool_timeout=30,  # Wait up to 30s for a connection
                 echo=settings.debug,
             )
         _AsyncSessionLocal = async_sessionmaker(

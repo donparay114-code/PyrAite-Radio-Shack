@@ -24,9 +24,12 @@ logger = logging.getLogger(__name__)
 class ProviderType(str, Enum):
     """Supported music generation providers."""
 
-    SUNO = "suno"
+    SUNO = "suno"  # Cookie-based unofficial wrapper (unreliable)
+    SUNOAPI = "sunoapi"  # sunoapi.org - API key auth ($0.032/song)
+    GOAPI_SUNO = "goapi_suno"  # GoAPI Suno wrapper (deprecated - GoAPI doesn't have Suno)
+    GOAPI_UDIO = "goapi_udio"  # GoAPI Udio - API key auth
     STABLE_AUDIO = "stable_audio"
-    UDIO = "udio"
+    UDIO = "udio"  # Cookie-based udio-wrapper (unreliable)
     MOCK = "mock"  # For testing
 
 
@@ -183,24 +186,89 @@ class SunoProvider(MusicProvider):
         self._client = None
 
     def _validate_cookie(self) -> tuple[bool, str]:
-        """Validate that cookie exists."""
+        """Validate that cookie exists and has correct format."""
         if not self.cookie:
             return False, (
                 "SUNO_COOKIE not configured. To get it: "
                 "Log into suno.com → DevTools (F12) → Application → Cookies → "
-                "Copy the full cookie string and set SUNO_COOKIE in .env"
+                "Copy ALL cookies as a string (format: cookie1=value1; cookie2=value2)"
             )
         if len(self.cookie) < 50:
-            return False, "SUNO_COOKIE appears too short. Check that you copied the full cookie."
+            return False, "SUNO_COOKIE appears too short. Check that you copied the full cookie string."
+        # Check if it's just a JWT token instead of the full cookie string
+        if self.cookie.startswith("eyJ") and ";" not in self.cookie:
+            return False, (
+                "SUNO_COOKIE appears to be just a JWT token. The SunoAI package requires "
+                "the full browser cookie string. Go to suno.com → DevTools (F12) → "
+                "Application → Cookies → copy ALL cookies (including __client, __session, etc.) "
+                "as a semicolon-separated string"
+            )
         return True, ""
 
+    def _extract_jwt_and_session_from_cookie(self) -> tuple[Optional[str], Optional[str]]:
+        """Extract JWT token and session ID from the __session cookie."""
+        import base64
+        import json
+
+        try:
+            for part in self.cookie.split("; "):
+                if part.startswith("__session=") and not part.startswith("__session_"):
+                    jwt_token = part.split("=", 1)[1]
+                    # Decode JWT payload (middle part)
+                    payload = jwt_token.split(".")[1]
+                    # Add padding for base64
+                    payload += "=" * (4 - len(payload) % 4)
+                    decoded = base64.urlsafe_b64decode(payload)
+                    data = json.loads(decoded)
+                    session_id = data.get("sid")
+                    return jwt_token, session_id
+        except Exception as e:
+            logger.warning(f"Failed to extract JWT/session from cookie: {e}")
+        return None, None
+
     def _get_client(self):
-        """Lazy initialization of Suno client."""
+        """Lazy initialization of Suno client with JWT extraction workaround."""
         if self._client is None:
             try:
                 from suno import Suno
 
-                self._client = Suno(cookie=self.cookie)
+                # Extract JWT token and session ID from cookie
+                jwt_token, session_id = self._extract_jwt_and_session_from_cookie()
+                if not jwt_token or not session_id:
+                    raise ValueError(
+                        "Could not extract JWT/session from cookie. "
+                        "Make sure the __session cookie is present."
+                    )
+                logger.info(f"Extracted session ID from JWT: {session_id[:20]}...")
+
+                # Create a patched Suno class that uses the JWT directly
+                class PatchedSuno(Suno):
+                    def __init__(self, cookie: str, session_id: str, jwt_token: str):
+                        # Skip parent __init__ and set up manually
+                        from suno.utils import generate_fake_useragent
+                        import requests
+
+                        headers = {
+                            "User-Agent": generate_fake_useragent(),
+                            "Cookie": cookie,
+                            "Authorization": f"Bearer {jwt_token}",  # Use JWT directly
+                        }
+                        self.client = requests.Session()
+                        self.client.headers.update(headers)
+                        self.current_token = jwt_token
+                        self.sid = session_id
+                        self.model_version = "chirp-v3-5"
+                        # Don't call _keep_alive() - we already have a valid token
+
+                    def _keep_alive(self, is_wait=False):
+                        """Override to skip Clerk API call - we already have a valid token."""
+                        # The token is already set in headers from __init__
+                        # Just log and return without calling Clerk
+                        pass
+
+                self._client = PatchedSuno(
+                    cookie=self.cookie, session_id=session_id, jwt_token=jwt_token
+                )
             except ImportError:
                 raise ImportError(
                     "SunoAI is not installed. Run: pip install SunoAI"
@@ -210,6 +278,8 @@ class SunoProvider(MusicProvider):
     async def generate(self, request: GenerationRequest) -> GenerationResult:
         """Generate music using Suno API."""
         import asyncio
+
+        logger.info(f"SunoProvider.generate called with prompt: {request.prompt[:50]}")
 
         # Validate cookie before attempting generation
         is_valid, error_msg = self._validate_cookie()
@@ -694,6 +764,647 @@ class UdioProvider(MusicProvider):
         self._wrapper = None
 
 
+class GoAPISunoProvider(MusicProvider):
+    """
+    GoAPI Suno provider - uses API key authentication.
+
+    This is a paid wrapper ($0.02/song) that handles Suno integration
+    without requiring browser cookies. Much more reliable than cookie-based auth.
+
+    API docs: https://github.com/Goapiai/Suno-API
+    """
+
+    provider_type = ProviderType.GOAPI_SUNO
+    BASE_URL = "https://api.goapi.ai/api/suno/v1"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.goapi_suno_key
+        self._client = None
+
+    def _validate_api_key(self) -> tuple[bool, str]:
+        """Validate that API key is configured."""
+        if not self.api_key:
+            return False, (
+                "GOAPI_SUNO_KEY not configured. Get your API key from "
+                "https://goapi.ai and add it to .env"
+            )
+        return True, ""
+
+    async def _get_client(self):
+        """Get HTTP client with auth headers."""
+        import httpx
+
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=300.0,
+                headers={
+                    "X-API-Key": self.api_key,
+                    "Content-Type": "application/json",
+                },
+            )
+        return self._client
+
+    async def generate(self, request: GenerationRequest) -> GenerationResult:
+        """Generate music using GoAPI Suno endpoint."""
+        # Validate API key
+        is_valid, error_msg = self._validate_api_key()
+        if not is_valid:
+            return GenerationResult(
+                provider=ProviderType.GOAPI_SUNO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=error_msg,
+            )
+
+        try:
+            client = await self._get_client()
+            logger.info(f"GoAPI Suno: Generating with prompt: {request.prompt[:50]}...")
+
+            # Build the request payload
+            payload = {
+                "custom_mode": False,  # Use description mode
+                "input": {
+                    "gpt_description_prompt": request.prompt,
+                    "make_instrumental": request.is_instrumental,
+                },
+            }
+
+            # If style/tags provided, use custom mode
+            if request.style:
+                payload["custom_mode"] = True
+                payload["input"] = {
+                    "prompt": request.prompt,
+                    "tags": request.style,
+                    "title": request.title or "",
+                    "make_instrumental": request.is_instrumental,
+                }
+
+            response = await client.post(f"{self.BASE_URL}/music", json=payload)
+
+            if response.status_code != 200:
+                error_msg = f"GoAPI error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_SUNO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=error_msg,
+                )
+
+            data = response.json()
+            task_id = data.get("data", {}).get("task_id", "")
+
+            if not task_id:
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_SUNO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message="No task_id returned from GoAPI",
+                )
+
+            logger.info(f"GoAPI Suno: Task created: {task_id}")
+
+            # Return with PROCESSING status - caller should poll get_status
+            return GenerationResult(
+                provider=ProviderType.GOAPI_SUNO,
+                job_id=task_id,
+                status=GenerationStatus.PROCESSING,
+                created_at=datetime.utcnow(),
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"GoAPI Suno generation failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.GOAPI_SUNO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def get_status(self, job_id: str) -> GenerationResult:
+        """Poll GoAPI for task status."""
+        try:
+            client = await self._get_client()
+            response = await client.get(f"{self.BASE_URL}/music/{job_id}")
+
+            if response.status_code != 200:
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_SUNO,
+                    job_id=job_id,
+                    status=GenerationStatus.ERROR,
+                    error_message=f"Status check failed: {response.text}",
+                )
+
+            data = response.json()
+            task_data = data.get("data", {})
+            status = task_data.get("status", "unknown")
+
+            # Map GoAPI status to our status
+            status_map = {
+                "pending": GenerationStatus.PENDING,
+                "processing": GenerationStatus.PROCESSING,
+                "completed": GenerationStatus.COMPLETE,
+                "failed": GenerationStatus.FAILED,
+            }
+            gen_status = status_map.get(status, GenerationStatus.PROCESSING)
+
+            # Extract audio info if complete
+            audio_url = None
+            title = None
+            duration = None
+            lyrics = None
+
+            if gen_status == GenerationStatus.COMPLETE:
+                clips = task_data.get("clips", [])
+                if clips:
+                    clip = clips[0]
+                    audio_url = clip.get("audio_url")
+                    title = clip.get("title")
+                    duration = clip.get("duration")
+                    lyrics = clip.get("lyric")
+
+            return GenerationResult(
+                provider=ProviderType.GOAPI_SUNO,
+                job_id=job_id,
+                status=gen_status,
+                title=title,
+                audio_url=audio_url,
+                duration_seconds=duration,
+                lyrics=lyrics,
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"GoAPI status check failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.GOAPI_SUNO,
+                job_id=job_id,
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def download_audio(self, audio_url: str, output_path: Path) -> bool:
+        """Download generated audio to local path."""
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream("GET", audio_url) as response:
+                    response.raise_for_status()
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(8192):
+                            f.write(chunk)
+            return True
+        except Exception as e:
+            logger.error(f"Download failed: {e}")
+            return False
+
+    async def close(self) -> None:
+        """Clean up resources."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+
+
+class SunoAPIProvider(MusicProvider):
+    """
+    SunoAPI.org provider - third-party Suno API with API key authentication.
+
+    Uses Bearer token auth for reliable Suno music generation.
+    Pricing: ~$0.032/song
+    API docs: https://docs.sunoapi.org/suno-api/quickstart
+    """
+
+    provider_type = ProviderType.SUNOAPI
+    BASE_URL = "https://api.sunoapi.org"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.sunoapi_key
+        self._client = None
+
+    def _validate_api_key(self) -> tuple[bool, str]:
+        """Validate that API key is configured."""
+        if not self.api_key:
+            return False, (
+                "SUNOAPI_KEY not configured. Get your API key from "
+                "https://sunoapi.org/api-key and add it to .env"
+            )
+        return True, ""
+
+    async def _get_client(self):
+        """Get HTTP client with auth headers."""
+        import httpx
+
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=300.0,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+        return self._client
+
+    async def generate(self, request: GenerationRequest) -> GenerationResult:
+        """Generate music using SunoAPI.org endpoint."""
+        # Validate API key
+        is_valid, error_msg = self._validate_api_key()
+        if not is_valid:
+            return GenerationResult(
+                provider=ProviderType.SUNOAPI,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=error_msg,
+            )
+
+        try:
+            client = await self._get_client()
+            logger.info(f"SunoAPI: Generating with prompt: {request.prompt[:50]}...")
+
+            # Build the request payload per sunoapi.org docs
+            # Note: callBackUrl is required - use backend public URL for webhooks
+            callback_url = f"{settings.backend_public_url}/api/webhooks/sunoapi/status"
+
+            # Use custom mode if style is provided
+            use_custom_mode = bool(request.style)
+
+            payload = {
+                "prompt": request.prompt,
+                "model": "V4_5",  # Use latest Suno model
+                "instrumental": request.is_instrumental,
+                "customMode": use_custom_mode,
+                "callBackUrl": callback_url,
+            }
+
+            # Add style/tags if provided (requires customMode)
+            if request.style:
+                payload["style"] = request.style
+            if request.title:
+                payload["title"] = request.title
+
+            response = await client.post(f"{self.BASE_URL}/api/v1/generate", json=payload)
+
+            if response.status_code != 200:
+                error_msg = f"SunoAPI error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return GenerationResult(
+                    provider=ProviderType.SUNOAPI,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=error_msg,
+                )
+
+            data = response.json()
+            # Extract taskId from response - may be nested in 'data' object
+            task_id = (
+                data.get("taskId")
+                or data.get("task_id")
+                or data.get("data", {}).get("taskId")
+                or data.get("data", {}).get("task_id")
+                or data.get("id", "")
+            )
+
+            if not task_id:
+                return GenerationResult(
+                    provider=ProviderType.SUNOAPI,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=f"No taskId returned from SunoAPI: {data}",
+                )
+
+            logger.info(f"SunoAPI: Task created: {task_id}")
+
+            # Return with PROCESSING status - caller should poll get_status
+            return GenerationResult(
+                provider=ProviderType.SUNOAPI,
+                job_id=task_id,
+                status=GenerationStatus.PROCESSING,
+                created_at=datetime.utcnow(),
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"SunoAPI generation failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.SUNOAPI,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def get_status(self, job_id: str) -> GenerationResult:
+        """Poll SunoAPI for task status."""
+        try:
+            client = await self._get_client()
+            response = await client.get(
+                f"{self.BASE_URL}/api/v1/generate/record-info",
+                params={"taskId": job_id},
+            )
+
+            if response.status_code != 200:
+                return GenerationResult(
+                    provider=ProviderType.SUNOAPI,
+                    job_id=job_id,
+                    status=GenerationStatus.ERROR,
+                    error_message=f"Status check failed: {response.text}",
+                )
+
+            data = response.json()
+
+            # Map SunoAPI status to our status
+            api_status = data.get("status", "").lower()
+            status_map = {
+                "pending": GenerationStatus.PENDING,
+                "queued": GenerationStatus.QUEUED,
+                "processing": GenerationStatus.PROCESSING,
+                "running": GenerationStatus.PROCESSING,
+                "completed": GenerationStatus.COMPLETE,
+                "complete": GenerationStatus.COMPLETE,
+                "success": GenerationStatus.COMPLETE,
+                "failed": GenerationStatus.FAILED,
+                "error": GenerationStatus.ERROR,
+            }
+            gen_status = status_map.get(api_status, GenerationStatus.PROCESSING)
+
+            # Extract audio info if complete
+            audio_url = None
+            title = None
+            duration = None
+            lyrics = None
+
+            if gen_status == GenerationStatus.COMPLETE:
+                # SunoAPI may return audio directly or in a nested structure
+                audio_url = data.get("audio_url") or data.get("audioUrl")
+                title = data.get("title")
+                duration = data.get("duration")
+                lyrics = data.get("lyrics") or data.get("lyric")
+
+                # Check for clips array format
+                clips = data.get("clips") or data.get("songs") or data.get("data", [])
+                if clips and isinstance(clips, list) and len(clips) > 0:
+                    clip = clips[0]
+                    audio_url = audio_url or clip.get("audio_url") or clip.get("audioUrl")
+                    title = title or clip.get("title")
+                    duration = duration or clip.get("duration")
+                    lyrics = lyrics or clip.get("lyrics") or clip.get("lyric")
+
+            return GenerationResult(
+                provider=ProviderType.SUNOAPI,
+                job_id=job_id,
+                status=gen_status,
+                title=title,
+                audio_url=audio_url,
+                duration_seconds=float(duration) if duration else None,
+                lyrics=lyrics,
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"SunoAPI status check failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.SUNOAPI,
+                job_id=job_id,
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def download_audio(self, audio_url: str, output_path: Path) -> bool:
+        """Download generated audio to local path."""
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream("GET", audio_url) as response:
+                    response.raise_for_status()
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(8192):
+                            f.write(chunk)
+            return True
+        except Exception as e:
+            logger.error(f"Download failed: {e}")
+            return False
+
+    async def close(self) -> None:
+        """Clean up resources."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+
+
+class GoAPIUdioProvider(MusicProvider):
+    """
+    GoAPI Udio provider - uses GoAPI's unified task endpoint with API key authentication.
+
+    Reliable API key auth for Udio music generation via GoAPI.
+    API docs: https://goapi.ai/docs/music-api/create-task
+    Pricing: $0.05 per generation
+    """
+
+    provider_type = ProviderType.GOAPI_UDIO
+    BASE_URL = "https://api.goapi.ai/api/v1"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.goapi_key
+        self._client = None
+
+    def _validate_api_key(self) -> tuple[bool, str]:
+        """Validate that API key is configured."""
+        if not self.api_key:
+            return False, (
+                "GOAPI_KEY not configured. Get your API key from "
+                "https://goapi.ai/dashboard and add it to .env"
+            )
+        return True, ""
+
+    async def _get_client(self):
+        """Get HTTP client with auth headers."""
+        import httpx
+
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=300.0,
+                headers={
+                    "X-API-Key": self.api_key,
+                    "Content-Type": "application/json",
+                },
+            )
+        return self._client
+
+    async def generate(self, request: GenerationRequest) -> GenerationResult:
+        """Generate music using GoAPI Udio endpoint."""
+        # Validate API key
+        is_valid, error_msg = self._validate_api_key()
+        if not is_valid:
+            return GenerationResult(
+                provider=ProviderType.GOAPI_UDIO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=error_msg,
+            )
+
+        try:
+            client = await self._get_client()
+            logger.info(f"GoAPI Udio: Generating with prompt: {request.prompt[:50]}...")
+
+            # Build prompt with style if provided
+            full_prompt = request.prompt
+            if request.style:
+                full_prompt = f"{request.style} - {request.prompt}"
+
+            # Build the request payload per GoAPI docs
+            # Model: music-u = Udio
+            payload = {
+                "model": "music-u",
+                "task_type": "generate_music",
+                "input": {
+                    "prompt": full_prompt,
+                    "lyrics_type": "instrumental" if request.is_instrumental else "generate",
+                },
+            }
+
+            # Add optional callback webhook
+            callback_url = f"{settings.backend_public_url}/api/webhooks/goapi/status"
+            payload["config"] = {
+                "webhook_config": {
+                    "endpoint": callback_url,
+                }
+            }
+
+            response = await client.post(f"{self.BASE_URL}/task", json=payload)
+
+            if response.status_code != 200:
+                error_msg = f"GoAPI Udio error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_UDIO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=error_msg,
+                )
+
+            data = response.json()
+            task_id = data.get("data", {}).get("task_id", "") or data.get("task_id", "")
+
+            if not task_id:
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_UDIO,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=f"No task_id returned from GoAPI Udio: {data}",
+                )
+
+            logger.info(f"GoAPI Udio: Task created: {task_id}")
+
+            # Return with PROCESSING status - caller should poll get_status
+            return GenerationResult(
+                provider=ProviderType.GOAPI_UDIO,
+                job_id=task_id,
+                status=GenerationStatus.PROCESSING,
+                created_at=datetime.utcnow(),
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"GoAPI Udio generation failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.GOAPI_UDIO,
+                job_id="",
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def get_status(self, job_id: str) -> GenerationResult:
+        """Poll GoAPI for Udio task status."""
+        try:
+            client = await self._get_client()
+            response = await client.get(f"{self.BASE_URL}/task/{job_id}")
+
+            if response.status_code != 200:
+                return GenerationResult(
+                    provider=ProviderType.GOAPI_UDIO,
+                    job_id=job_id,
+                    status=GenerationStatus.ERROR,
+                    error_message=f"Status check failed: {response.text}",
+                )
+
+            data = response.json()
+            task_data = data.get("data", {})
+            status = task_data.get("status", "unknown")
+
+            # Map GoAPI status to our status
+            status_map = {
+                "pending": GenerationStatus.PENDING,
+                "queued": GenerationStatus.QUEUED,
+                "processing": GenerationStatus.PROCESSING,
+                "completed": GenerationStatus.COMPLETE,
+                "complete": GenerationStatus.COMPLETE,
+                "failed": GenerationStatus.FAILED,
+                "error": GenerationStatus.ERROR,
+            }
+            gen_status = status_map.get(status, GenerationStatus.PROCESSING)
+
+            # Extract audio info if complete
+            audio_url = None
+            title = None
+            duration = None
+
+            if gen_status == GenerationStatus.COMPLETE:
+                # Udio returns song info in task_data
+                audio_url = task_data.get("audio_url") or task_data.get("song_path")
+                title = task_data.get("title")
+                duration = task_data.get("duration")
+
+                # Check for clips/songs array format
+                clips = task_data.get("clips") or task_data.get("songs", [])
+                if clips and isinstance(clips, list) and len(clips) > 0:
+                    clip = clips[0]
+                    audio_url = audio_url or clip.get("audio_url") or clip.get("song_path")
+                    title = title or clip.get("title")
+                    duration = duration or clip.get("duration")
+
+            return GenerationResult(
+                provider=ProviderType.GOAPI_UDIO,
+                job_id=job_id,
+                status=gen_status,
+                title=title,
+                audio_url=audio_url,
+                duration_seconds=float(duration) if duration else None,
+                raw_response=data,
+            )
+
+        except Exception as e:
+            logger.error(f"GoAPI Udio status check failed: {e}")
+            return GenerationResult(
+                provider=ProviderType.GOAPI_UDIO,
+                job_id=job_id,
+                status=GenerationStatus.ERROR,
+                error_message=str(e),
+            )
+
+    async def download_audio(self, audio_url: str, output_path: Path) -> bool:
+        """Download generated audio to local path."""
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream("GET", audio_url) as response:
+                    response.raise_for_status()
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(output_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(8192):
+                            f.write(chunk)
+            return True
+        except Exception as e:
+            logger.error(f"Download failed: {e}")
+            return False
+
+    async def close(self) -> None:
+        """Clean up resources."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+
+
 class MockProvider(MusicProvider):
     """Mock provider for testing."""
 
@@ -744,6 +1455,12 @@ def get_provider(provider_type: Optional[ProviderType] = None) -> MusicProvider:
     if provider_type not in _providers:
         if provider_type == ProviderType.SUNO:
             _providers[provider_type] = SunoProvider()
+        elif provider_type == ProviderType.SUNOAPI:
+            _providers[provider_type] = SunoAPIProvider()
+        elif provider_type == ProviderType.GOAPI_SUNO:
+            _providers[provider_type] = GoAPISunoProvider()
+        elif provider_type == ProviderType.GOAPI_UDIO:
+            _providers[provider_type] = GoAPIUdioProvider()
         elif provider_type == ProviderType.STABLE_AUDIO:
             _providers[provider_type] = StableAudioProvider()
         elif provider_type == ProviderType.UDIO:

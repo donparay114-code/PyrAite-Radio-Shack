@@ -6,7 +6,6 @@ An AI-powered community radio station platform with comprehensive Claude Code in
 
 PYrte Radio Shack is a Python-based AI radio station system that integrates:
 
-- **n8n Workflow Automation** - 4 integrated workflows for music generation and broadcasting
 - **Database** - PostgreSQL
 - **Frontend** - Next.js 14 + Tailwind CSS
 - **Backend API** - FastAPI + SQLAlchemy
@@ -24,7 +23,7 @@ PYrte Radio Shack is a Python-based AI radio station system that integrates:
 
 ## Architecture
 
-```
+```text
 User Request (Telegram)
         |
         v
@@ -50,7 +49,7 @@ User Request (Telegram)
 
 | Component | Technology |
 |-----------|------------|
-| Workflow Automation | n8n |
+
 | Music Generation | Suno API, Udio (via udio-wrapper) |
 | Database | PostgreSQL 16+ |
 | Frontend | Next.js 14 + Tailwind CSS |
@@ -64,7 +63,7 @@ User Request (Telegram)
 
 ## Project Structure
 
-```
+```text
 PYrte-Radio-Shack/
 ├── .claude/                    # Claude Code configuration
 │   ├── settings.json           # Permissions and hooks
@@ -78,7 +77,6 @@ PYrte-Radio-Shack/
 │   └── utils/                  # Utilities
 ├── tests/                      # Test files
 ├── docs/                       # Documentation
-├── n8n_workflows/              # n8n workflow JSON exports
 ├── sql/                        # Database migrations
 ├── README.md                   # This file
 └── CLAUDE.md                   # Claude Code guide
@@ -90,7 +88,7 @@ PYrte-Radio-Shack/
 
 - Python 3.11+
 - PostgreSQL 16+
-- n8n (self-hosted or cloud)
+
 - Suno AI access
 - Telegram Bot Token
 - OpenAI API key (for moderation)
@@ -134,7 +132,7 @@ docker-compose up -d --build
 | :--- | :--- | :--- |
 | **Frontend** | [http://localhost:3005](http://localhost:3005) | N/A |
 | **API Docs** | [http://localhost:8001/docs](http://localhost:8001/docs) | N/A |
-| **n8n** | [http://localhost:5678](http://localhost:5678) | `admin` / `admin` |
+
 | **Stream** | `http://localhost:8001/stream` | N/A |
 
 1. Import n8n workflows from `n8n_workflows/` directory
@@ -165,15 +163,6 @@ ICECAST_HOST=localhost
 ICECAST_PORT=8000
 ICECAST_PASSWORD=hackme
 ```
-
-## n8n Workflows
-
-| Workflow | Purpose | Trigger |
-|----------|---------|---------|
-| AI Radio Bot | Handle Telegram requests | Webhook |
-| Queue Processor | Generate music via Suno | Schedule (30s) |
-| Radio Director | Stitch DJ intros + broadcast | Schedule (check queue) |
-| Reputation Calculator | Update user reputation | Schedule (5min) |
 
 ## Database Schema
 
@@ -277,6 +266,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ## Acknowledgments
 
 - [Suno AI](https://suno.ai) for music generation
-- [n8n](https://n8n.io) for workflow automation
+
 - [Liquidsoap](https://www.liquidsoap.info) for audio streaming
 - [Claude Code](https://claude.ai) for development assistance

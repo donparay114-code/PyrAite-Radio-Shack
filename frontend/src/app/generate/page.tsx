@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Music, Loader2, Play, Download, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Music, Loader2, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import { GlassCard, GlowButton, easings } from "@/components/ui";
 
 interface GenerateResponse {
@@ -17,7 +17,7 @@ interface GenerateResponse {
 
 export default function GeneratePage() {
     const [prompt, setPrompt] = useState("");
-    const [provider, setProvider] = useState("udio");
+    const [provider, setProvider] = useState("sunoapi");
     const [isInstrumental, setIsInstrumental] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<GenerateResponse | null>(null);
@@ -97,19 +97,24 @@ export default function GeneratePage() {
                     {/* Provider Select */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-white">Provider</label>
-                        <div className="flex gap-3">
-                            {["udio", "suno", "mock"].map((p) => (
+                        <div className="flex flex-wrap gap-3">
+                            {[
+                                { id: "sunoapi", label: "SunoAPI", recommended: true },
+                                { id: "goapi_udio", label: "GoAPI Udio", recommended: true },
+                                { id: "mock", label: "Mock", recommended: false },
+                            ].map((p) => (
                                 <button
-                                    key={p}
-                                    onClick={() => setProvider(p)}
+                                    key={p.id}
+                                    onClick={() => setProvider(p.id)}
                                     disabled={isLoading}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all
-                    ${provider === p
+                    ${provider === p.id
                                             ? "bg-violet-500 text-white"
                                             : "bg-white/5 text-text-muted hover:bg-white/10 hover:text-white"
                                         } disabled:opacity-50`}
                                 >
-                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                    {p.label}
+                                    {p.recommended && <span className="ml-1 text-green-300">✓</span>}
                                 </button>
                             ))}
                         </div>
@@ -245,8 +250,8 @@ export default function GeneratePage() {
                         💡 Tips
                     </h4>
                     <ul className="text-xs text-text-muted space-y-1">
-                        <li>• <strong>Udio</strong>: Free AI music (requires auth token in backend)</li>
-                        <li>• <strong>Suno</strong>: Suno AI via n8n webhook</li>
+                        <li>• <strong>SunoAPI</strong> ✓: Suno via API key ($0.032/song)</li>
+                        <li>• <strong>GoAPI Udio</strong> ✓: Udio via API key ($0.05/song)</li>
                         <li>• <strong>Mock</strong>: Test mode (no actual generation)</li>
                     </ul>
                 </GlassCard>

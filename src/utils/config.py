@@ -35,7 +35,10 @@ class Settings(BaseSettings):
     # API Keys
     suno_api_url: str = ""  # Deprecated - using direct SunoAI package
     suno_api_key: str = ""  # Deprecated
-    suno_cookie: str = ""  # Browser cookie from suno.com for SunoAI package
+    suno_cookie: str = ""  # Browser cookie from suno.com for SunoAI package (unreliable)
+    sunoapi_key: str = ""  # sunoapi.org API key ($0.032/song) - recommended
+    goapi_suno_key: str = ""  # GoAPI.ai Suno key (deprecated - GoAPI doesn't have Suno)
+    goapi_key: str = ""  # GoAPI.ai API key for Udio
 
     # Google OAuth
     google_client_id: str = ""

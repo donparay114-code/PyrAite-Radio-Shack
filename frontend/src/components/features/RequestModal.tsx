@@ -48,7 +48,7 @@ const STYLE_TAGS = [
 ];
 
 export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
-  const [provider, setProvider] = useState("udio");
+  const [provider, setProvider] = useState("sunoapi");
   const [prompt, setPrompt] = useState("");
   const [genre, setGenre] = useState<string | null>(null);
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -313,21 +313,28 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                     <label className="block text-sm font-medium text-white mb-2">
                       Generation Provider
                     </label>
-                    <div className="flex gap-2">
-                      {["udio", "suno", "mock"].map((p) => (
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: "sunoapi", label: "SunoAPI", recommended: true },
+                        { id: "goapi_udio", label: "GoAPI Udio", recommended: true },
+                        { id: "mock", label: "Mock", recommended: false },
+                      ].map((p) => (
                         <motion.button
-                          key={p}
+                          key={p.id}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => setProvider(p)}
+                          onClick={() => setProvider(p.id)}
                           className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex-1",
-                            provider === p
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                            provider === p.id
                               ? "bg-violet-500/30 border border-violet-500/50 text-violet-300"
                               : "bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10"
                           )}
                         >
-                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                          {p.label}
+                          {p.recommended && (
+                            <span className="ml-1 text-xs text-green-400">✓</span>
+                          )}
                         </motion.button>
                       ))}
                     </div>

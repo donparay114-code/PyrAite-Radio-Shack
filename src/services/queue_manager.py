@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import QueueStatus, RadioQueue, Song, SunoStatus, User
 from src.services.audio_processor import AudioProcessor, get_audio_processor
-from src.services.suno_client import SunoClient, SunoJobStatus, get_suno_client
+from src.services.music_provider import (
+    GenerationRequest,
+    GenerationStatus,
+    MusicProvider,
+    get_provider,
+)
 from src.utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,19 +28,19 @@ class QueueManager:
 
     def __init__(
         self,
-        suno_client: Optional[SunoClient] = None,
+        music_provider: Optional[MusicProvider] = None,
         audio_processor: Optional[AudioProcessor] = None,
         max_concurrent: int = 3,
         poll_interval: float = 10.0,
         auto_master: bool = True,
     ):
-        self.suno_client = suno_client or get_suno_client()
+        self.music_provider = music_provider or get_provider()
         self.audio_processor = audio_processor or get_audio_processor()
         self.max_concurrent = max_concurrent
         self.poll_interval = poll_interval
         self.auto_master = auto_master
         self._running = False
-        self._active_jobs: dict[int, str] = {}  # queue_id -> suno_job_id
+        self._active_jobs: dict[int, str] = {}  # queue_id -> job_id
 
     async def start(self, session: AsyncSession) -> None:
         """Start the queue processing loop."""
@@ -67,22 +72,22 @@ class QueueManager:
 
     async def _check_active_jobs(self, session: AsyncSession) -> None:
         """Check status of currently generating jobs."""
-        for queue_id, suno_job_id in list(self._active_jobs.items()):
+        for queue_id, job_id in list(self._active_jobs.items()):
             try:
-                result = await self.suno_client.get_status(suno_job_id)
+                result = await self.music_provider.get_status(job_id)
 
-                if result.status == SunoJobStatus.COMPLETE:
+                if result.status == GenerationStatus.COMPLETE:
                     await self._handle_completion(session, queue_id, result)
                     del self._active_jobs[queue_id]
 
-                elif result.status in (SunoJobStatus.FAILED, SunoJobStatus.ERROR):
+                elif result.status in (GenerationStatus.FAILED, GenerationStatus.ERROR):
                     await self._handle_failure(session, queue_id, result)
                     del self._active_jobs[queue_id]
 
                 # Still processing - continue waiting
 
             except Exception as e:
-                logger.error(f"Error checking job {suno_job_id}: {e}")
+                logger.error(f"Error checking job {job_id}: {e}")
 
     async def _start_new_jobs(self, session: AsyncSession, count: int) -> None:
         """Start new generation jobs from the queue."""
@@ -110,18 +115,16 @@ class QueueManager:
             item.generation_started_at = datetime.utcnow()
             await session.flush()
 
-            # Submit to Suno
-            from src.services.suno_client import SunoGenerationRequest
-
-            request = SunoGenerationRequest(
+            # Submit to music provider
+            request = GenerationRequest(
                 prompt=item.enhanced_prompt or item.original_prompt,
                 style=item.genre_hint,
                 is_instrumental=item.is_instrumental,
             )
 
-            result = await self.suno_client.generate(request)
+            result = await self.music_provider.generate(request)
 
-            if result.status == SunoJobStatus.ERROR:
+            if result.status == GenerationStatus.ERROR:
                 item.status = QueueStatus.FAILED.value
                 item.error_message = result.error_message
                 logger.error(
@@ -179,7 +182,7 @@ class QueueManager:
         # Download audio file
         if result.audio_url:
             download_path = settings.songs_dir / f"{song.id}_{result.job_id}.mp3"
-            success = await self.suno_client.download_audio(
+            success = await self.music_provider.download_audio(
                 result.audio_url, download_path
             )
             if success:
