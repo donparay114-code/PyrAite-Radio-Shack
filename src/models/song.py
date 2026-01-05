@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, TimestampMixin
@@ -12,6 +12,7 @@ from src.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from src.models.history import RadioHistory
     from src.models.queue import RadioQueue
+    from src.models.social import Comment
 
 
 class SunoStatus(str, Enum):
@@ -91,12 +92,18 @@ class Song(Base, TimestampMixin):
     moderation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     flagged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Community & Metadata
+    prompt_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     # Relationships
     queue_entries: Mapped[list["RadioQueue"]] = relationship(
         "RadioQueue", back_populates="song", lazy="dynamic"
     )
     history_entries: Mapped[list["RadioHistory"]] = relationship(
         "RadioHistory", back_populates="song", lazy="dynamic"
+    )
+    comments: Mapped[list["Comment"]] = relationship(
+        "Comment", back_populates="song", lazy="dynamic"
     )
 
     @property

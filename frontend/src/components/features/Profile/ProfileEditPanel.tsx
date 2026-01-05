@@ -17,6 +17,7 @@ import { User } from "@/types";
 import {
   useUpdateEmail,
   useUpdatePassword,
+  useSetPassword,
   useUpdateUsername,
   useUploadAvatar,
   useDeleteAvatar,
@@ -104,11 +105,10 @@ function InputField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full bg-black/30 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-text-muted/50 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-          error
+        className={`w-full bg-black/30 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-text-muted/50 focus:outline-none focus:ring-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${error
             ? "border-red-500/50 focus:ring-red-500/50"
             : "border-white/10 focus:ring-violet-500/50 focus:border-violet-500/50"
-        }`}
+          }`}
       />
       {error && (
         <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
@@ -134,6 +134,7 @@ export function ProfileEditPanel({ user }: ProfileEditPanelProps) {
   // Mutations
   const updateEmailMutation = useUpdateEmail();
   const updatePasswordMutation = useUpdatePassword();
+  const setPasswordMutation = useSetPassword();
   const updateUsernameMutation = useUpdateUsername();
   const uploadAvatarMutation = useUploadAvatar();
   const deleteAvatarMutation = useDeleteAvatar();
@@ -238,6 +239,35 @@ export function ProfileEditPanel({ user }: ProfileEditPanelProps) {
     }
   };
 
+  const handleSetPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    try {
+      await setPasswordMutation.mutateAsync({
+        new_password: newPassword,
+      });
+      toast.success("Password set successfully! You can now login with email and password.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to set password";
+      toast.error(errorMessage);
+    }
+  };
+
   const handleUsernameUpdate = async () => {
     if (!newUsername) {
       toast.error("Please enter a new username");
@@ -298,9 +328,18 @@ export function ProfileEditPanel({ user }: ProfileEditPanelProps) {
               accept="image/png,image/jpeg,image/webp"
               onChange={handleAvatarChange}
               className="hidden"
+              title="Upload avatar"
+              aria-label="Upload avatar"
             />
           </div>
-          <p className="text-xs text-text-muted mt-2">Click to change photo</p>
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            disabled={uploadAvatarMutation.isPending}
+            className="text-xs text-text-muted mt-2 hover:text-violet-400 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Click to change photo
+          </button>
           {user.avatar_url && (
             <button
               onClick={() => {
@@ -367,10 +406,54 @@ export function ProfileEditPanel({ user }: ProfileEditPanelProps) {
         {/* Password Section */}
         <CollapsibleSection title="Change Password" icon={Lock}>
           {isGoogleOnly ? (
-            <p className="text-xs text-amber-400 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Set a password to enable password login
-            </p>
+            <>
+              <p className="text-xs text-amber-400 flex items-center gap-1 mb-3">
+                <AlertCircle className="w-3 h-3" />
+                Set a password to enable email/password login
+              </p>
+              <InputField
+                label="New Password"
+                type="password"
+                value={newPassword}
+                onChange={setNewPassword}
+                placeholder="Min. 8 characters"
+                disabled={setPasswordMutation.isPending}
+              />
+              <InputField
+                label="Confirm Password"
+                type="password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                placeholder="Confirm password"
+                disabled={setPasswordMutation.isPending}
+                error={
+                  confirmPassword && newPassword !== confirmPassword
+                    ? "Passwords don't match"
+                    : undefined
+                }
+              />
+              <GlowButton
+                size="sm"
+                className="w-full"
+                onClick={handleSetPassword}
+                disabled={
+                  setPasswordMutation.isPending ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword !== confirmPassword ||
+                  newPassword.length < 8
+                }
+              >
+                {setPasswordMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Set Password
+                  </>
+                )}
+              </GlowButton>
+            </>
           ) : (
             <>
               <InputField

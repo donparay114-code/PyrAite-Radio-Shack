@@ -8,7 +8,7 @@ import Image from "next/image";
 interface AvatarProps {
   src?: string | null;
   name: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   tier?: UserTier;
   showTierBorder?: boolean;
   isOnline?: boolean;
@@ -29,6 +29,7 @@ export function Avatar({
     md: "w-10 h-10 text-sm",
     lg: "w-14 h-14 text-lg",
     xl: "w-20 h-20 text-2xl",
+    "2xl": "w-32 h-32 text-4xl",
   };
 
   const borderSize = {
@@ -36,6 +37,7 @@ export function Avatar({
     md: "ring-2",
     lg: "ring-[3px]",
     xl: "ring-4",
+    "2xl": "ring-4",
   };
 
   const tierColor = tier ? TIER_COLORS[tier] : undefined;
@@ -78,13 +80,15 @@ export function Avatar({
             fill
             className="object-cover"
             sizes={
-              size === "xl"
-                ? "80px"
-                : size === "lg"
-                  ? "56px"
-                  : size === "md"
-                    ? "40px"
-                    : "32px"
+              size === "2xl"
+                ? "128px"
+                : size === "xl"
+                  ? "80px"
+                  : size === "lg"
+                    ? "56px"
+                    : size === "md"
+                      ? "40px"
+                      : "32px"
             }
           />
         ) : (
@@ -101,6 +105,7 @@ export function Avatar({
             size === "md" && "w-3 h-3",
             size === "lg" && "w-4 h-4",
             size === "xl" && "w-5 h-5",
+            size === "2xl" && "w-6 h-6",
             isOnline ? "bg-green-500" : "bg-gray-500"
           )}
         />

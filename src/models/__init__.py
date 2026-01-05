@@ -14,6 +14,7 @@ from src.models.history import RadioHistory
 from src.models.moderation import BannedWord
 from src.models.queue import QueueStatus, RadioQueue
 from src.models.song import Song, SunoStatus
+from src.models.social import Comment, Follow
 from src.models.user import User, UserTier
 from src.models.vote import Vote, VoteType
 
