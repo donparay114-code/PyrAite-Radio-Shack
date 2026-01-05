@@ -203,8 +203,13 @@ async def list_users(
 async def create_user(
     user_data: UserCreate,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new user or return existing."""
+    # Only allow premium users or those with high reputation to create/update users manually
+    if not current_user.is_premium and current_user.reputation_score < 1000:
+        raise HTTPException(status_code=403, detail="Insufficient privileges")
+
     # Check if user exists
     existing = await session.execute(
         select(User).where(User.telegram_id == user_data.telegram_id)
