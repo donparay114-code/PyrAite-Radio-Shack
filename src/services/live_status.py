@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models import QueueStatus, RadioHistory, RadioQueue, Song, User
 
@@ -85,8 +86,10 @@ class LiveStatusService:
             QueueStatus.GENERATING.value,
         ]
 
+        # Eager load the user relationship to prevent N+1 queries
         query = (
             select(RadioQueue)
+            .options(selectinload(RadioQueue.user))
             .where(RadioQueue.status.in_(active_statuses))
             .order_by(RadioQueue.priority_score.desc(), RadioQueue.created_at.asc())
         )
@@ -95,14 +98,10 @@ class LiveStatusService:
 
         generating_list = []
         for item in items:
-            # Get username if user exists
+            # Get username if user exists (now eagerly loaded)
             username = None
-            if item.user_id:
-                user_query = select(User).where(User.id == item.user_id)
-                user_result = await self.session.execute(user_query)
-                user = user_result.scalar_one_or_none()
-                if user:
-                    username = user.display_name
+            if item.user:
+                username = item.user.display_name
 
             generating_list.append(
                 {
