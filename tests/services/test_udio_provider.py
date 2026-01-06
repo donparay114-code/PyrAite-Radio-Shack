@@ -18,7 +18,10 @@ class TestUdioProvider:
     @pytest.fixture
     def provider(self):
         """Create a UdioProvider instance with a mock token."""
-        return UdioProvider(auth_token="test-token-123")
+        provider = UdioProvider(auth_token="test-token-123")
+        # Mock auth validation to always pass in tests
+        provider._validate_auth_token = lambda: (True, "")
+        return provider
 
     @pytest.fixture
     def sample_request(self):

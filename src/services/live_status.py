@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models import QueueStatus, RadioHistory, RadioQueue, Song, User
+from src.models import QueueStatus, RadioHistory, RadioQueue, Song
 
 logger = logging.getLogger(__name__)
 

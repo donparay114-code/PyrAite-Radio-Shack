@@ -25,13 +25,14 @@ class TestContentModerator:
         assert result.passed is False
         assert result.category == ModerationCategory.SPAM
 
-    def test_short_content_fails(self):
-        """Test that very short content fails."""
+    def test_short_content_allowed(self):
+        """Test that short content is allowed for chat."""
         moderator = ContentModerator()
         result = moderator.check("ab")
 
-        assert result.passed is False
-        assert result.category == ModerationCategory.SPAM
+        # Short messages like "ab", "hi", "ok" are now allowed for chat
+        assert result.passed is True
+        assert result.category == ModerationCategory.SAFE
 
     def test_prompt_injection_detected(self):
         """Test that prompt injection is detected."""
@@ -193,16 +194,21 @@ class TestCostTracker:
         assert len(tracker._records) == initial_count
 
 
-class TestModeratorSingleton:
-    """Test moderator singleton behavior."""
+class TestModeratorFactory:
+    """Test moderator factory behavior."""
 
-    def test_get_moderator_returns_same_instance(self):
-        """Test that get_moderator returns singleton."""
+    def test_get_moderator_creates_fresh_instance(self):
+        """Test that get_moderator creates a fresh instance each time.
+
+        This ensures configuration changes are picked up after restart.
+        """
         mod1 = get_moderator()
         mod2 = get_moderator()
 
-        # Note: strict_mode difference creates new instance
-        assert mod1 is mod2
+        # Each call creates a new instance to pick up fresh settings
+        assert mod1 is not mod2
+        # But they should have the same configuration
+        assert mod1.strict_mode == mod2.strict_mode
 
     def test_different_modes_different_instances(self):
         """Test that different modes create different instances."""
