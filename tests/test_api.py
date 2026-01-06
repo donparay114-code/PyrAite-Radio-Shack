@@ -97,32 +97,32 @@ class TestUserEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == []
 
-    def test_create_user(self, client):
-        """Test creating a user."""
+    def test_create_user(self, auth_client):
+        """Test creating a user (requires authenticated privileged user)."""
         payload = {
             "telegram_id": 123456789,
             "telegram_username": "testuser",
             "telegram_first_name": "Test",
         }
-        response = client.post("/api/users/", json=payload)
+        response = auth_client.post("/api/users/", json=payload)
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
         assert data["telegram_id"] == payload["telegram_id"]
         assert data["reputation_score"] == 0.0
         assert data["tier"] == "new"
 
-    def test_create_user_existing(self, client):
+    def test_create_user_existing(self, auth_client):
         """Test creating user that already exists (should update)."""
         payload = {
             "telegram_id": 123456789,
             "telegram_username": "testuser",
         }
         # Create first time
-        client.post("/api/users/", json=payload)
+        auth_client.post("/api/users/", json=payload)
 
         # Create again - should update
         payload["telegram_username"] = "updateduser"
-        response = client.post("/api/users/", json=payload)
+        response = auth_client.post("/api/users/", json=payload)
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_get_user_stats(self, client):
