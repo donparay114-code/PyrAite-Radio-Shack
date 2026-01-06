@@ -6,7 +6,7 @@ This file provides context and guidelines for Claude Code when working on this p
 
 PYrte Radio Shack is an AI-powered community radio station built with Python, n8n workflows, and Suno AI for music generation. Claude Code has been configured with comprehensive skills, sub-agents, and slash commands to assist with development.
 
-## Available Skills (72 Total)
+## Available Skills (67 Total)
 
 Claude has access to domain expertise skills organized by category:
 
@@ -19,17 +19,13 @@ Claude has access to domain expertise skills organized by category:
 | `music-metadata-analyzer` | Audio file metadata extraction and analysis |
 | `audio-quality-validator` | Audio file quality validation for broadcast |
 | `ffmpeg-audio-processor` | FFmpeg audio processing commands |
-| `ffmpeg-video-processor` | FFmpeg video processing commands |
 
 ### n8n & Automation
 | Skill | Description |
 |-------|-------------|
 | `flow-orchestrator` | n8n workflow architecture and JavaScript Code nodes |
 | `n8n-radio-station` | Radio station n8n workflow management |
-| `n8n-workflow-automation` | General n8n workflow automation |
 | `n8n-workflow-helper` | n8n workflow patterns and best practices |
-| `n8n-workflow-manager` | Workflow lifecycle management |
-| `n8n-workflow-repair` | Diagnose and fix broken workflows, node versions, connections |
 
 ### Database & Backend
 | Skill | Description |
@@ -77,8 +73,6 @@ Claude has access to domain expertise skills organized by category:
 ### Content & Media
 | Skill | Description |
 |-------|-------------|
-| `video-prompt-engineering` | Text-to-video prompt optimization |
-| `philosophical-content` | Philosophical content generation |
 | `content-extractor` | Content extraction and summarization |
 
 ### Utilities
@@ -92,9 +86,9 @@ Claude has access to domain expertise skills organized by category:
 | `webhook-tester` | Webhook testing and validation |
 | `metrics-calculator` | Performance and engagement metrics |
 
-*See `.claude/skills/` for complete list of 72 skills.*
+*See `.claude/skills/` for complete list of 67 skills.*
 
-## Available Sub-Agents (70 Total)
+## Available Sub-Agents (47 Total)
 
 Specialized agents for delegated tasks:
 
@@ -117,32 +111,13 @@ Specialized agents for delegated tasks:
 | `music-playlist-curator` | Curate and optimize playlists |
 | `audio-quality-checker` | Validate audio file quality |
 | `audio-editor-specialist` | Audio editing with FFmpeg |
-| `ffmpeg-audio-processor` | FFmpeg audio commands |
-
-### Video & Media Agents
-| Agent | Role |
-|-------|------|
-| `video-prompt-engineer` | Text-to-video prompts |
-| `hailuo-video-prompter` | Hailuo-specific video prompts |
-| `google-veo-prompter` | Google Veo video prompts |
-| `minimax-prompter` | Minimax video prompts |
-| `video-editing-specialist` | Video editing with FFmpeg |
-| `camera-movement-specialist` | Cinematic camera work design |
-| `visual-style-designer` | Visual aesthetics and mood |
-| `scene-descriptor` | Detailed scene descriptions |
-| `thumbnail-designer` | Video thumbnail design |
-| `image-to-video-specialist` | Image to video conversion |
 
 ### Content Agents
 | Agent | Role |
 |-------|------|
 | `content-repurposer` | Transform content for multiple formats |
 | `micro-content-creator` | Create bite-sized content |
-| `viral-content-analyzer` | Analyze viral potential |
-| `brand-voice-specialist` | Maintain brand consistency |
 | `voiceover-script-writer` | Write voiceover scripts |
-| `story-arc-designer` | Plan narrative structures |
-| `podcast-producer` | Podcast production workflows |
 
 ### Analytics & Optimization Agents
 | Agent | Role |
@@ -161,9 +136,6 @@ Specialized agents for delegated tasks:
 ### Infrastructure Agents
 | Agent | Role |
 |-------|------|
-| `n8n-workflow-designer` | Design n8n workflows |
-| `api-integrator` | API integration design |
-| `api-integration-architect` | Complex API system design |
 | `webhook-security-specialist` | Webhook security |
 | `redis-caching-specialist` | Redis optimization |
 | `backup-validator` | Backup validation |
@@ -186,18 +158,12 @@ Specialized agents for delegated tasks:
 | `test-generator` | Generate test suites |
 | `security-scanner` | Scan for vulnerabilities |
 | `json-schema-validator` | Validate JSON schemas |
-| `storyboard-quality-checker` | Check storyboard quality |
-| `philosophical-consistency-validator` | Validate philosophical content |
-| `philosophical-writing-analyst` | Analyze writing quality |
 | `content-matcher` | Match content combinations |
-| `metaphor-appropriateness-checker` | Validate metaphor usage |
 | `error-pattern-analyzer` | Analyze error patterns |
 
 ### Social & Marketing Agents
 | Agent | Role |
 |-------|------|
-| `social-media-optimizer` | Social media content optimization |
-| `seo-content-optimizer` | SEO optimization |
 | `telegram-bot-flow-designer` | Telegram bot UX design |
 
 ### Specialized Agents
@@ -206,9 +172,8 @@ Specialized agents for delegated tasks:
 | `prompt-library-manager` | Manage prompt templates |
 | `multi-model-router` | Route tasks to optimal models |
 | `database-query-optimizer` | Optimize database queries |
-| `nano-banana-pro-specialist` | Nano Banana Pro video AI |
 
-*See `.claude/agents/` for complete list of 70 agents.*
+*See `.claude/agents/` for complete list of 47 agents.*
 
 ## Slash Commands
 
