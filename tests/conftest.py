@@ -10,6 +10,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
@@ -118,6 +119,36 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+def _create_privileged_user_sync(session) -> User:
+    """Helper to create a privileged user in sync session."""
+    user = User(
+        telegram_id=1,  # Admin user
+        telegram_username="admin_user",
+        telegram_first_name="Admin",
+        is_premium=True,
+        reputation_score=10000,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+async def _create_privileged_user_async(session) -> User:
+    """Helper to create a privileged user in async session."""
+    user = User(
+        telegram_id=1,  # Admin user
+        telegram_username="admin_user",
+        telegram_first_name="Admin",
+        is_premium=True,
+        reputation_score=10000,
+    )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
 @pytest.fixture(scope="function")
 def client(sync_engine) -> Generator[TestClient, None, None]:
     """Create FastAPI test client."""
@@ -200,6 +231,109 @@ async def async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
         yield client
 
     # Cleanup: commit any pending changes and close the session
+    await shared_session.commit()
+    await shared_session.close()
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def auth_client(sync_engine) -> Generator[TestClient, None, None]:
+    """Create authenticated FastAPI test client with a privileged user."""
+    from src.models import get_async_session, get_session
+    from src.utils.security import get_current_user
+
+    TestSessionLocal = sessionmaker(bind=sync_engine, autoflush=False, autocommit=False)
+    session = TestSessionLocal()
+
+    # Create privileged user
+    privileged_user = _create_privileged_user_sync(session)
+
+    def override_get_session():
+        try:
+            yield session
+        finally:
+            pass  # Don't close, we manage it
+
+    def override_get_current_user():
+        return privileged_user
+
+    # Create async engine using same database URL as sync engine
+    test_async_engine = create_async_engine(
+        ASYNC_SQLITE_URL,
+        connect_args={} if USE_POSTGRES else {"check_same_thread": False},
+        poolclass=None if USE_POSTGRES else StaticPool,
+    )
+    test_async_session_maker = async_sessionmaker(
+        bind=test_async_engine,
+        class_=AsyncSession,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+
+    async def override_get_async_session():
+        async with test_async_session_maker() as async_sess:
+            yield async_sess
+            await async_sess.commit()
+
+    async def override_get_current_user_async(
+        session: AsyncSession = Depends(get_async_session),
+    ):
+        return privileged_user
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_async_session] = override_get_async_session
+    app.dependency_overrides[get_current_user] = override_get_current_user_async
+
+    @asynccontextmanager
+    async def mock_lifespan(app):
+        yield
+
+    original_lifespan = app.router.lifespan_context
+    app.router.lifespan_context = mock_lifespan
+
+    with TestClient(app) as c:
+        yield c
+
+    app.router.lifespan_context = original_lifespan
+    session.close()
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_async_client(async_engine) -> AsyncGenerator[AsyncClient, None]:
+    """Create authenticated async test client with a privileged user."""
+    from src.models import get_async_session
+    from src.utils.security import get_current_user
+
+    test_async_session_maker = async_sessionmaker(
+        bind=async_engine,
+        class_=AsyncSession,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+
+    shared_session = test_async_session_maker()
+
+    # Create privileged user
+    privileged_user = await _create_privileged_user_async(shared_session)
+
+    async def override_get_async_session():
+        yield shared_session
+
+    async def override_get_current_user(
+        session: AsyncSession = Depends(get_async_session),
+    ):
+        return privileged_user
+
+    app.dependency_overrides[get_async_session] = override_get_async_session
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
     await shared_session.commit()
     await shared_session.close()
     app.dependency_overrides.clear()

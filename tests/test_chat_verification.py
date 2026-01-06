@@ -3,22 +3,22 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_chat_flow(async_client: AsyncClient):
+async def test_chat_flow(auth_async_client: AsyncClient):
     """
     Test the full chat flow:
-    1. Create a user via API
+    1. Create a user via API (requires auth)
     2. Send a message
     3. Retrieve history and verify message is there
     4. Verify structure of response
     """
-    # 1. Create user via API (ensures user is in same session as other requests)
+    # 1. Create user via API (requires authenticated privileged user)
     user_payload = {
         "telegram_id": 123456789,
         "telegram_username": "testuser",
         "telegram_first_name": "Test",
         "telegram_last_name": "User",
     }
-    user_response = await async_client.post("/api/users/", json=user_payload)
+    user_response = await auth_async_client.post("/api/users/", json=user_payload)
     assert (
         user_response.status_code == 201
     ), f"Failed to create user: {user_response.text}"
@@ -27,7 +27,9 @@ async def test_chat_flow(async_client: AsyncClient):
 
     # 2. Send a message
     payload = {"content": "Hello World", "reply_to_id": None}
-    response = await async_client.post(f"/api/chat/?user_id={user_id}", json=payload)
+    response = await auth_async_client.post(
+        f"/api/chat/?user_id={user_id}", json=payload
+    )
 
     assert response.status_code == 201, f"Failed to send message: {response.text}"
     data = response.json()
@@ -38,7 +40,7 @@ async def test_chat_flow(async_client: AsyncClient):
     assert "created_at" in data
 
     # 3. Get chat history and verify our message is there
-    response = await async_client.get("/api/chat/")
+    response = await auth_async_client.get("/api/chat/")
     assert response.status_code == 200
 
     history_data = response.json()
