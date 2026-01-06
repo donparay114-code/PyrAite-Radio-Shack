@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Song, SunoStatus, get_async_session
@@ -125,31 +125,25 @@ async def get_song_stats(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Get song statistics."""
-    # Total songs
-    total = await session.execute(select(func.count(Song.id)))
-    total_songs = total.scalar() or 0
-
-    # Total plays
-    plays = await session.execute(select(func.sum(Song.play_count)))
-    total_plays = plays.scalar() or 0
-
-    # Approved songs
-    approved = await session.execute(
-        select(func.count(Song.id)).where(Song.is_approved == True)  # noqa: E712
+    # Combine stats into a single query to reduce round trips
+    # We use case() to conditionally count/sum
+    query = select(
+        func.count(Song.id),
+        func.sum(Song.play_count),
+        func.sum(case((Song.is_approved == True, 1), else_=0)),  # noqa: E712
+        func.sum(case((Song.suno_status == SunoStatus.PENDING.value, 1), else_=0)),
+        func.avg(Song.duration_seconds),
     )
-    approved_songs = approved.scalar() or 0
 
-    # Pending songs
-    pending = await session.execute(
-        select(func.count(Song.id)).where(Song.suno_status == SunoStatus.PENDING.value)
-    )
-    pending_songs = pending.scalar() or 0
+    result = await session.execute(query)
+    total_songs, total_plays, approved_songs, pending_songs, avg_duration = result.one()
 
-    # Average duration
-    avg_dur = await session.execute(
-        select(func.avg(Song.duration_seconds)).where(Song.duration_seconds.isnot(None))
-    )
-    avg_duration = avg_dur.scalar() or 0.0
+    # Handle None returns from aggregate functions
+    total_songs = total_songs or 0
+    total_plays = total_plays or 0
+    approved_songs = approved_songs or 0
+    pending_songs = pending_songs or 0
+    avg_duration = avg_duration or 0.0
 
     # Top genre (most common)
     genre_query = (
