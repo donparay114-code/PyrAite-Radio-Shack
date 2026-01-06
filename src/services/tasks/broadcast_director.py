@@ -148,7 +148,9 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
 
     # Allow either local file or remote audio URL for playback
     if not song.local_file_path and not song.audio_url:
-        logger.warning(f"Song {song.id} has no audio source (no local file or audio URL)")
+        logger.warning(
+            f"Song {song.id} has no audio source (no local file or audio URL)"
+        )
         return
 
     # Get requester info
@@ -168,7 +170,9 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
     if not success:
         # Liquidsoap not available - enable direct playback mode
         # Update status to BROADCASTING so frontend can play directly via audio_url
-        logger.warning(f"Liquidsoap unavailable - enabling direct playback for song {song.id}")
+        logger.warning(
+            f"Liquidsoap unavailable - enabling direct playback for song {song.id}"
+        )
 
     # Create broadcast history entry
     history = RadioHistory(
@@ -189,18 +193,22 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
     song.play_count = (song.play_count or 0) + 1
     song.last_played_at = datetime.utcnow()
 
-    logger.info(f"Now playing: {song.title} requested by {requester_name} (direct playback: {not success})")
+    logger.info(
+        f"Now playing: {song.title} requested by {requester_name} (direct playback: {not success})"
+    )
 
     # Emit WebSocket event so frontend updates immediately
-    await emit_now_playing({
-        "song_id": song.id,
-        "title": song.title,
-        "artist": song.artist or "AI Radio",
-        "audio_url": song.audio_url,
-        "duration_seconds": song.duration_seconds,
-        "queue_item_id": queue_item.id,
-        "music_provider": song.music_provider,
-    })
+    await emit_now_playing(
+        {
+            "song_id": song.id,
+            "title": song.title,
+            "artist": song.artist or "AI Radio",
+            "audio_url": song.audio_url,
+            "duration_seconds": song.duration_seconds,
+            "queue_item_id": queue_item.id,
+            "music_provider": song.music_provider,
+        }
+    )
 
 
 async def _announce_song(song: Song, requester_name: str, queue_item: RadioQueue):

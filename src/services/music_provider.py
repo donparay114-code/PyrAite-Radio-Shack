@@ -26,7 +26,9 @@ class ProviderType(str, Enum):
 
     SUNO = "suno"  # Cookie-based unofficial wrapper (unreliable)
     SUNOAPI = "sunoapi"  # sunoapi.org - API key auth ($0.032/song)
-    GOAPI_SUNO = "goapi_suno"  # GoAPI Suno wrapper (deprecated - GoAPI doesn't have Suno)
+    GOAPI_SUNO = (
+        "goapi_suno"  # GoAPI Suno wrapper (deprecated - GoAPI doesn't have Suno)
+    )
     GOAPI_UDIO = "goapi_udio"  # GoAPI Udio - API key auth
     STABLE_AUDIO = "stable_audio"
     UDIO = "udio"  # Cookie-based udio-wrapper (unreliable)
@@ -141,7 +143,9 @@ class MusicProvider(ABC):
         start_time = datetime.utcnow()
         while True:
             result = await self.get_status(result.job_id)
-            logger.debug(f"Polling {result.job_id}: status={result.status.value}, elapsed={(datetime.utcnow() - start_time).total_seconds():.0f}s")
+            logger.debug(
+                f"Polling {result.job_id}: status={result.status.value}, elapsed={(datetime.utcnow() - start_time).total_seconds():.0f}s"
+            )
 
             if result.status in (
                 GenerationStatus.COMPLETE,
@@ -195,7 +199,10 @@ class SunoProvider(MusicProvider):
                 "Copy ALL cookies as a string (format: cookie1=value1; cookie2=value2)"
             )
         if len(self.cookie) < 50:
-            return False, "SUNO_COOKIE appears too short. Check that you copied the full cookie string."
+            return (
+                False,
+                "SUNO_COOKIE appears too short. Check that you copied the full cookie string.",
+            )
         # Check if it's just a JWT token instead of the full cookie string
         if self.cookie.startswith("eyJ") and ";" not in self.cookie:
             return False, (
@@ -206,7 +213,9 @@ class SunoProvider(MusicProvider):
             )
         return True, ""
 
-    def _extract_jwt_and_session_from_cookie(self) -> tuple[Optional[str], Optional[str]]:
+    def _extract_jwt_and_session_from_cookie(
+        self,
+    ) -> tuple[Optional[str], Optional[str]]:
         """Extract JWT token and session ID from the __session cookie."""
         import base64
         import json
@@ -271,9 +280,7 @@ class SunoProvider(MusicProvider):
                     cookie=self.cookie, session_id=session_id, jwt_token=jwt_token
                 )
             except ImportError:
-                raise ImportError(
-                    "SunoAI is not installed. Run: pip install SunoAI"
-                )
+                raise ImportError("SunoAI is not installed. Run: pip install SunoAI")
         return self._client
 
     async def generate(self, request: GenerationRequest) -> GenerationResult:
@@ -321,11 +328,15 @@ class SunoProvider(MusicProvider):
                     status=GenerationStatus.COMPLETE,
                     title=clip.title,
                     audio_url=clip.audio_url,
-                    duration_seconds=clip.duration if hasattr(clip, 'duration') else None,
-                    lyrics=clip.lyric if hasattr(clip, 'lyric') else None,
+                    duration_seconds=(
+                        clip.duration if hasattr(clip, "duration") else None
+                    ),
+                    lyrics=clip.lyric if hasattr(clip, "lyric") else None,
                     created_at=datetime.utcnow(),
                     completed_at=datetime.utcnow(),
-                    raw_response=clip.__dict__ if hasattr(clip, '__dict__') else {"id": clip.id},
+                    raw_response=(
+                        clip.__dict__ if hasattr(clip, "__dict__") else {"id": clip.id}
+                    ),
                 )
             else:
                 return GenerationResult(
@@ -365,16 +376,24 @@ class SunoProvider(MusicProvider):
             )
 
             if clip:
-                status = GenerationStatus.COMPLETE if clip.audio_url else GenerationStatus.PROCESSING
+                status = (
+                    GenerationStatus.COMPLETE
+                    if clip.audio_url
+                    else GenerationStatus.PROCESSING
+                )
                 return GenerationResult(
                     provider=ProviderType.SUNO,
                     job_id=job_id,
                     status=status,
                     title=clip.title,
                     audio_url=clip.audio_url,
-                    duration_seconds=clip.duration if hasattr(clip, 'duration') else None,
-                    lyrics=clip.lyric if hasattr(clip, 'lyric') else None,
-                    raw_response=clip.__dict__ if hasattr(clip, '__dict__') else {"id": clip.id},
+                    duration_seconds=(
+                        clip.duration if hasattr(clip, "duration") else None
+                    ),
+                    lyrics=clip.lyric if hasattr(clip, "lyric") else None,
+                    raw_response=(
+                        clip.__dict__ if hasattr(clip, "__dict__") else {"id": clip.id}
+                    ),
                 )
             else:
                 return GenerationResult(
@@ -608,7 +627,10 @@ class UdioProvider(MusicProvider):
                 "To get it: Log into udio.com → DevTools (F12) → Application → Cookies → Copy 'sb-api-auth-token'"
             )
         if len(self.auth_token) < 50:
-            return False, "UDIO_AUTH_TOKEN appears too short. Check that you copied the full token."
+            return (
+                False,
+                "UDIO_AUTH_TOKEN appears too short. Check that you copied the full token.",
+            )
         return True, ""
 
     def _get_wrapper(self):
@@ -1044,7 +1066,9 @@ class SunoAPIProvider(MusicProvider):
             if request.title:
                 payload["title"] = request.title
 
-            response = await client.post(f"{self.BASE_URL}/api/v1/generate", json=payload)
+            response = await client.post(
+                f"{self.BASE_URL}/api/v1/generate", json=payload
+            )
 
             if response.status_code != 200:
                 error_msg = f"SunoAPI error {response.status_code}: {response.text}"
@@ -1132,7 +1156,9 @@ class SunoAPIProvider(MusicProvider):
             inner_data = data.get("data") or {}
             api_status = (inner_data.get("status") or data.get("status") or "").lower()
 
-            logger.info(f"SunoAPI status for {job_id}: api_status={api_status}, inner_data_keys={list(inner_data.keys()) if inner_data else []}")
+            logger.info(
+                f"SunoAPI status for {job_id}: api_status={api_status}, inner_data_keys={list(inner_data.keys()) if inner_data else []}"
+            )
 
             # Map SunoAPI status to our status
             # Status values: PENDING, TEXT_SUCCESS (lyrics generated), SUCCESS (audio ready)
@@ -1168,11 +1194,17 @@ class SunoAPIProvider(MusicProvider):
                         audio_url = clip.get("audioUrl") or clip.get("audio_url")
                         title = clip.get("title")
                         duration = clip.get("duration")
-                        lyrics = clip.get("prompt")  # SunoAPI uses 'prompt' for generated lyrics
+                        lyrics = clip.get(
+                            "prompt"
+                        )  # SunoAPI uses 'prompt' for generated lyrics
 
                     # Fallback: check for clips/songs array
                     if not audio_url:
-                        clips = response_data.get("clips") or response_data.get("songs") or []
+                        clips = (
+                            response_data.get("clips")
+                            or response_data.get("songs")
+                            or []
+                        )
                         if clips and isinstance(clips, list) and len(clips) > 0:
                             clip = clips[0]
                             audio_url = clip.get("audioUrl") or clip.get("audio_url")
@@ -1182,10 +1214,14 @@ class SunoAPIProvider(MusicProvider):
 
                 # Fallback: check inner_data directly
                 if not audio_url:
-                    audio_url = inner_data.get("audioUrl") or inner_data.get("audio_url")
+                    audio_url = inner_data.get("audioUrl") or inner_data.get(
+                        "audio_url"
+                    )
                     title = title or inner_data.get("title")
                     duration = duration or inner_data.get("duration")
-                    lyrics = lyrics or inner_data.get("lyrics") or inner_data.get("lyric")
+                    lyrics = (
+                        lyrics or inner_data.get("lyrics") or inner_data.get("lyric")
+                    )
 
                 # Fallback: check top-level data
                 if not audio_url:
@@ -1194,7 +1230,9 @@ class SunoAPIProvider(MusicProvider):
                     duration = duration or data.get("duration")
                     lyrics = lyrics or data.get("lyrics") or data.get("lyric")
 
-                logger.info(f"SunoAPI complete - audio_url={audio_url}, title={title}, duration={duration}")
+                logger.info(
+                    f"SunoAPI complete - audio_url={audio_url}, title={title}, duration={duration}"
+                )
 
             return GenerationResult(
                 provider=ProviderType.SUNOAPI,
@@ -1306,7 +1344,9 @@ class GoAPIUdioProvider(MusicProvider):
                 "task_type": "generate_music",
                 "input": {
                     "prompt": full_prompt,
-                    "lyrics_type": "instrumental" if request.is_instrumental else "generate",
+                    "lyrics_type": (
+                        "instrumental" if request.is_instrumental else "generate"
+                    ),
                 },
             }
 
@@ -1378,7 +1418,9 @@ class GoAPIUdioProvider(MusicProvider):
             data = response.json()
             task_data = data.get("data", {})
             status = task_data.get("status", "unknown")
-            logger.info(f"GoAPI Udio status for {job_id}: status={status}, task_data={task_data}")
+            logger.info(
+                f"GoAPI Udio status for {job_id}: status={status}, task_data={task_data}"
+            )
 
             # Map GoAPI status to our status
             status_map = {
@@ -1404,7 +1446,11 @@ class GoAPIUdioProvider(MusicProvider):
 
                 if songs and isinstance(songs, list) and len(songs) > 0:
                     song = songs[0]
-                    audio_url = song.get("audio_url") or song.get("song_path") or song.get("audio")
+                    audio_url = (
+                        song.get("audio_url")
+                        or song.get("song_path")
+                        or song.get("audio")
+                    )
                     title = song.get("title")
                     duration = song.get("duration")
                     logger.info(f"GoAPI Udio: Found audio at {audio_url}")
@@ -1497,6 +1543,7 @@ def _get_default_provider_type() -> ProviderType:
     global _default_provider
     if _default_provider is None:
         from src.utils.config import settings
+
         provider_map = {
             "sunoapi": ProviderType.SUNOAPI,
             "goapi_udio": ProviderType.GOAPI_UDIO,
@@ -1505,8 +1552,7 @@ def _get_default_provider_type() -> ProviderType:
             "mock": ProviderType.MOCK,
         }
         _default_provider = provider_map.get(
-            settings.default_music_provider.lower(),
-            ProviderType.GOAPI_UDIO  # Fallback
+            settings.default_music_provider.lower(), ProviderType.GOAPI_UDIO  # Fallback
         )
         logger.info(f"Default music provider initialized: {_default_provider.value}")
     return _default_provider

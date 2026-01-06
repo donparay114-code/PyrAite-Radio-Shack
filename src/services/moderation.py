@@ -626,7 +626,9 @@ def get_moderator(strict_mode: bool = False) -> ContentModerator:
     # Always create a new instance to get fresh settings
     # This ensures API key changes in .env are picked up after restart
     _moderator = ContentModerator(strict_mode=strict_mode)
-    logger.info(f"Created new moderator - OpenAI enabled: {_moderator._openai_enabled}, API key set: {bool(_moderator._openai_api_key)}")
+    logger.info(
+        f"Created new moderator - OpenAI enabled: {_moderator._openai_enabled}, API key set: {bool(_moderator._openai_api_key)}"
+    )
     return _moderator
 
 

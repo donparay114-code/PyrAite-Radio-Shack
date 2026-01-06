@@ -12,6 +12,7 @@ if settings.redis_url and settings.redis_url != "redis://localhost:6379":
     # Only try Redis if explicitly configured (not default localhost)
     try:
         import redis
+
         # Test Redis connection first
         r = redis.from_url(settings.redis_url, socket_connect_timeout=2)
         r.ping()

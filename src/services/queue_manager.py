@@ -56,11 +56,11 @@ def _generate_title_from_prompt(prompt: str) -> str:
     ]
     for prefix in prefixes:
         if lower_title.startswith(prefix):
-            title = title[len(prefix):]
+            title = title[len(prefix) :]
             break
 
     # Truncate at sentence/clause boundary
-    for delimiter in ['.', ',', '!', '?', '-', ':']:
+    for delimiter in [".", ",", "!", "?", "-", ":"]:
         if delimiter in title:
             title = title.split(delimiter)[0]
             break

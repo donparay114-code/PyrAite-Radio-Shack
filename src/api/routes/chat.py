@@ -75,6 +75,7 @@ def generate_anon_name(identifier: str) -> str:
     The identifier should be the anon_session_id for consistent names.
     """
     import hashlib
+
     hash_input = f"anon_salt_{identifier}".encode()
     hash_digest = hashlib.md5(hash_input).hexdigest()
     # Take first 6 digits from hex converted to int
@@ -181,8 +182,13 @@ async def send_message(
     """
     # Debug: Log what we received
     import logging
-    logging.warning(f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}")
-    print(f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}")
+
+    logging.warning(
+        f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}"
+    )
+    print(
+        f"[DEBUG] send_message received: user_id={user_id}, anon_session_id={anon_session_id}"
+    )
 
     user = None
 
@@ -197,7 +203,7 @@ async def send_message(
         if user.is_banned:
             raise HTTPException(
                 status_code=403,
-                detail=user.ban_reason or "You have been banned from chat"
+                detail=user.ban_reason or "You have been banned from chat",
             )
 
     # Content moderation with OpenAI (always moderate, including anonymous)
@@ -217,10 +223,7 @@ async def send_message(
                 user.banned_at = datetime.utcnow()
                 user.ban_reason = f"Auto-banned after 5 warnings. Last violation: {moderation_result.reason}"
                 await session.flush()
-                raise HTTPException(
-                    status_code=403,
-                    detail=user.ban_reason
-                )
+                raise HTTPException(status_code=403, detail=user.ban_reason)
 
             # Return warning (not ban) for violations 1-4
             await session.flush()

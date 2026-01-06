@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     # API Keys
     suno_api_url: str = ""  # Deprecated - using direct SunoAI package
     suno_api_key: str = ""  # Deprecated
-    suno_cookie: str = ""  # Browser cookie from suno.com for SunoAI package (unreliable)
+    suno_cookie: str = (
+        ""  # Browser cookie from suno.com for SunoAI package (unreliable)
+    )
     sunoapi_key: str = ""  # sunoapi.org API key ($0.032/song) - recommended
     goapi_suno_key: str = ""  # GoAPI.ai Suno key (deprecated - GoAPI doesn't have Suno)
     goapi_key: str = ""  # GoAPI.ai API key for Udio
@@ -73,7 +75,9 @@ class Settings(BaseSettings):
     backend_public_url: str = "http://localhost:8000"
 
     # Music Generation
-    default_music_provider: str = "sunoapi"  # Options: sunoapi, goapi_udio, suno, udio, mock
+    default_music_provider: str = (
+        "sunoapi"  # Options: sunoapi, goapi_udio, suno, udio, mock
+    )
 
     # Application
     debug: bool = False
@@ -135,8 +139,12 @@ def get_settings() -> Settings:
     """Get cached settings instance."""
     s = Settings()
     # Log API key status on load
-    logger.info(f"Settings loaded - OpenAI API key: {'configured' if s.openai_api_key else 'NOT SET'}")
-    logger.info(f"Settings loaded - OpenAI moderation enabled: {s.openai_moderation_enabled}")
+    logger.info(
+        f"Settings loaded - OpenAI API key: {'configured' if s.openai_api_key else 'NOT SET'}"
+    )
+    logger.info(
+        f"Settings loaded - OpenAI moderation enabled: {s.openai_moderation_enabled}"
+    )
     return s
 
 
