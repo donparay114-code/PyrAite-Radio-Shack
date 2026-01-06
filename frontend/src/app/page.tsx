@@ -76,6 +76,7 @@ export default function HomePage() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
+  const [userPaused, setUserPaused] = useState(false); // Track if user manually paused
 
   // Auth context
   const { user, isAuthenticated } = useAuth();
@@ -117,10 +118,24 @@ export default function HomePage() {
     await submitMutation.mutateAsync(data);
   };
 
-  // Reset time when song changes
+  // Reset time and auto-play when song changes (unless user explicitly paused)
   useEffect(() => {
     setCurrentTime(0);
-  }, [currentSong.id]);
+    // Auto-play new song unless user manually paused
+    if (currentSong?.id && !userPaused) {
+      setIsPlaying(true);
+    }
+  }, [currentSong.id, userPaused]);
+
+  // Handle play/pause with user intent tracking
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      setUserPaused(true); // User explicitly paused
+    } else {
+      setUserPaused(false); // User wants to play
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   // Calculate stats from API data
   const queueCount = displayQueue.length;
@@ -226,7 +241,7 @@ export default function HomePage() {
                 queueItem={currentQueueItem}
                 isPlaying={isPlaying}
                 currentTime={currentTime}
-                onPlayPause={() => setIsPlaying(!isPlaying)}
+                onPlayPause={handlePlayPause}
                 onVote={(type) => currentQueueItem.id && handleVote(currentQueueItem.id, type)}
                 onSeek={setCurrentTime}
               />

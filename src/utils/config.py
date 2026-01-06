@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).parent.parent.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -71,6 +71,9 @@ class Settings(BaseSettings):
 
     # Backend Public URL (for n8n callbacks when using Cloudflare Tunnel)
     backend_public_url: str = "http://localhost:8000"
+
+    # Music Generation
+    default_music_provider: str = "sunoapi"  # Options: sunoapi, goapi_udio, suno, udio, mock
 
     # Application
     debug: bool = False

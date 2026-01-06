@@ -11,7 +11,9 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import selectinload
 
+from src.api.socket_manager import emit_now_playing
 from src.models import QueueStatus, RadioHistory, RadioQueue, Song, User
 from src.models.base import get_async_engine
 from src.services.liquidsoap_client import get_liquidsoap_client
@@ -42,12 +44,13 @@ async def broadcast_director_job():
     """Direct the broadcast flow.
 
     This job runs every 60 seconds and:
-    1. Checks if Liquidsoap queue needs more songs
-    2. Gets the next generated song by priority
-    3. Announces the song in Telegram
-    4. Pushes the song to Liquidsoap
-    5. Creates a broadcast history entry
-    6. Updates queue item status to PLAYING
+    1. Completes any songs that have finished playing
+    2. Checks if Liquidsoap queue needs more songs
+    3. Gets the next generated song by priority
+    4. Announces the song in Telegram
+    5. Pushes the song to Liquidsoap
+    6. Creates a broadcast history entry
+    7. Updates queue item status to BROADCASTING
     """
     logger.debug("Broadcast director job starting")
 
@@ -56,6 +59,9 @@ async def broadcast_director_job():
 
     async with session_maker() as session:
         try:
+            # First, complete any songs that have finished playing
+            await _complete_finished_broadcasts(session)
+
             # Check Liquidsoap queue length
             queue_length = await liquidsoap.get_queue_length()
 
@@ -70,8 +76,51 @@ async def broadcast_director_job():
             await session.rollback()
 
 
+async def _complete_finished_broadcasts(session: AsyncSession):
+    """Mark broadcasting songs as completed if their duration has elapsed."""
+    query = (
+        select(RadioQueue)
+        .options(selectinload(RadioQueue.song))
+        .where(RadioQueue.status == QueueStatus.BROADCASTING.value)
+    )
+    result = await session.execute(query)
+    broadcasting_items = result.scalars().all()
+
+    now = datetime.utcnow()
+    for item in broadcasting_items:
+        if not item.broadcast_started_at:
+            continue
+
+        elapsed = (now - item.broadcast_started_at).total_seconds()
+
+        # Get song duration, default to 180 seconds (3 min) if not available
+        duration = 180.0
+        if item.song and item.song.duration_seconds:
+            duration = item.song.duration_seconds
+        elif not item.song:
+            # Song missing - complete after default duration
+            logger.warning(f"Queue item {item.id} has no associated song")
+
+        if elapsed >= duration:
+            item.status = QueueStatus.COMPLETED.value
+            item.completed_at = now
+            title = item.song.title if item.song else f"Queue Item #{item.id}"
+            logger.info(f"Completed broadcast: {title} (played {elapsed:.0f}s)")
+
+
 async def _queue_next_song(session: AsyncSession, liquidsoap):
     """Queue the next generated song for broadcast."""
+    # Check if something is already broadcasting - only one song at a time
+    broadcasting_query = (
+        select(RadioQueue)
+        .where(RadioQueue.status == QueueStatus.BROADCASTING.value)
+        .limit(1)
+    )
+    broadcasting_result = await session.execute(broadcasting_query)
+    if broadcasting_result.scalar_one_or_none():
+        logger.debug("Song already broadcasting, skipping")
+        return
+
     # Get next generated song ordered by priority
     query = (
         select(RadioQueue)
@@ -93,8 +142,13 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
     song_result = await session.execute(song_query)
     song = song_result.scalar_one_or_none()
 
-    if not song or not song.local_file_path:
-        logger.warning(f"Song {queue_item.song_id} not found or no local file")
+    if not song:
+        logger.warning(f"Song {queue_item.song_id} not found")
+        return
+
+    # Allow either local file or remote audio URL for playback
+    if not song.local_file_path and not song.audio_url:
+        logger.warning(f"Song {song.id} has no audio source (no local file or audio URL)")
         return
 
     # Get requester info
@@ -109,16 +163,17 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
     # Announce in Telegram
     await _announce_song(song, requester_name, queue_item)
 
-    # Push to Liquidsoap
+    # Try to push to Liquidsoap
     success = await liquidsoap.push_song(song.local_file_path)
     if not success:
-        logger.error(f"Failed to push song {song.id} to Liquidsoap")
-        return
+        # Liquidsoap not available - enable direct playback mode
+        # Update status to BROADCASTING so frontend can play directly via audio_url
+        logger.warning(f"Liquidsoap unavailable - enabling direct playback for song {song.id}")
 
     # Create broadcast history entry
     history = RadioHistory(
         song_id=song.id,
-        queue_item_id=queue_item.id,
+        queue_id=queue_item.id,
         song_title=song.title,
         song_artist=song.artist or "AI Radio",
         requester_telegram_id=queue_item.telegram_user_id,
@@ -126,15 +181,26 @@ async def _queue_next_song(session: AsyncSession, liquidsoap):
     )
     session.add(history)
 
-    # Update queue item status
-    queue_item.status = QueueStatus.PLAYING.value
-    queue_item.played_at = datetime.utcnow()
+    # Update queue item status to BROADCASTING (frontend will play via audio_url)
+    queue_item.status = QueueStatus.BROADCASTING.value
+    queue_item.broadcast_started_at = datetime.utcnow()
 
     # Increment song play count
     song.play_count = (song.play_count or 0) + 1
     song.last_played_at = datetime.utcnow()
 
-    logger.info(f"Now playing: {song.title} requested by {requester_name}")
+    logger.info(f"Now playing: {song.title} requested by {requester_name} (direct playback: {not success})")
+
+    # Emit WebSocket event so frontend updates immediately
+    await emit_now_playing({
+        "song_id": song.id,
+        "title": song.title,
+        "artist": song.artist or "AI Radio",
+        "audio_url": song.audio_url,
+        "duration_seconds": song.duration_seconds,
+        "queue_item_id": queue_item.id,
+        "music_provider": song.music_provider,
+    })
 
 
 async def _announce_song(song: Song, requester_name: str, queue_item: RadioQueue):

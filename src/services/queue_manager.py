@@ -23,6 +23,56 @@ from src.utils.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _generate_title_from_prompt(prompt: str) -> str:
+    """Generate a short title from the prompt when API doesn't provide one.
+
+    Args:
+        prompt: The original song prompt
+
+    Returns:
+        A cleaned up, capitalized title (max 40 chars)
+    """
+    if not prompt:
+        return "Untitled Track"
+
+    # Take first 50 chars and clean up
+    title = prompt[:50].strip()
+
+    # Remove common prefixes
+    lower_title = title.lower()
+    prefixes = [
+        "create a song about ",
+        "make a song about ",
+        "generate a song about ",
+        "a song about ",
+        "write a song about ",
+        "an upbeat track about ",
+        "a track about ",
+        "make me a ",
+        "create a ",
+        "make a ",
+        "an ",
+        "a ",
+    ]
+    for prefix in prefixes:
+        if lower_title.startswith(prefix):
+            title = title[len(prefix):]
+            break
+
+    # Truncate at sentence/clause boundary
+    for delimiter in ['.', ',', '!', '?', '-', ':']:
+        if delimiter in title:
+            title = title.split(delimiter)[0]
+            break
+
+    # Clean up and capitalize
+    title = title.strip()
+    if title:
+        # Title case the result
+        return title.title()[:40]
+    return "Untitled Track"
+
+
 class QueueManager:
     """Manages the radio song request queue."""
 
@@ -62,6 +112,9 @@ class QueueManager:
 
     async def _process_cycle(self, session: AsyncSession) -> None:
         """Run one processing cycle."""
+        # Recover orphaned generating items (from backend restarts)
+        await self._recover_orphaned_jobs(session)
+
         # Check status of active jobs
         await self._check_active_jobs(session)
 
@@ -69,6 +122,26 @@ class QueueManager:
         available_slots = self.max_concurrent - len(self._active_jobs)
         if available_slots > 0:
             await self._start_new_jobs(session, available_slots)
+
+    async def _recover_orphaned_jobs(self, session: AsyncSession) -> None:
+        """Recover items stuck in GENERATING status (e.g., from backend restart)."""
+        # Find generating items not in our active jobs dictionary
+        query = (
+            select(RadioQueue)
+            .where(RadioQueue.status == QueueStatus.GENERATING.value)
+            .where(RadioQueue.suno_job_id.isnot(None))
+        )
+
+        result = await session.execute(query)
+        generating_items = result.scalars().all()
+
+        for item in generating_items:
+            if item.id not in self._active_jobs and item.suno_job_id:
+                logger.info(
+                    f"Recovering orphaned job: queue {item.id}, job {item.suno_job_id}"
+                )
+                # Re-add to active jobs so it gets polled
+                self._active_jobs[item.id] = item.suno_job_id
 
     async def _check_active_jobs(self, session: AsyncSession) -> None:
         """Check status of currently generating jobs."""
@@ -161,11 +234,17 @@ class QueueManager:
             logger.error(f"Queue item {queue_id} not found")
             return
 
+        # Generate title from prompt if API didn't provide one
+        song_title = result.title or _generate_title_from_prompt(item.original_prompt)
+
+        # Get provider name for display
+        provider_name = result.provider.value if result.provider else None
+
         # Create song record
         song = Song(
             suno_job_id=result.job_id,
             suno_status=SunoStatus.COMPLETE.value,
-            title=result.title or f"Song #{queue_id}",
+            title=song_title,
             original_prompt=item.original_prompt,
             enhanced_prompt=item.enhanced_prompt,
             genre=item.genre_hint,
@@ -173,6 +252,7 @@ class QueueManager:
             audio_url=result.audio_url,
             duration_seconds=result.duration_seconds,
             lyrics=result.lyrics,
+            music_provider=provider_name,
             generation_started_at=item.generation_started_at,
             generation_completed_at=datetime.utcnow(),
         )

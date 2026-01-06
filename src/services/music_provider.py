@@ -141,6 +141,7 @@ class MusicProvider(ABC):
         start_time = datetime.utcnow()
         while True:
             result = await self.get_status(result.job_id)
+            logger.debug(f"Polling {result.job_id}: status={result.status.value}, elapsed={(datetime.utcnow() - start_time).total_seconds():.0f}s")
 
             if result.status in (
                 GenerationStatus.COMPLETE,
@@ -1056,12 +1057,26 @@ class SunoAPIProvider(MusicProvider):
                 )
 
             data = response.json()
+
+            # Check for API error response (code != 200 in body)
+            if data.get("code") and data.get("code") != 200:
+                error_msg = data.get("msg") or f"SunoAPI error code {data.get('code')}"
+                logger.error(f"SunoAPI error: {error_msg}")
+                return GenerationResult(
+                    provider=ProviderType.SUNOAPI,
+                    job_id="",
+                    status=GenerationStatus.ERROR,
+                    error_message=error_msg,
+                )
+
             # Extract taskId from response - may be nested in 'data' object
+            # Use (x or {}) pattern to handle None values
+            data_obj = data.get("data") or {}
             task_id = (
                 data.get("taskId")
                 or data.get("task_id")
-                or data.get("data", {}).get("taskId")
-                or data.get("data", {}).get("task_id")
+                or data_obj.get("taskId")
+                or data_obj.get("task_id")
                 or data.get("id", "")
             )
 
@@ -1112,16 +1127,24 @@ class SunoAPIProvider(MusicProvider):
 
             data = response.json()
 
+            # SunoAPI returns status nested in data.data object
+            # Response format: {"code": 200, "msg": "success", "data": {"taskId": "...", "status": "PENDING", "response": null}}
+            inner_data = data.get("data") or {}
+            api_status = (inner_data.get("status") or data.get("status") or "").lower()
+
+            logger.info(f"SunoAPI status for {job_id}: api_status={api_status}, inner_data_keys={list(inner_data.keys()) if inner_data else []}")
+
             # Map SunoAPI status to our status
-            api_status = data.get("status", "").lower()
+            # Status values: PENDING, TEXT_SUCCESS (lyrics generated), SUCCESS (audio ready)
             status_map = {
                 "pending": GenerationStatus.PENDING,
                 "queued": GenerationStatus.QUEUED,
                 "processing": GenerationStatus.PROCESSING,
                 "running": GenerationStatus.PROCESSING,
+                "text_success": GenerationStatus.PROCESSING,  # Lyrics done, audio still generating
                 "completed": GenerationStatus.COMPLETE,
                 "complete": GenerationStatus.COMPLETE,
-                "success": GenerationStatus.COMPLETE,
+                "success": GenerationStatus.COMPLETE,  # SunoAPI uses uppercase SUCCESS
                 "failed": GenerationStatus.FAILED,
                 "error": GenerationStatus.ERROR,
             }
@@ -1134,20 +1157,44 @@ class SunoAPIProvider(MusicProvider):
             lyrics = None
 
             if gen_status == GenerationStatus.COMPLETE:
-                # SunoAPI may return audio directly or in a nested structure
-                audio_url = data.get("audio_url") or data.get("audioUrl")
-                title = data.get("title")
-                duration = data.get("duration")
-                lyrics = data.get("lyrics") or data.get("lyric")
+                # SunoAPI returns audio data in data.data.response.sunoData[] when complete
+                response_data = inner_data.get("response") or {}
 
-                # Check for clips array format
-                clips = data.get("clips") or data.get("songs") or data.get("data", [])
-                if clips and isinstance(clips, list) and len(clips) > 0:
-                    clip = clips[0]
-                    audio_url = audio_url or clip.get("audio_url") or clip.get("audioUrl")
-                    title = title or clip.get("title")
-                    duration = duration or clip.get("duration")
-                    lyrics = lyrics or clip.get("lyrics") or clip.get("lyric")
+                # Try to extract from response.sunoData array first (primary format)
+                if isinstance(response_data, dict):
+                    suno_data = response_data.get("sunoData") or []
+                    if suno_data and isinstance(suno_data, list) and len(suno_data) > 0:
+                        clip = suno_data[0]
+                        audio_url = clip.get("audioUrl") or clip.get("audio_url")
+                        title = clip.get("title")
+                        duration = clip.get("duration")
+                        lyrics = clip.get("prompt")  # SunoAPI uses 'prompt' for generated lyrics
+
+                    # Fallback: check for clips/songs array
+                    if not audio_url:
+                        clips = response_data.get("clips") or response_data.get("songs") or []
+                        if clips and isinstance(clips, list) and len(clips) > 0:
+                            clip = clips[0]
+                            audio_url = clip.get("audioUrl") or clip.get("audio_url")
+                            title = title or clip.get("title")
+                            duration = duration or clip.get("duration")
+                            lyrics = lyrics or clip.get("lyrics") or clip.get("lyric")
+
+                # Fallback: check inner_data directly
+                if not audio_url:
+                    audio_url = inner_data.get("audioUrl") or inner_data.get("audio_url")
+                    title = title or inner_data.get("title")
+                    duration = duration or inner_data.get("duration")
+                    lyrics = lyrics or inner_data.get("lyrics") or inner_data.get("lyric")
+
+                # Fallback: check top-level data
+                if not audio_url:
+                    audio_url = data.get("audioUrl") or data.get("audio_url")
+                    title = title or data.get("title")
+                    duration = duration or data.get("duration")
+                    lyrics = lyrics or data.get("lyrics") or data.get("lyric")
+
+                logger.info(f"SunoAPI complete - audio_url={audio_url}, title={title}, duration={duration}")
 
             return GenerationResult(
                 provider=ProviderType.SUNOAPI,
@@ -1331,6 +1378,7 @@ class GoAPIUdioProvider(MusicProvider):
             data = response.json()
             task_data = data.get("data", {})
             status = task_data.get("status", "unknown")
+            logger.info(f"GoAPI Udio status for {job_id}: status={status}, task_data={task_data}")
 
             # Map GoAPI status to our status
             status_map = {
@@ -1350,18 +1398,22 @@ class GoAPIUdioProvider(MusicProvider):
             duration = None
 
             if gen_status == GenerationStatus.COMPLETE:
-                # Udio returns song info in task_data
-                audio_url = task_data.get("audio_url") or task_data.get("song_path")
-                title = task_data.get("title")
-                duration = task_data.get("duration")
+                # GoAPI returns output in data.output.songs
+                output_data = task_data.get("output", {})
+                songs = output_data.get("songs", [])
 
-                # Check for clips/songs array format
-                clips = task_data.get("clips") or task_data.get("songs", [])
-                if clips and isinstance(clips, list) and len(clips) > 0:
-                    clip = clips[0]
-                    audio_url = audio_url or clip.get("audio_url") or clip.get("song_path")
-                    title = title or clip.get("title")
-                    duration = duration or clip.get("duration")
+                if songs and isinstance(songs, list) and len(songs) > 0:
+                    song = songs[0]
+                    audio_url = song.get("audio_url") or song.get("song_path") or song.get("audio")
+                    title = song.get("title")
+                    duration = song.get("duration")
+                    logger.info(f"GoAPI Udio: Found audio at {audio_url}")
+
+                # Fallback to task_data level
+                if not audio_url:
+                    audio_url = task_data.get("audio_url") or task_data.get("song_path")
+                    title = title or task_data.get("title")
+                    duration = duration or task_data.get("duration")
 
             return GenerationResult(
                 provider=ProviderType.GOAPI_UDIO,
@@ -1437,7 +1489,27 @@ class MockProvider(MusicProvider):
 
 # Provider Registry - allows runtime switching
 _providers: dict[ProviderType, MusicProvider] = {}
-_default_provider: ProviderType = ProviderType.SUNO
+_default_provider: Optional[ProviderType] = None  # Lazy initialized from config
+
+
+def _get_default_provider_type() -> ProviderType:
+    """Get default provider from config, with fallback."""
+    global _default_provider
+    if _default_provider is None:
+        from src.utils.config import settings
+        provider_map = {
+            "sunoapi": ProviderType.SUNOAPI,
+            "goapi_udio": ProviderType.GOAPI_UDIO,
+            "suno": ProviderType.SUNO,
+            "udio": ProviderType.UDIO,
+            "mock": ProviderType.MOCK,
+        }
+        _default_provider = provider_map.get(
+            settings.default_music_provider.lower(),
+            ProviderType.GOAPI_UDIO  # Fallback
+        )
+        logger.info(f"Default music provider initialized: {_default_provider.value}")
+    return _default_provider
 
 
 def get_provider(provider_type: Optional[ProviderType] = None) -> MusicProvider:
@@ -1450,7 +1522,7 @@ def get_provider(provider_type: Optional[ProviderType] = None) -> MusicProvider:
     Returns:
         MusicProvider instance
     """
-    provider_type = provider_type or _default_provider
+    provider_type = provider_type or _get_default_provider_type()
 
     if provider_type not in _providers:
         if provider_type == ProviderType.SUNO:

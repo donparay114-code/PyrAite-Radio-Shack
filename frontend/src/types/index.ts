@@ -66,6 +66,7 @@ export interface Song {
   enhanced_prompt: string | null;
   lyrics: string | null;
   is_instrumental: boolean;
+  music_provider: string | null;
   play_count: number;
   total_upvotes: number;
   total_downvotes: number;

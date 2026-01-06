@@ -23,6 +23,7 @@ class SongResponse(BaseModel):
     genre: Optional[str]
     duration_formatted: str
     is_instrumental: bool
+    music_provider: Optional[str] = None
     play_count: int
     vote_score: int
     suno_status: str
@@ -52,6 +53,7 @@ class SongDetailResponse(BaseModel):
     bpm: Optional[int]
     key: Optional[str]
     is_instrumental: bool
+    music_provider: Optional[str] = None
     audio_url: Optional[str]
     local_file_path: Optional[str]
     play_count: int

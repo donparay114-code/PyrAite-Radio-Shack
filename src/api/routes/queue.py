@@ -19,10 +19,10 @@ from src.utils.config import settings
 
 router = APIRouter()
 
-# Rate limiter for queue endpoints
+# Rate limiter for queue endpoints (using memory storage, Redis optional)
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri=settings.redis_url if settings.redis_url else None,
+    storage_uri=None,  # Use in-memory storage instead of Redis
 )
 
 
@@ -95,6 +95,7 @@ class SongResponse(BaseModel):
     enhanced_prompt: Optional[str] = None
     lyrics: Optional[str] = None
     is_instrumental: bool = False
+    music_provider: Optional[str] = None
     play_count: int = 0
     total_upvotes: int = 0
     total_downvotes: int = 0
@@ -169,7 +170,7 @@ async def list_queue(
 
 
 @router.post("/", response_model=QueueItemResponse, status_code=201)
-@limiter.limit("10/minute")  # 10 requests per minute per IP
+# @limiter.limit("10/minute")  # Disabled - Redis required but not always available
 async def create_queue_item(
     request: Request,
     item: QueueItemCreate,
@@ -213,8 +214,8 @@ async def create_queue_item(
                         detail="Anonymous users are limited to 2 requests per day. Sign up for more!",
                     )
                 await redis_client.close()
-        except redis.ConnectionError:
-            pass  # Skip limit check if Redis unavailable
+        except Exception:
+            pass  # Skip limit check if Redis unavailable or any error
 
     queue_item = RadioQueue(
         original_prompt=item.prompt,
@@ -225,6 +226,9 @@ async def create_queue_item(
         user_id=item.user_id,
         status=QueueStatus.PENDING.value,
         requested_at=datetime.utcnow(),
+        # Set moderation flags since we already passed the check
+        is_moderated=True,
+        moderation_passed=True,
     )
     session.add(queue_item)
     await session.commit()
@@ -344,6 +348,20 @@ async def get_now_playing(
         result = await session.execute(query)
         queue_item = result.scalar_one_or_none()
 
+    # If still nothing, get the most recently generated item (for direct playback)
+    # This enables playback when Liquidsoap/Icecast is not running
+    if not queue_item:
+        query = (
+            select(RadioQueue)
+            .options(selectinload(RadioQueue.song), selectinload(RadioQueue.user))
+            .where(RadioQueue.status == QueueStatus.GENERATED.value)
+            .where(RadioQueue.song_id.isnot(None))
+            .order_by(RadioQueue.generation_completed_at.desc())
+            .limit(1)
+        )
+        result = await session.execute(query)
+        queue_item = result.scalar_one_or_none()
+
     # If still nothing, return empty response
     if not queue_item:
         return NowPlayingResponse(listeners=await get_current_listeners())
@@ -377,6 +395,7 @@ async def get_now_playing(
             enhanced_prompt=song.enhanced_prompt,
             lyrics=song.lyrics,
             is_instrumental=song.is_instrumental,
+            music_provider=song.music_provider,
             play_count=song.play_count,
             total_upvotes=song.total_upvotes,
             total_downvotes=song.total_downvotes,

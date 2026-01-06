@@ -155,6 +155,11 @@ export function WaveformVisualizer({
     ? (hoverX / containerRef.current.offsetWidth) * duration
     : 0;
 
+  const ariaDuration = Number(duration) || 0;
+  const ariaCurrentTime = Number(currentTime) || 0;
+
+  const style = useMemo(() => ({ height: `${height}px` }), [height]);
+
   return (
     <div
       ref={containerRef}
@@ -162,7 +167,7 @@ export function WaveformVisualizer({
         "relative cursor-pointer select-none",
         className
       )}
-      style={{ height }}
+      style={style}
       onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -170,8 +175,8 @@ export function WaveformVisualizer({
       role="slider"
       aria-label="Audio progress"
       aria-valuemin={0}
-      aria-valuemax={duration}
-      aria-valuenow={currentTime}
+      aria-valuemax={ariaDuration}
+      aria-valuenow={ariaCurrentTime}
       tabIndex={0}
     >
       <svg

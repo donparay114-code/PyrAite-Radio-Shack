@@ -126,6 +126,14 @@ async def lifespan(app: FastAPI):
     setup_logging()
     settings.ensure_directories()
 
+    # Initialize database engine early to ensure correct settings are used
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("Initializing database engine at startup...")
+    from src.models import get_async_engine
+    engine = get_async_engine()
+    logger.info(f"Database engine initialized: {engine.url.host}:{engine.url.port}")
+
     # Start APScheduler for background tasks
     from src.services.scheduler import setup_scheduler, start_scheduler, stop_scheduler
 

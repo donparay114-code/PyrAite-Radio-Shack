@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 
 interface BadgeProps {
   children: ReactNode;
-  variant?: "default" | "success" | "warning" | "danger" | "info" | "violet";
+  variant?: "default" | "success" | "warning" | "danger" | "info" | "violet" | "cyan";
   size?: "sm" | "md";
   pulse?: boolean;
   icon?: ReactNode;
@@ -28,6 +28,7 @@ export function Badge({
     danger: "bg-red-500/20 text-red-400 border-red-500/30",
     info: "bg-blue-500/20 text-blue-400 border-blue-500/30",
     violet: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+    cyan: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
   };
 
   const sizes = {
@@ -54,6 +55,7 @@ export function Badge({
               variant === "warning" && "bg-amber-400",
               variant === "info" && "bg-blue-400",
               variant === "violet" && "bg-violet-400",
+              variant === "cyan" && "bg-cyan-400",
               variant === "default" && "bg-white/50"
             )}
           />
@@ -65,6 +67,7 @@ export function Badge({
               variant === "warning" && "bg-amber-400",
               variant === "info" && "bg-blue-400",
               variant === "violet" && "bg-violet-400",
+              variant === "cyan" && "bg-cyan-400",
               variant === "default" && "bg-white/50"
             )}
           />

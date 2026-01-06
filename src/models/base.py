@@ -94,8 +94,12 @@ def get_engine() -> Engine:
 
     if _engine is None:
         from src.utils.config import settings
+        import logging
+        logger = logging.getLogger(__name__)
 
         sync_url, _ = _get_database_urls()
+        safe_url = sync_url.replace(settings.postgres_password, '***') if settings.postgres_password else sync_url
+        logger.info(f"Creating SYNC engine with URL: {safe_url}")
 
         # SQLite needs different settings
         if sync_url.startswith("sqlite"):
@@ -131,8 +135,13 @@ def get_async_engine() -> AsyncEngine:
 
     if _async_engine is None:
         from src.utils.config import settings
+        import logging
+        logger = logging.getLogger(__name__)
 
         _, async_url = _get_database_urls()
+        # Log URL without password for security
+        safe_url = async_url.replace(settings.postgres_password, '***') if settings.postgres_password else async_url
+        logger.info(f"Creating async engine with URL: {safe_url}")
 
         # SQLite needs different settings
         if async_url.startswith("sqlite"):
@@ -168,6 +177,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for getting async database sessions."""
     # Ensure engine is initialized
     get_async_engine()
+
     if _AsyncSessionLocal is None:
         raise RuntimeError("Async session not initialized")
 

@@ -44,6 +44,11 @@ class Song(Base, TimestampMixin):
     title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     artist: Mapped[str] = mapped_column(String(255), default="AI Radio")
 
+    # Music provider that generated this song (suno, sunoapi, goapi_udio, etc.)
+    music_provider: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, index=True
+    )
+
     # Original prompt info
     original_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     enhanced_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

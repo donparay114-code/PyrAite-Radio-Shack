@@ -48,7 +48,7 @@ const STYLE_TAGS = [
 ];
 
 export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
-  const [provider, setProvider] = useState("sunoapi");
+  // Provider is now handled by the queue processor automatically
   const [prompt, setPrompt] = useState("");
   const [genre, setGenre] = useState<string | null>(null);
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -76,9 +76,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
     setError(null);
 
     try {
-      // If we passed an onSubmit prop that handles everything, keep using it?
-      // But user wants direct generation from modal. We'll use the API directly here.
-
+      // Build the full prompt with genre and style tags
       const fullPrompt = [
         prompt,
         genre && `Genre: ${genre}`,
@@ -86,20 +84,35 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
       ].filter(Boolean).join(". ");
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const response = await fetch(`${apiUrl}/api/generate/test`, {
+
+      // Add to queue instead of generating directly
+      // The queue processor will handle the actual generation
+      const response = await fetch(`${apiUrl}/api/queue/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: fullPrompt,
-          provider,
+          genre_hint: genre,
           is_instrumental: isInstrumental,
         }),
       });
 
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Generation failed");
+      if (!response.ok) {
+        // Handle moderation errors specially
+        if (data.detail?.error === "content_moderation_failed") {
+          throw new Error(`Content blocked: ${data.detail.reason}`);
+        }
+        // Handle Pydantic validation errors (array of error objects)
+        if (Array.isArray(data.detail)) {
+          const messages = data.detail.map((e: { msg?: string; loc?: string[] }) =>
+            e.loc ? `${e.loc.join('.')}: ${e.msg}` : e.msg
+          ).join("; ");
+          throw new Error(messages || "Validation failed");
+        }
+        // Handle string error message
+        throw new Error(typeof data.detail === 'string' ? data.detail : "Failed to add to queue");
       }
 
       onClose();
@@ -109,10 +122,8 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
       setIsInstrumental(false);
       setSelectedTags([]);
 
-      // Notify parent? (Optional but good practice)
+      // Notify parent to refresh queue
       if (onSubmit) {
-        // We can still call onSubmit to maybe refresh the list or show a toast
-        // But the actual generation happens here now.
         await onSubmit({
           prompt: fullPrompt,
           genre,
@@ -122,7 +133,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate song");
+      setError(err instanceof Error ? err.message : "Failed to add song to queue");
     } finally {
       setIsLoading(false);
     }
@@ -149,11 +160,11 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="relative w-full max-w-lg"
           >
-            <GlassCard variant="elevated" className="overflow-visible">
+            <GlassCard variant="elevated" className="overflow-visible max-h-[90vh] flex flex-col">
               {/* Glow effect */}
               <div className="absolute -inset-4 rounded-[32px] bg-gradient-to-r from-violet-500/20 to-cyan-500/20 blur-2xl opacity-50 pointer-events-none" />
 
-              <div className="relative p-6">
+              <div className="relative p-6 overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
@@ -308,38 +319,6 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                     </motion.div>
                   )}
 
-                  {/* Provider selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Generation Provider
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: "sunoapi", label: "SunoAPI", recommended: true },
-                        { id: "goapi_udio", label: "GoAPI Udio", recommended: true },
-                        { id: "mock", label: "Mock", recommended: false },
-                      ].map((p) => (
-                        <motion.button
-                          key={p.id}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setProvider(p.id)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
-                            provider === p.id
-                              ? "bg-violet-500/30 border border-violet-500/50 text-violet-300"
-                              : "bg-white/5 border border-white/10 text-text-muted hover:text-white hover:bg-white/10"
-                          )}
-                        >
-                          {p.label}
-                          {p.recommended && (
-                            <span className="ml-1 text-xs text-green-400">✓</span>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Submit button */}
                   <GlowButton
                     onClick={handleGenerate}
@@ -349,7 +328,7 @@ export function RequestModal({ isOpen, onClose, onSubmit }: RequestModalProps) {
                     size="lg"
                     leftIcon={<Sparkles className="w-5 h-5" />}
                   >
-                    {isLoading ? "Generating..." : "Generate & Add to Queue"}
+                    {isLoading ? "Adding to Queue..." : "Add to Queue"}
                   </GlowButton>
 
                   {/* Info */}

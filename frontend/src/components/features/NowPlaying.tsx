@@ -41,6 +41,7 @@ export function NowPlaying({
 }: NowPlayingProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [needsInteraction, setNeedsInteraction] = useState(false);
 
   // Audio player ref for real playback
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -53,12 +54,23 @@ export function NowPlaying({
 
     if (isPlaying) {
       audio.play().catch(() => {
-        // Autoplay may be blocked by browser - user needs to interact first
+        // Autoplay blocked by browser - show click to play overlay
+        setNeedsInteraction(true);
       });
     } else {
       audio.pause();
     }
   }, [isPlaying, song?.audio_url]);
+
+  // Handle click to play when browser blocks autoplay
+  const handleClickToPlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.play().then(() => {
+        setNeedsInteraction(false);
+      }).catch(console.error);
+    }
+  }, []);
 
   // Sync audio mute state
   useEffect(() => {
@@ -146,9 +158,39 @@ export function NowPlaying({
           ref={audioRef}
           src={song.audio_url ?? undefined}
           onTimeUpdate={handleTimeUpdate}
-          onEnded={onPlayPause}
+          onEnded={() => onSeek(0)} // Don't toggle play state - let next song auto-play
           preload="metadata"
         />
+
+        {/* Click to play overlay - shown when browser blocks autoplay */}
+        <AnimatePresence>
+          {needsInteraction && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClickToPlay}
+              className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer rounded-2xl"
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="flex flex-col items-center gap-4"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: glowColor }}
+                >
+                  <Play className="w-10 h-10 text-white ml-1" />
+                </motion.div>
+                <span className="text-white text-lg font-medium">Click to Play</span>
+                <span className="text-white/60 text-sm">Browser requires interaction to play audio</span>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="p-6 lg:p-8">
           {/* Header with live badge */}
@@ -234,6 +276,9 @@ export function NowPlaying({
                   )}
                   {song.is_instrumental && (
                     <Badge variant="info">Instrumental</Badge>
+                  )}
+                  {song.music_provider && (
+                    <Badge variant="info">{song.music_provider.toUpperCase()}</Badge>
                   )}
                 </div>
 
